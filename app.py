@@ -5,7 +5,6 @@ import time
 import datetime
 import plotly.express as px
 import pytz
-import base64
 
 # Set page configuration
 st.set_page_config(
@@ -167,7 +166,7 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-
+    
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
@@ -267,7 +266,6 @@ def main():
     index_labels = []
     final_remain_time = None
     
-    # Check if selected_room_names is not empty before proceeding
     if st.session_state.selected_room_names:
         all_info_found = True
         
@@ -322,35 +320,43 @@ def main():
         if data_to_display:
             df = pd.DataFrame(data_to_display, index=index_labels)
             
-            if '現在のポイント' in df.columns and '下位とのポイント差' in df.columns:
+            # データフレームの列が期待通りに存在するかチェック
+            required_cols = ['現在のポイント', '下位とのポイント差']
+            if all(col in df.columns for col in required_cols):
                 df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-            
-            if final_remain_time is not None:
-                remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-                time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
+                
+                # スタイリングの適用
+                styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
+                    {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
+                )
+                
+                st.subheader("📊 比較対象ルームのステータス")
+                st.dataframe(styled_df, use_container_width=True, hide_index=False)
+                
+                # グラフの生成
+                st.subheader("📈 ポイントと順位の比較")
+                
+                fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
+                                    title="各ルームの現在のポイント", 
+                                    color="ルーム名",
+                                    hover_data=["現在の順位", "下位とのポイント差"],
+                                    labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_points, use_container_width=True)
 
-            st.subheader("📊 比較対象ルームのステータス")
-            st.dataframe(df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
-                {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
-            ), use_container_width=True, hide_index=False)
-            
-            st.subheader("📈 ポイントと順位の比較")
-            
-            fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
-                                title="各ルームの現在のポイント", 
-                                color="ルーム名",
-                                hover_data=["現在の順位", "下位とのポイント差"],
-                                labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-            st.plotly_chart(fig_points, use_container_width=True)
+                if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
+                    fig_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
+                                    title="下位とのポイント差", 
+                                    color="ルーム名",
+                                    hover_data=["現在の順位", "現在のポイント"],
+                                    labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                    st.plotly_chart(fig_gap, use_container_width=True)
+            else:
+                st.warning("データフレームの列が不完全なため、グラフやスタイリングを適用できません。")
 
-            if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
-                fig_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
-                                title="下位とのポイント差", 
-                                color="ルーム名",
-                                hover_data=["現在の順位", "現在のポイント"],
-                                labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_gap, use_container_width=True)
+        if final_remain_time is not None:
+            remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+            time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
 
         if not all_info_found:
             st.warning("一部のルーム情報が取得できませんでした。")
