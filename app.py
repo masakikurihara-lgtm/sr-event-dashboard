@@ -146,8 +146,18 @@ def get_onlives_rooms():
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
-                        # ルームIDを確実に取得
-                        room_id = room.get('room_id') or (room.get('live_info') or {}).get('room_id') or (room.get('room') or {}).get('room_id')
+                        room_id = room.get('room_id')
+                        
+                        # ライブ情報がネストされている場合の対応を強化
+                        if room_id is None:
+                            live_info = room.get('live_info')
+                            if isinstance(live_info, dict) and 'room_id' in live_info:
+                                room_id = live_info['room_id']
+                        
+                        if room_id is None:
+                            room_info = room.get('room')
+                            if isinstance(room_info, dict) and 'room_id' in room_info:
+                                room_id = room_info['room_id']
                         
                         if room_id:
                             onlives.add(int(room_id))
