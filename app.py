@@ -132,45 +132,18 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-@st.cache_data(ttl=30)  # キャッシュ有効期間を短く設定
-def get_onlives_rooms():
-    """Fetches a list of currently live room IDs."""
-    onlives = set()
+# 新しいヘルパー関数
+@st.cache_data(ttl=15) # ライブ状態チェックはより短いTTLで
+def is_room_live(room_id):
+    """Checks if a specific room is currently live."""
+    url = f"https://www.showroom-live.com/api/room/status?room_id={room_id}"
     try:
-        url = "https://www.showroom-live.com/api/live/onlives"
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
-
-        st.sidebar.subheader("デバッグ情報: ライブ中API")
-        st.sidebar.json(data) # 生のAPIレスポンスを出力
-
-        if isinstance(data, dict):
-            for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
-                if live_type in data and isinstance(data[live_type], list):
-                    for room in data[live_type]:
-                        # APIレスポンスのルームIDを安全に抽出
-                        room_id = None
-                        if 'room_id' in room:
-                            room_id = room['room_id']
-                        elif 'live_info' in room and 'room_id' in room['live_info']:
-                            room_id = room['live_info']['room_id']
-                        elif 'room' in room and 'room_id' in room['room']:
-                            room_id = room['room']['room_id']
-                        
-                        if room_id:
-                            onlives.add(int(room_id)) # int型に変換して追加
-
-        st.sidebar.write(f"取得したライブ中のルームID: {onlives}")
-        st.sidebar.write(f"セット内のIDの型: {type(list(onlives)[0]) if onlives else 'None'}")
-
-
-    except requests.exceptions.RequestException as e:
-        st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
-    except ValueError:
-        st.warning("ライブ配信情報のJSONデコードに失敗しました。")
-    return onlives
-
+        return data.get('is_live') == 1
+    except requests.exceptions.RequestException:
+        return False
 
 # --- Main Application Logic ---
 
@@ -278,8 +251,6 @@ def main():
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
-    
-    onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
     final_remain_time = None
@@ -296,12 +267,7 @@ def main():
                     
                 room_id = st.session_state.room_map_data[room_name]['room_id']
                 room_info = get_room_event_info(room_id)
-                
-                st.sidebar.write(f"---")
-                st.sidebar.write(f"**ルーム名: {room_name}**")
-                st.sidebar.write(f"イベントデータから取得したID: {room_id} (型: {type(room_id)})")
-
-                
+            
                 if not isinstance(room_info, dict):
                     st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                     continue
@@ -325,11 +291,8 @@ def main():
                 
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
-                    
-                    st.sidebar.write(f"ライブ中のルームIDセットに、このルームのID({int(room_id)})は含まれていますか？ -> {int(room_id) in onlives_rooms}")
-                    
                     data_to_display.append({
-                        "ライブ中": "🔴" if int(room_id) in onlives_rooms else "",
+                        "ライブ中": "🔴" if is_room_live(room_id) else "", # 新しい関数でライブ状況を判定
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
@@ -345,7 +308,6 @@ def main():
 
             except Exception as e:
                 st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
-                st.sidebar.write(f"データ処理中のエラー: {e}")
                 continue
 
         if data_to_display:
