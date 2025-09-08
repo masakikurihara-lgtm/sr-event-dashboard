@@ -142,7 +142,6 @@ def get_room_event_info(room_id):
         response.raise_for_status()
         data = response.json()
         
-        # デバッグログを追加
         st.subheader(f"ルームID {room_id} のAPIレスポンス")
         st.write(f"ステータスコード: {response.status_code}")
         st.json(data)
@@ -228,15 +227,16 @@ def main():
 
                 rank_info = None
                 remain_time_sec = None
-
-                # 必要な情報を複数のパターンから探す
-                if 'ranking' in room_info:
-                    rank_info = room_info['ranking']
-                    remain_time_sec = room_info.get('remain_time', 0)
-                elif 'event_and_support_info' in room_info and 'ranking' in room_info['event_and_support_info']:
+                
+                # APIレスポンスが辞書型であることを確認した上で、キーの存在をチェック
+                if 'ranking' in room_info and 'remain_time' in room_info:
+                    rank_info = room_info.get('ranking')
+                    remain_time_sec = room_info.get('remain_time')
+                elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
                     event_info = room_info['event_and_support_info']
-                    rank_info = event_info['ranking']
-                    remain_time_sec = event_info.get('remain_time', 0)
+                    if 'ranking' in event_info and 'remain_time' in event_info:
+                        rank_info = event_info.get('ranking')
+                        remain_time_sec = event_info.get('remain_time')
                 
                 if rank_info and remain_time_sec is not None:
                     try:
@@ -262,7 +262,6 @@ def main():
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
                 
-                # 順位が数値でない場合があるため、ソート前に型変換を試みる
                 df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                 df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
                 
@@ -273,7 +272,6 @@ def main():
 
                 st.subheader("📈 ポイントと順位の比較")
                 
-                # ポイントが数値でない場合があるため、グラフ描画前に型変換を試みる
                 df_sorted['現在のポイント'] = pd.to_numeric(df_sorted['現在のポイント'], errors='coerce')
                 fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
                                     title="各ルームの現在のポイント", 
