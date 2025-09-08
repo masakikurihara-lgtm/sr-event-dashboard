@@ -15,6 +15,8 @@ st.set_page_config(
 
 # --- Functions to fetch data from SHOWROOM API ---
 
+# app.py の get_events() 関数を以下のように修正
+
 @st.cache_data(ttl=3600)
 def get_events():
     """Fetches a list of ongoing SHOWROOM events."""
@@ -27,13 +29,22 @@ def get_events():
             response = requests.get(url, timeout=5)
             response.raise_for_status()
             data = response.json()
-            if not data['events']:
+            
+            # --- ここから修正 ---
+            # 'events'キーが存在するかチェック
+            if 'events' not in data or not data['events']:
                 break
             events.extend(data['events'])
+            # --- ここまで修正 ---
+
             page += 1
         except requests.exceptions.RequestException as e:
             st.error(f"Error fetching event data: {e}")
             return []
+        except ValueError: # JSONDecodeError
+            st.error(f"Failed to decode JSON from response: {response.text}")
+            return []
+            
     return events
 
 def get_event_ranking(event_url_key):
