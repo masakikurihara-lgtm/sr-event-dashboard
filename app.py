@@ -132,28 +132,28 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# キャッシュを削除し、動的キャッシュで常に最新情報を取得
+# `get_onlives_rooms`関数にttlを設定してキャッシュを有効にする
+@st.cache_data(ttl=30)  # キャッシュ有効期間を短く設定
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
     try:
         url = "https://www.showroom-live.com/api/live/onlives"
-        # 動的にキャッシュを適用し、常に最新情報を取得
-        @st.cache_data(ttl=5) # 5秒間キャッシュ
-        def _get_onlives_rooms_cached():
-            response = requests.get(url, headers=HEADERS, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            
-            live_rooms = set()
+        response = requests.get(url, headers=HEADERS, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+
+        if isinstance(data, dict):
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data[live_type], list):
                     for room in data[live_type]:
+                        # APIによっては`live_info`内にroom_idがある場合もあるため、階層を深く見る
                         if 'room_id' in room:
-                            live_rooms.add(room['room_id'])
-            return live_rooms
-        
-        onlives = _get_onlives_rooms_cached()
+                            onlives.add(room['room_id'])
+                        elif 'live_info' in room and 'room_id' in room['live_info']:
+                            onlives.add(room['live_info']['room_id'])
+                        elif 'room' in room and 'room_id' in room['room']:
+                             onlives.add(room['room']['room_id'])
 
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
