@@ -392,8 +392,7 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            # st.metricからst.writeに変更
-            time_placeholder.write(f"**{remain_time_readable}**")
+            time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
