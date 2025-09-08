@@ -302,12 +302,12 @@ def main():
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
                     data_to_display.append({
+                        "ライブ中": "🔴" if room_id in onlives_rooms else "", # 絵文字のみで表示
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
                         "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
-                        "下位の順位": rank_info.get('lower_rank', 'N/A'),
-                        "ライブ中": "🔴 Live" if room_id in onlives_rooms else ""
+                        "下位の順位": rank_info.get('lower_rank', 'N/A')
                     })
                     
                     if final_remain_time is None: # 一度だけ残り時間を設定
@@ -326,7 +326,6 @@ def main():
             # 順位でソート
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
-            df = df[['ライブ中', 'ルーム名', '現在の順位', '現在のポイント', '下位とのポイント差', '下位の順位']]
 
             st.subheader("📊 比較対象ルームのステータス")
             
@@ -340,12 +339,12 @@ def main():
                     styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
                     )
-                    st.dataframe(styled_df, use_container_width=True)
+                    st.dataframe(styled_df, use_container_width=True, hide_index=True) # インデックス非表示
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
-                    st.dataframe(df, use_container_width=True)
+                    st.dataframe(df, use_container_width=True, hide_index=True) # インデックス非表示
             else:
-                st.dataframe(df, use_container_width=True)
+                st.dataframe(df, use_container_width=True, hide_index=True) # インデックス非表示
                 st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
 
             st.subheader("📈 ポイントと順位の比較")
