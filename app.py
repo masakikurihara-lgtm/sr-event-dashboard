@@ -132,7 +132,6 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# `get_onlives_rooms`関数にttlを設定してキャッシュを有効にする
 @st.cache_data(ttl=30)  # キャッシュ有効期間を短く設定
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
@@ -148,12 +147,9 @@ def get_onlives_rooms():
                 if live_type in data and isinstance(data[live_type], list):
                     for room in data[live_type]:
                         # APIによっては`live_info`内にroom_idがある場合もあるため、階層を深く見る
-                        if 'room_id' in room:
-                            onlives.add(room['room_id'])
-                        elif 'live_info' in room and 'room_id' in room['live_info']:
-                            onlives.add(room['live_info']['room_id'])
-                        elif 'room' in room and 'room_id' in room['room']:
-                             onlives.add(room['room']['room_id'])
+                        room_id = room.get('room_id') or (room.get('live_info') or {}).get('room_id') or (room.get('room') or {}).get('room_id')
+                        if room_id:
+                            onlives.add(int(room_id)) # int型に変換して追加
 
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
@@ -311,7 +307,7 @@ def main():
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
                     data_to_display.append({
-                        "ライブ中": "🔴" if room_id in onlives_rooms else "", # 絵文字のみで表示
+                        "ライブ中": "🔴" if int(room_id) in onlives_rooms else "",
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
