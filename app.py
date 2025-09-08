@@ -5,6 +5,7 @@ import time
 import datetime
 import plotly.express as px
 import pytz
+import base64
 
 # Set page configuration
 st.set_page_config(
@@ -132,6 +133,27 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
+@st.cache_data(ttl=60)
+def get_onlives_rooms():
+    """Fetches a list of currently live room IDs."""
+    onlives = set()
+    try:
+        url = "https://www.showroom-live.com/api/live/onlives"
+        response = requests.get(url, headers=HEADERS, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
+            if live_type in data and isinstance(data[live_type], list):
+                for room in data[live_type]:
+                    if 'room_id' in room:
+                        onlives.add(room['room_id'])
+    except requests.exceptions.RequestException as e:
+        st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
+    except ValueError:
+        st.warning("ライブ配信情報のJSONデコードに失敗しました。")
+    return onlives
+
 # --- Main Application Logic ---
 
 def main():
@@ -167,14 +189,14 @@ def main():
 
     selected_event_data = event_options.get(selected_event_name)
 
-    # イベント期間の表示とURLリンク
+    # イベント期間とURLリンク
     event_url = f"https://www.showroom-live.com/event/{selected_event_data.get('event_url_key')}"
     started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at'), JST)
     ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     
     st.info(f"選択されたイベント: **{selected_event_name}**")
-    st.markdown(f"**[イベントページへ移動する]({event_url})**", unsafe_allow_html=True)
+    st.markdown(f"**▶ [イベントページへ移動する]({event_url})**", unsafe_allow_html=True)
 
     # セッションステートのリセット
     if st.session_state.selected_event_name != selected_event_name:
@@ -220,21 +242,36 @@ def main():
 
     # --- Real-time Dashboard Section ---
     st.header("3. リアルタイムダッシュボード")
-    
-    # 残り時間とイベント期間の表示
-    col1, col2 = st.columns([1, 2])
-    
+    st.info("5秒ごとに自動更新されます。")
+
+    # イベント期間と残り時間のレイアウト
+    with st.container(border=True):
+        st.subheader("イベント情報")
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.write("イベント期間")
+            st.write(f"**{event_period_str}**")
+
+        with col2:
+            st.write("残り時間")
+            # `st.metric`は値を後から入れるため、ここではプレースホルダー
+            time_placeholder = st.empty()
+
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
+    
+    # ライブ配信中のルーム情報を取得
+    onlives_rooms = get_onlives_rooms()
 
-    selected_room_ids = []
     data_to_display = []
+    index_labels = []
+    final_remain_time = None
     all_info_found = True
     
     for room_name in st.session_state.selected_room_names:
         try:
             room_id = st.session_state.room_map_data[room_name]['room_id']
-            selected_room_ids.append(room_id)
             room_info = get_room_event_info(room_id)
         
             if not isinstance(room_info, dict):
@@ -259,21 +296,18 @@ def main():
                     remain_time_sec = event_data.get('remain_time')
 
             if rank_info and remain_time_sec is not None:
-                remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
-                
-                # ルーム名にURLリンクを付加
-                room_url = f"https://www.showroom-live.com/room/{room_id}"
-                room_name_link = f"[{room_name}]({room_url})"
-
                 data_to_display.append({
-                    "ルーム名": room_name_link,
+                    "ルーム名": room_name,
                     "現在の順位": rank_info.get('rank', 'N/A'),
                     "現在のポイント": rank_info.get('point', 'N/A'),
                     "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
                     "下位の順位": rank_info.get('lower_rank', 'N/A')
                 })
                 
-                # 残り時間を取得（複数ルームで同じ値を表示するため）
+                # ライブ中の場合は🔴Live、それ以外は空白
+                index_label = "🔴 Live" if room_id in onlives_rooms else ""
+                index_labels.append(index_label)
+
                 if remain_time_sec is not None:
                     final_remain_time = remain_time_sec
 
@@ -284,27 +318,20 @@ def main():
             all_info_found = False
             st.error(f"データ処理中にエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
     
-    with col1:
-        st.subheader("イベント期間")
-        st.markdown(f"**{event_period_str}**")
-
-    with col2:
-        st.subheader("残り時間")
-        if 'final_remain_time' in locals():
-            remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            st.metric(label="イベント終了まで", value=remain_time_readable)
-
+    # データを表示
     if data_to_display:
-        df = pd.DataFrame(data_to_display)
+        df = pd.DataFrame(data_to_display, index=index_labels)
+        df.index.name = "ライブ中" # インデックス列のヘッダー名を設定
         
-        # DataFrameのリンクを有効化
-        df['ルーム名'] = df['ルーム名'].apply(lambda x: x.replace('[', '「').replace(']', '」') if not x.startswith('<') else x)
-        df.columns = ["ルーム名", "現在の順位", "現在のポイント", "下位とのポイント差", "下位の順位"]
-        
+        # 残り時間をst.metricに表示
+        if final_remain_time is not None:
+            remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+            time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
+
         st.subheader("📊 比較対象ルームのステータス")
         st.dataframe(df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
             {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
-        ), use_container_width=True, hide_index=True)
+        ), use_container_width=True)
 
         st.subheader("📈 ポイントと順位の比較")
         
