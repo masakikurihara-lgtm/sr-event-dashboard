@@ -266,6 +266,7 @@ def main():
     index_labels = []
     final_remain_time = None
     
+    # 選択されたルームが存在するかチェック
     if st.session_state.selected_room_names:
         all_info_found = True
         
@@ -276,6 +277,7 @@ def main():
             
                 if not isinstance(room_info, dict):
                     all_info_found = False
+                    st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                     continue
             
                 rank_info = None
@@ -294,8 +296,9 @@ def main():
                     if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                         rank_info = event_data['ranking']
                         remain_time_sec = event_data.get('remain_time')
-
-                if rank_info and remain_time_sec is not None:
+                
+                # 必要なデータがすべて存在するかチェック
+                if rank_info and 'point' in rank_info and remain_time_sec is not None:
                     data_to_display.append({
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
@@ -307,61 +310,64 @@ def main():
                     index_label = "🔴 Live" if room_id in onlives_rooms else ""
                     index_labels.append(index_label)
 
-                    if remain_time_sec is not None:
+                    if final_remain_time is None: # 一度だけ残り時間を設定
                         final_remain_time = remain_time_sec
 
                 else:
+                    st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                     all_info_found = False
-                    st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。")
-            except Exception as e:
+
+            except KeyError:
+                # selected_room_namesにroom_map_dataにないキーが含まれている場合
+                st.error(f"選択されたルーム名 '{room_name}' の情報が取得できませんでした。")
                 all_info_found = False
-                st.error(f"データ処理中にエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
-        
+
         if data_to_display:
             df = pd.DataFrame(data_to_display, index=index_labels)
+            df.index.name = "ライブ中"
+
+            # グラフとテーブルの表示
+            st.subheader("📊 比較対象ルームのステータス")
             
-            # データフレームの列が期待通りに存在するかチェック
+            # DataFrameの列が期待通りに存在するかチェックしてからスタイルを適用
             required_cols = ['現在のポイント', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
-                df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-                df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                
-                # スタイリングの適用
                 styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
                     {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
                 )
-                
-                st.subheader("📊 比較対象ルームのステータス")
                 st.dataframe(styled_df, use_container_width=True, hide_index=False)
-                
-                # グラフの生成
-                st.subheader("📈 ポイントと順位の比較")
-                
-                fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
-                                    title="各ルームの現在のポイント", 
-                                    color="ルーム名",
-                                    hover_data=["現在の順位", "下位とのポイント差"],
-                                    labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_points, use_container_width=True)
-
-                if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
-                    fig_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
-                                    title="下位とのポイント差", 
-                                    color="ルーム名",
-                                    hover_data=["現在の順位", "現在のポイント"],
-                                    labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                    st.plotly_chart(fig_gap, use_container_width=True)
             else:
-                st.warning("データフレームの列が不完全なため、グラフやスタイリングを適用できません。")
+                st.dataframe(df, use_container_width=True, hide_index=False)
+                st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
+
+            st.subheader("📈 ポイントと順位の比較")
+            
+            df_sorted = df.copy()
+            df_sorted['現在のポイント'] = pd.to_numeric(df_sorted['現在のポイント'], errors='coerce')
+            fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
+                                title="各ルームの現在のポイント", 
+                                color="ルーム名",
+                                hover_data=["現在の順位", "下位とのポイント差"],
+                                labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+            st.plotly_chart(fig_points, use_container_width=True)
+
+            if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df_sorted.columns:
+                df_sorted['下位とのポイント差'] = pd.to_numeric(df_sorted['下位とのポイント差'], errors='coerce')
+                fig_gap = px.bar(df_sorted, x="ルーム名", y="下位とのポイント差", 
+                                title="下位とのポイント差", 
+                                color="ルーム名",
+                                hover_data=["現在の順位", "現在のポイント"],
+                                labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_gap, use_container_width=True)
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
             time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
-
+        else:
+            time_placeholder.info("残り時間情報を取得できませんでした。")
+        
         if not all_info_found:
             st.warning("一部のルーム情報が取得できませんでした。")
-        elif not data_to_display:
-            st.warning("選択されたルームの情報を取得できませんでした。")
 
     time.sleep(5)
     st.rerun()
