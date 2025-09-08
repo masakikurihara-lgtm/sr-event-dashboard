@@ -272,6 +272,12 @@ def main():
         
         for room_name in st.session_state.selected_room_names:
             try:
+                # `room_map_data`に存在しないキーを参照する可能性を考慮
+                if room_name not in st.session_state.room_map_data:
+                    st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
+                    all_info_found = False
+                    continue
+                    
                 room_id = st.session_state.room_map_data[room_name]['room_id']
                 room_info = get_room_event_info(room_id)
             
@@ -298,7 +304,7 @@ def main():
                         remain_time_sec = event_data.get('remain_time')
                 
                 # 必要なデータがすべて存在するかチェック
-                if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                if rank_info and all(key in rank_info for key in ['rank', 'point', 'lower_gap', 'lower_rank']) and remain_time_sec is not None:
                     data_to_display.append({
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
@@ -317,26 +323,26 @@ def main():
                     st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                     all_info_found = False
 
-            except KeyError:
-                # selected_room_namesにroom_map_dataにないキーが含まれている場合
-                st.error(f"選択されたルーム名 '{room_name}' の情報が取得できませんでした。")
+            except Exception as e:
+                st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                 all_info_found = False
+                continue
 
         if data_to_display:
             df = pd.DataFrame(data_to_display, index=index_labels)
             df.index.name = "ライブ中"
 
-            # グラフとテーブルの表示
             st.subheader("📊 比較対象ルームのステータス")
             
-            # DataFrameの列が期待通りに存在するかチェックしてからスタイルを適用
             required_cols = ['現在のポイント', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
+                # 必要な列がすべて揃っている場合のみスタイルを適用
                 styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
                     {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
                 )
                 st.dataframe(styled_df, use_container_width=True, hide_index=False)
             else:
+                # 必要な列が欠けている場合はスタイルなしで表示
                 st.dataframe(df, use_container_width=True, hide_index=False)
                 st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
 
