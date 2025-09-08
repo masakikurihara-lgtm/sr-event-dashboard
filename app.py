@@ -163,6 +163,10 @@ def main():
 
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
+    
+    def reset_room_data():
+        st.session_state.room_map_data = None
+
     events = get_events()
     if not events:
         st.warning("現在開催中のイベントが見つかりませんでした。")
@@ -171,7 +175,9 @@ def main():
     event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
-        options=list(event_options.keys())
+        options=list(event_options.keys()),
+        key="event_selector",
+        on_change=reset_room_data
     )
     
     selected_event_data = event_options[selected_event_name]
@@ -228,7 +234,6 @@ def main():
                 rank_info = None
                 remain_time_sec = None
                 
-                # APIレスポンスが辞書型であることを確認した上で、キーの存在をチェック
                 if 'ranking' in room_info and 'remain_time' in room_info:
                     rank_info = room_info.get('ranking')
                     remain_time_sec = room_info.get('remain_time')
