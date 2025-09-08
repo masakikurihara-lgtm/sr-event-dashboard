@@ -4,7 +4,6 @@ import pandas as pd
 import time
 import datetime
 import plotly.express as px
-from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 # Set page configuration
 st.set_page_config(
@@ -14,8 +13,6 @@ st.set_page_config(
 )
 
 # --- Functions to fetch data from SHOWROOM API ---
-
-# app.py の get_events() 関数を以下のように修正
 
 @st.cache_data(ttl=3600)
 def get_events():
@@ -30,12 +27,23 @@ def get_events():
             response.raise_for_status()
             data = response.json()
             
-            # --- ここから修正 ---
-            # 'events'キーが存在するかチェック
-            if 'events' not in data or not data['events']:
+            # --- ここを修正します ---
+            page_events = []
+            if isinstance(data, dict):
+                # 'events' キーまたは 'event_list' キーが存在するかチェック
+                if 'events' in data:
+                    page_events = data['events']
+                elif 'event_list' in data:
+                    page_events = data['event_list']
+            elif isinstance(data, list):
+                # レスポンスが直接リストの場合
+                page_events = data
+            
+            if not page_events:
                 break
-            events.extend(data['events'])
-            # --- ここまで修正 ---
+            
+            events.extend(page_events)
+            # --- 修正ここまで ---
 
             page += 1
         except requests.exceptions.RequestException as e:
@@ -47,6 +55,7 @@ def get_events():
             
     return events
 
+# --- 以下のコードは変更なし ---
 def get_event_ranking(event_url_key):
     """Fetches the ranking data for a specific event."""
     url = f"https://www.showroom-live.com/api/event/{event_url_key}/ranking"
@@ -70,7 +79,6 @@ def get_room_event_info(room_id):
         return None
 
 # --- Main Application Logic ---
-
 def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
@@ -82,6 +90,7 @@ def main():
         st.warning("現在開催中のイベントが見つかりませんでした。")
         return
 
+    # イベント選択ロジックは変更なし
     event_options = {event['event_name']: event['event_url_key'] for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
@@ -94,7 +103,8 @@ def main():
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     ranking_data = get_event_ranking(selected_event_key)
-    if not ranking_data:
+    if not ranking_data or 'ranking' not in ranking_data:
+        st.warning("このイベントの参加者情報を取得できませんでした。")
         return
         
     rooms = ranking_data['ranking']
