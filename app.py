@@ -310,7 +310,8 @@ def main():
                         "下位の順位": rank_info.get('lower_rank', 'N/A')
                     })
                     
-                    index_label = "🔴 Live" if room_id in onlives_rooms else ""
+                    # ライブステータスとルームIDを組み合わせて一意のインデックスを作成
+                    index_label = f"🔴 Live | {room_id}" if room_id in onlives_rooms else f" | {room_id}"
                     index_labels.append(index_label)
 
                     if final_remain_time is None: # 一度だけ残り時間を設定
