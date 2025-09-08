@@ -146,16 +146,9 @@ def get_room_event_info(room_id):
         st.subheader(f"ルームID {room_id} のAPIレスポンス")
         st.write(f"ステータスコード: {response.status_code}")
         
-        # 取得したデータの構造を詳細に表示
-        if 'event_and_support_info' in data:
-            st.success("event_and_support_info キーが見つかりました。")
-            event_info = data['event_and_support_info']
-            st.json(event_info)
-            return event_info
-        else:
-            st.warning("event_and_support_info キーが見つかりませんでした。")
-            st.json(data) # 親キーがない場合はレスポンス全体を表示
-            return data
+        # 取得したデータ全体を表示
+        st.json(data)
+        return data
             
     except requests.exceptions.RequestException as e:
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
@@ -167,7 +160,6 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
-    # Initialize session state
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
 
@@ -192,7 +184,6 @@ def main():
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
-    # Cache room_map_data to avoid re-fetching on every rerun
     if st.session_state.room_map_data is None:
         st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
 
@@ -229,12 +220,22 @@ def main():
             
             for room_id in selected_room_ids:
                 room_info = get_room_event_info(room_id)
-                # ルーム情報からランキングデータを取得する際のロジックを修正
-                if room_info and 'ranking' in room_info:
+                
+                rank_info = None
+                remain_time_sec = None
+
+                # 取得したデータの構造から必要な情報を探す
+                if room_info and 'event_and_support_info' in room_info:
+                    event_info = room_info['event_and_support_info']
+                    if 'ranking' in event_info:
+                        rank_info = event_info['ranking']
+                        remain_time_sec = event_info.get('remain_time', 0)
+                elif room_info and 'ranking' in room_info:
                     rank_info = room_info['ranking']
                     remain_time_sec = room_info.get('remain_time', 0)
-                    remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
 
+                if rank_info and remain_time_sec is not None:
+                    remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
                     room_name = [name for name, info in st.session_state.room_map_data.items() if info['room_id'] == room_id][0]
 
                     data_to_display.append({
