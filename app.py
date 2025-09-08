@@ -65,7 +65,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     Fetches ranking data, including room_id, by trying multiple API endpoints.
     Returns a dictionary of {room_name: {room_id, rank, point, ...}}
     """
-    st.info("複数のAPIエンドポイントを試行してランキングデータを取得します。")
     all_ranking_data = []
     
     for base_url in RANKING_API_CANDIDATES:
@@ -95,7 +94,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 temp_ranking_data.extend(ranking_list)
             
             if temp_ranking_data and any('room_id' in r for r in temp_ranking_data):
-                st.success(f"ルームIDを含むランキングデータ取得に成功しました。")
                 all_ranking_data = temp_ranking_data
                 break
             
@@ -103,7 +101,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
             continue
 
     if not all_ranking_data:
-        st.error("どのAPIからもルームIDを含むランキングデータを取得できませんでした。")
         return None
 
     room_map = {}
@@ -117,16 +114,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 'rank': room_info.get('rank'),
                 'point': room_info.get('point')
             }
-    
-    st.write("---")
-    st.subheader("デバッグ情報")
-    if room_map:
-        st.success(f"有効なルームIDを含むルーム情報が {len(room_map)} 件見つかりました。")
-        st.json(list(room_map.items())[0] if room_map else {})
-    else:
-        st.error("有効なルームIDを含むルーム情報が見つかりませんでした。")
-    st.write("---")
-
+            
     return room_map
 
 def get_room_event_info(room_id):
@@ -156,7 +144,7 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-    
+
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
@@ -203,19 +191,15 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # イベント選択が変わるたびに一意のキーを生成
-    multiselect_key = f"room_selector_{selected_event_id}"
-
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
-        default=st.session_state.selected_room_names,
-        key=multiselect_key
+        default=st.session_state.selected_room_names
     )
 
-    # 選択が変更された場合のみセッションステートを更新
     if selected_room_names != st.session_state.selected_room_names:
         st.session_state.selected_room_names = selected_room_names
+        st.rerun()
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
