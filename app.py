@@ -378,15 +378,27 @@ def main():
                 st.plotly_chart(fig_points, use_container_width=True)
             else:
                 st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
+            
+            # 上位とのポイント差のグラフを追加
+            if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
+                df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", 
+                                    title="上位とのポイント差", 
+                                    color="ルーム名",
+                                    hover_data=["現在の順位", "現在のポイント"],
+                                    labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_upper_gap, use_container_width=True)
+            elif len(st.session_state.selected_room_names) > 1:
+                st.warning("上位とのポイント差データが不完全なため、上位とのポイント差グラフを表示できません。")
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                fig_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
+                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
                                 title="下位とのポイント差", 
                                 color="ルーム名",
                                 hover_data=["現在の順位", "現在のポイント"],
                                 labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_gap, use_container_width=True)
+                st.plotly_chart(fig_lower_gap, use_container_width=True)
             elif len(st.session_state.selected_room_names) > 1:
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
