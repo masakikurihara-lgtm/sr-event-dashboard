@@ -13,7 +13,10 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- Functions to fetch data from SHOWROOM API ---
+# -----------------------
+# ヘルパー関数
+# -----------------------
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 @st.cache_data(ttl=3600)
 def get_events():
@@ -23,7 +26,7 @@ def get_events():
     for _ in range(10):
         url = f"https://www.showroom-live.com/api/event/search?page={page}&include_ended=0"
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, headers=HEADERS, timeout=5)
             response.raise_for_status()
             data = response.json()
             
@@ -50,22 +53,60 @@ def get_events():
             
     return events
 
-def get_event_ranking(event_url_key):
-    """Fetches the ranking data for a specific event."""
-    url = f"https://www.showroom-live.com/api/event/{event_url_key}/ranking"
-    try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"ランキングデータ取得中にエラーが発生しました: {e}")
-        return None
+# ランキングAPIの候補を定義
+RANKING_API_CANDIDATES = [
+    "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
+    "https://www.showroom-live.com/api/event/{event_url_key}/room_ranking?page={page}",
+    "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
+    "https://www.showroom-live.com/api/event/rank_list?event_id={event_id}&page={page}",
+]
+
+def get_event_ranking(event_url_key, event_id, max_pages=10):
+    """Fetches ranking data by trying multiple API endpoints."""
+    st.info("複数のAPIエンドポイントを試行してランキングデータを取得します。")
+    for base_url in RANKING_API_CANDIDATES:
+        try:
+            all_ranking_data = []
+            for page in range(1, max_pages + 1):
+                url = base_url.format(event_url_key=event_url_key, event_id=event_id, page=page)
+                
+                response = requests.get(url, headers=HEADERS, timeout=10)
+                if response.status_code == 404: # 404 Not Found は次の候補へ
+                    st.warning(f"URLが有効ではありませんでした: {url}")
+                    break
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                ranking_list = None
+                if isinstance(data, dict) and 'ranking' in data:
+                    ranking_list = data['ranking']
+                elif isinstance(data, dict) and 'event_list' in data:
+                    ranking_list = data['event_list']
+                elif isinstance(data, list):
+                    ranking_list = data
+                
+                if not ranking_list:
+                    # ページが空の場合はループ終了
+                    break
+                
+                all_ranking_data.extend(ranking_list)
+            
+            if all_ranking_data:
+                st.success(f"ランキングデータ取得に成功しました。使用したURL: {base_url}")
+                return all_ranking_data
+        
+        except requests.exceptions.RequestException as e:
+            st.error(f"API呼び出し中にエラー: {e}")
+            continue # Try next URL
+
+    return None
 
 def get_room_event_info(room_id):
     """Fetches event and support info for a specific room."""
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
         return data
@@ -86,38 +127,42 @@ def main():
         st.warning("現在開催中のイベントが見つかりませんでした。")
         return
 
-    event_options = {event['event_name']: event['event_url_key'] for event in events}
+    event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
         options=list(event_options.keys())
     )
     
-    selected_event_key = event_options[selected_event_name]
+    selected_event_data = event_options[selected_event_name]
+    selected_event_key = selected_event_data.get('event_url_key', '')
+    selected_event_id = selected_event_data.get('event_id')
     st.info(f"選択されたイベント: **{selected_event_name}**")
-
+    
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
-    ranking_data = get_event_ranking(selected_event_key)
-    if not ranking_data or 'ranking' not in ranking_data:
+    
+    # ランキングデータを取得
+    ranking_data = get_event_ranking(selected_event_key, selected_event_id)
+    if not ranking_data:
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
         
-    rooms = ranking_data['ranking']
+    rooms = ranking_data
     if not rooms:
         st.warning("このイベントにはまだ参加者がいません。")
         return
-
-    # --- 修正箇所：ルームIDとルーム名を確実に取得するロジック ---
+        
     room_options = {}
     for room in rooms:
         if 'room_id' in room and 'room_name' in room:
             room_options[room['room_name']] = room['room_id']
+        elif 'room_id' in room and 'user_name' in room:
+            room_options[room['user_name']] = room['room_id']
 
     if not room_options:
         st.warning("参加者リストから有効なルーム情報を取得できませんでした。")
         return
-    # --- 修正ここまで ---
-
+    
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(room_options.keys()),
@@ -152,8 +197,10 @@ def main():
                     remain_time_sec = room_info.get('remain_time', 0)
                     remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
 
+                    room_name = [name for name, id in room_options.items() if id == room_id][0]
+
                     data_to_display.append({
-                        "ルーム名": [name for name, id in room_options.items() if id == room_id][0],
+                        "ルーム名": room_name,
                         "現在の順位": rank_info['rank'],
                         "現在のポイント": rank_info['point'],
                         "下位とのポイント差": rank_info['lower_gap'] if 'lower_gap' in rank_info and rank_info['lower_rank'] > 0 else 0,
