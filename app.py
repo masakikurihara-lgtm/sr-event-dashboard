@@ -166,16 +166,6 @@ def get_onlives_rooms():
         st.warning("ライブ配信情報のJSONデコードに失敗しました。")
     return onlives
 
-def get_point_gaps(df):
-    """Calculates upper and lower point gaps."""
-    df = df.copy()
-    df['上位とのポイント差'] = df['現在のポイント'].shift(-1) - df['現在のポイント']
-    df['下位とのポイント差'] = df['現在のポイント'].shift(1) - df['現在のポイント']
-    df['上位とのポイント差'] = df['上位とのポイント差'].fillna(0).astype(int)
-    df['下位とのポイント差'] = df['下位とのポイント差'].fillna(0).astype(int)
-    return df
-
-
 # --- Main Application Logic ---
 
 def main():
@@ -345,26 +335,22 @@ def main():
         if data_to_display:
             df = pd.DataFrame(data_to_display)
             
-            # ①「上位とのポイント差」を計算し、テーブルに追加
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
             
-            # 順位でソート
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
             
-            # ライブ中の印をソート対象外にする
             live_status = df['ライブ中']
             df = df.drop(columns=['ライブ中'])
             
-            # ポイント差を再計算（正確な計算のため）
-            df['上位とのポイント差'] = df['現在のポイント'].diff().fillna(0).astype(int)
-            df['下位とのポイント差'] = df['現在のポイント'].diff(-1).fillna(0).astype(int)
-            
-            # 最上位のルームの上位とのポイント差を0に設定
+            # ②「上位とのポイント差」を絶対値（マイナスなし）で表示
+            df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
+            # 1位の「上位とのポイント差」は0
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
-            
-            # ライブ中の印を再度追加
+
+            df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+
             df.insert(0, 'ライブ中', live_status)
 
             st.subheader("📊 比較対象ルームのステータス")
@@ -408,7 +394,6 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            # ①「残り時間」の重複を修正
             time_placeholder.metric(label="残り時間", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
