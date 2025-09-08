@@ -146,8 +146,15 @@ def get_onlives_rooms():
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data[live_type], list):
                     for room in data[live_type]:
-                        # APIによっては`live_info`内にroom_idがある場合もあるため、階層を深く見る
-                        room_id = room.get('room_id') or (room.get('live_info') or {}).get('room_id') or (room.get('room') or {}).get('room_id')
+                        # APIレスポンスのルームIDを安全に抽出
+                        room_id = None
+                        if 'room_id' in room:
+                            room_id = room['room_id']
+                        elif 'live_info' in room and 'room_id' in room['live_info']:
+                            room_id = room['live_info']['room_id']
+                        elif 'room' in room and 'room_id' in room['room']:
+                            room_id = room['room']['room_id']
+                        
                         if room_id:
                             onlives.add(int(room_id)) # int型に変換して追加
 
