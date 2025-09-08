@@ -343,7 +343,6 @@ def main():
             live_status = df['ライブ中']
             df = df.drop(columns=['ライブ中'])
             
-            # ポイント差を絶対値で再計算
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
@@ -393,7 +392,7 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            time_placeholder.metric(label="残り時間", value=remain_time_readable)
+            time_placeholder.metric(label="", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
