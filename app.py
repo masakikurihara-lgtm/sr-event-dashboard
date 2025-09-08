@@ -145,9 +145,9 @@ def get_room_event_info(room_id):
         data = response.json()
         
         # デバッグ用にAPIレスポンス全体を表示
-        st.subheader(f"ルームID {room_id} のAPIレスポンス (生データ)")
-        st.write(f"ステータスコード: {response.status_code}")
-        st.json(data)
+        # st.subheader(f"ルームID {room_id} のAPIレスポンス (生データ)")
+        # st.write(f"ステータスコード: {response.status_code}")
+        # st.json(data)
         
         return data
             
@@ -250,20 +250,31 @@ def main():
                     st.warning(f"ルームID {room_id} のAPIレスポンスが不正な形式です。スキップします。")
                     all_info_found = False
                     continue
-
+                
+                # --- ランキング情報と残り時間を取得するロジックを強化 ---
                 rank_info = None
                 remain_time_sec = None
-                
-                # APIレスポンスの形式をより厳密にチェック
-                if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
+
+                # パターン1: トップレベルに 'ranking' と 'remain_time' がある場合
+                if 'ranking' in room_info and 'remain_time' in room_info and isinstance(room_info['ranking'], dict):
                     rank_info = room_info['ranking']
                     remain_time_sec = room_info.get('remain_time')
+                
+                # パターン2: 'event_and_support_info' 内にある場合
                 elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
                     event_info = room_info['event_and_support_info']
                     if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
                         rank_info = event_info['ranking']
                         remain_time_sec = event_info.get('remain_time')
                 
+                # パターン3: 'event' 内にある場合 (今回の新しいパターン)
+                elif 'event' in room_info and isinstance(room_info['event'], dict):
+                    event_data = room_info['event']
+                    if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
+                        rank_info = event_data['ranking']
+                        remain_time_sec = event_data.get('remain_time')
+
+                # --- 取得した情報を使ってデータを処理 ---
                 if rank_info and remain_time_sec is not None:
                     try:
                         remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
@@ -282,7 +293,7 @@ def main():
                         all_info_found = False
                         continue
                 else:
-                    st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。`ranking`または`event_and_support_info`キーがありません。")
+                    st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。APIレスポンスの形式を確認してください。")
                     st.subheader(f"ルームID {room_id} のAPIレスポンス (生データ)")
                     st.json(room_info)
                     all_info_found = False
