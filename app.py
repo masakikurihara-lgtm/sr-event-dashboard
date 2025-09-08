@@ -4,6 +4,7 @@ import pandas as pd
 import time
 import datetime
 import plotly.express as px
+import pytz
 
 # Set page configuration
 st.set_page_config(
@@ -27,35 +28,29 @@ def get_events():
             response.raise_for_status()
             data = response.json()
             
-            # --- ここを修正します ---
             page_events = []
             if isinstance(data, dict):
-                # 'events' キーまたは 'event_list' キーが存在するかチェック
                 if 'events' in data:
                     page_events = data['events']
                 elif 'event_list' in data:
                     page_events = data['event_list']
             elif isinstance(data, list):
-                # レスポンスが直接リストの場合
                 page_events = data
             
             if not page_events:
                 break
             
             events.extend(page_events)
-            # --- 修正ここまで ---
-
             page += 1
         except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching event data: {e}")
+            st.error(f"イベントデータ取得中にエラーが発生しました: {e}")
             return []
         except ValueError: # JSONDecodeError
-            st.error(f"Failed to decode JSON from response: {response.text}")
+            st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
             return []
             
     return events
 
-# --- 以下のコードは変更なし ---
 def get_event_ranking(event_url_key):
     """Fetches the ranking data for a specific event."""
     url = f"https://www.showroom-live.com/api/event/{event_url_key}/ranking"
@@ -64,7 +59,7 @@ def get_event_ranking(event_url_key):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching ranking data: {e}")
+        st.error(f"ランキングデータ取得中にエラーが発生しました: {e}")
         return None
 
 def get_room_event_info(room_id):
@@ -73,12 +68,14 @@ def get_room_event_info(room_id):
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        return data
     except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching room data for ID {room_id}: {e}")
+        st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
 # --- Main Application Logic ---
+
 def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
@@ -90,7 +87,6 @@ def main():
         st.warning("現在開催中のイベントが見つかりませんでした。")
         return
 
-    # イベント選択ロジックは変更なし
     event_options = {event['event_name']: event['event_url_key'] for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
@@ -133,10 +129,13 @@ def main():
     # Placeholder for the dashboard content
     dashboard_placeholder = st.empty()
     
+    # 日本時間のタイムゾーンを設定
+    JST = pytz.timezone('Asia/Tokyo')
+    
     while True:
         with dashboard_placeholder.container():
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            st.write(f"最終更新日時: {current_time}")
+            current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+            st.write(f"最終更新日時 (日本時間): {current_time}")
             
             data_to_display = []
             

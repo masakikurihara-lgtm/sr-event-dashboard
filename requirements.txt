@@ -1,7 +1,5 @@
 streamlit
-pandas
-numpy
-plotly
 requests
-browsing
-arklibrary
+pandas
+plotly
+pytz
