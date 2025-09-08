@@ -160,8 +160,12 @@ def get_onlives_rooms():
                             if isinstance(room_info, dict) and 'room_id' in room_info:
                                 room_id = room_info['room_id']
                         
-                        if room_id:
-                            onlives.add(int(room_id))
+                        # 確実にint型に変換し、エラーをキャッチ
+                        try:
+                            if room_id:
+                                onlives.add(int(room_id))
+                        except (ValueError, TypeError):
+                            continue # 無効なIDはスキップ
     
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
@@ -319,6 +323,7 @@ def main():
                 
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                    # int()で確実に型を合わせる
                     is_live = int(room_id) in onlives_rooms
                     
                     data_to_display.append({
