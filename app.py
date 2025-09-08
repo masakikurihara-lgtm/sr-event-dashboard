@@ -147,7 +147,6 @@ def get_room_event_info(room_id):
         st.write(f"ステータスコード: {response.status_code}")
         st.json(data)
         
-        # 必要な情報を抽出して返す
         return data
             
     except requests.exceptions.RequestException as e:
@@ -217,12 +216,14 @@ def main():
             st.write(f"最終更新日時 (日本時間): {current_time}")
             
             data_to_display = []
+            all_info_found = True
             
             for room_id in selected_room_ids:
                 room_info = get_room_event_info(room_id)
                 
-                if room_info is None:
-                    # APIリクエスト自体が失敗した場合
+                if not isinstance(room_info, dict):
+                    st.error(f"ルームID {room_id} のAPIレスポンスが不正な形式です。")
+                    all_info_found = False
                     continue
 
                 rank_info = None
@@ -237,7 +238,6 @@ def main():
                     rank_info = event_info['ranking']
                     remain_time_sec = event_info.get('remain_time', 0)
                 
-                # 情報が見つかった場合のみ処理を続行
                 if rank_info and remain_time_sec is not None:
                     try:
                         remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
@@ -253,13 +253,17 @@ def main():
                         })
                     except Exception as e:
                         st.error(f"データ処理中にエラーが発生しました（ルームID: {room_id}）。エラー: {e}")
+                        all_info_found = False
                         continue
                 else:
-                    st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。APIのレスポンス形式が変更された可能性があります。")
+                    st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。`ranking`または`event_and_support_info`キーがありません。")
+                    all_info_found = False
             
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
                 
+                # 順位が数値でない場合があるため、ソート前に型変換を試みる
+                df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                 df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
                 
                 st.subheader("📊 比較対象ルームのステータス")
@@ -269,6 +273,8 @@ def main():
 
                 st.subheader("📈 ポイントと順位の比較")
                 
+                # ポイントが数値でない場合があるため、グラフ描画前に型変換を試みる
+                df_sorted['現在のポイント'] = pd.to_numeric(df_sorted['現在のポイント'], errors='coerce')
                 fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
                                     title="各ルームの現在のポイント", 
                                     color="ルーム名",
@@ -277,6 +283,7 @@ def main():
                 st.plotly_chart(fig_points, use_container_width=True)
 
                 if len(selected_room_names) > 1 and "下位とのポイント差" in df_sorted.columns:
+                    df_sorted['下位とのポイント差'] = pd.to_numeric(df_sorted['下位とのポイント差'], errors='coerce')
                     fig_gap = px.bar(df_sorted, x="ルーム名", y="下位とのポイント差", 
                                     title="下位とのポイント差", 
                                     color="ルーム名",
@@ -284,7 +291,9 @@ def main():
                                     labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                     st.plotly_chart(fig_gap, use_container_width=True)
 
-            else:
+            if not all_info_found:
+                st.warning("一部のルーム情報が取得できませんでした。")
+            elif not data_to_display:
                 st.warning("選択されたルームの情報を取得できませんでした。")
 
         time.sleep(5)
