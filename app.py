@@ -20,7 +20,6 @@ def get_events():
     """Fetches a list of ongoing SHOWROOM events."""
     events = []
     page = 1
-    # Fetch first 10 pages of events
     for _ in range(10):
         url = f"https://www.showroom-live.com/api/event/search?page={page}&include_ended=0"
         try:
@@ -108,12 +107,21 @@ def main():
         st.warning("このイベントにはまだ参加者がいません。")
         return
 
-    # Extract room info for selection
-    room_options = {room['room_name']: room['room_id'] for room in rooms}
+    # --- 修正箇所：ルームIDとルーム名を確実に取得するロジック ---
+    room_options = {}
+    for room in rooms:
+        if 'room_id' in room and 'room_name' in room:
+            room_options[room['room_name']] = room['room_id']
+
+    if not room_options:
+        st.warning("参加者リストから有効なルーム情報を取得できませんでした。")
+        return
+    # --- 修正ここまで ---
+
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(room_options.keys()),
-        default=[list(room_options.keys())[0]] # Select the top room by default
+        default=[list(room_options.keys())[0]]
     )
     
     if not selected_room_names:
@@ -126,10 +134,8 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
     
-    # Placeholder for the dashboard content
     dashboard_placeholder = st.empty()
     
-    # 日本時間のタイムゾーンを設定
     JST = pytz.timezone('Asia/Tokyo')
     
     while True:
@@ -158,7 +164,6 @@ def main():
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
                 
-                # Sort by rank for a cleaner display
                 df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
                 
                 st.subheader("📊 比較対象ルームのステータス")
@@ -166,10 +171,8 @@ def main():
                     {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
                 ), use_container_width=True)
 
-                # --- Visualizations (Graphs) ---
                 st.subheader("📈 ポイントと順位の比較")
                 
-                # Bar chart for Points
                 fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
                                     title="各ルームの現在のポイント", 
                                     color="ルーム名",
@@ -177,7 +180,6 @@ def main():
                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_points, use_container_width=True)
 
-                # Bar chart for Gap
                 if len(selected_room_names) > 1 and "下位とのポイント差" in df_sorted.columns:
                     fig_gap = px.bar(df_sorted, x="ルーム名", y="下位とのポイント差", 
                                     title="下位とのポイント差", 
@@ -187,9 +189,8 @@ def main():
                     st.plotly_chart(fig_gap, use_container_width=True)
 
             else:
-                st.warning("選択されたルームの情報を取得できませんでした。")
+                st.warning("選択されたルームの情報を取得できませんでした。APIのレスポンス形式が変更された可能性があります。")
 
-        # Wait for 5 seconds before the next update
         time.sleep(5)
 
 if __name__ == "__main__":
