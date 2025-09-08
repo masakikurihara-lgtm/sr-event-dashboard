@@ -166,6 +166,15 @@ def get_onlives_rooms():
         st.warning("ライブ配信情報のJSONデコードに失敗しました。")
     return onlives
 
+def get_point_gaps(df):
+    """Calculates upper and lower point gaps."""
+    df = df.copy()
+    df['上位とのポイント差'] = df['現在のポイント'].shift(-1) - df['現在のポイント']
+    df['下位とのポイント差'] = df['現在のポイント'].shift(1) - df['現在のポイント']
+    df['上位とのポイント差'] = df['上位とのポイント差'].fillna(0).astype(int)
+    df['下位とのポイント差'] = df['下位とのポイント差'].fillna(0).astype(int)
+    return df
+
 
 # --- Main Application Logic ---
 
@@ -233,7 +242,6 @@ def main():
         return
     
     with st.form("room_selection_form"):
-        # ①「全てのルームを選択」機能を追加
         select_all = st.checkbox("全てのルームを選択", key="select_all_checkbox")
         
         room_options = list(st.session_state.room_map_data.keys())
@@ -261,7 +269,6 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
 
-    # ②「イベント情報」を削除し、文言を強調
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
         
@@ -316,14 +323,13 @@ def main():
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
                     is_live = int(room_id) in onlives_rooms
                     
-                    # ③「上位とのポイント差」を追加し、「下位の順位」を削除
                     data_to_display.append({
                         "ライブ中": "🔴" if is_live else "",
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
-                        "上位とのポイント差": rank_info.get('upper_gap', 'N/A') if rank_info.get('upper_rank', 0) > 0 else 0,
-                        "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
+                        "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
+                        "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
                     })
                     
                     if final_remain_time is None:
@@ -339,18 +345,33 @@ def main():
         if data_to_display:
             df = pd.DataFrame(data_to_display)
             
+            # ①「上位とのポイント差」を計算し、テーブルに追加
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+            df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+            
+            # 順位でソート
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+            
+            # ライブ中の印をソート対象外にする
+            live_status = df['ライブ中']
+            df = df.drop(columns=['ライブ中'])
+            
+            # ポイント差を再計算（正確な計算のため）
+            df['上位とのポイント差'] = df['現在のポイント'].diff().fillna(0).astype(int)
+            df['下位とのポイント差'] = df['現在のポイント'].diff(-1).fillna(0).astype(int)
+            
+            # 最上位のルームの上位とのポイント差を0に設定
+            if not df.empty:
+                df.at[0, '上位とのポイント差'] = 0
+            
+            # ライブ中の印を再度追加
+            df.insert(0, 'ライブ中', live_status)
 
             st.subheader("📊 比較対象ルームのステータス")
             
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
-                    df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-                    df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-                    df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                    
                     styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
@@ -387,7 +408,7 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            # ②「イベント終了まで」の文言を削除
+            # ①「残り時間」の重複を修正
             time_placeholder.metric(label="残り時間", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
