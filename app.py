@@ -156,7 +156,7 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-
+    
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
@@ -164,7 +164,6 @@ def main():
         st.session_state.room_map_data = None
         st.session_state.selected_event_name = st.session_state.event_selector
         st.session_state.selected_room_names = []
-        st.rerun()
 
     events = get_events()
     if not events:
@@ -204,13 +203,19 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # `st.multiselect`の戻り値を直接セッションステートに代入
-    st.session_state.selected_room_names = st.multiselect(
+    # イベント選択が変わるたびに一意のキーを生成
+    multiselect_key = f"room_selector_{selected_event_id}"
+
+    selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
         default=st.session_state.selected_room_names,
-        key="room_selector"
+        key=multiselect_key
     )
+
+    # 選択が変更された場合のみセッションステートを更新
+    if selected_room_names != st.session_state.selected_room_names:
+        st.session_state.selected_room_names = selected_room_names
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
