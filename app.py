@@ -17,6 +17,7 @@ st.set_page_config(
 # ヘルパー関数
 # -----------------------
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+JST = pytz.timezone('Asia/Tokyo')
 
 @st.cache_data(ttl=3600)
 def get_events():
@@ -65,6 +66,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     Fetches ranking data, including room_id, by trying multiple API endpoints.
     Returns a dictionary of {room_name: {room_id, rank, point, ...}}
     """
+    st.info("複数のAPIエンドポイントを試行してランキングデータを取得します。")
     all_ranking_data = []
     
     for base_url in RANKING_API_CANDIDATES:
@@ -94,6 +96,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 temp_ranking_data.extend(ranking_list)
             
             if temp_ranking_data and any('room_id' in r for r in temp_ranking_data):
+                st.success(f"ルームIDを含むランキングデータ取得に成功しました。")
                 all_ranking_data = temp_ranking_data
                 break
             
@@ -101,6 +104,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
             continue
 
     if not all_ranking_data:
+        st.error("どのAPIからもルームIDを含むランキングデータを取得できませんでした。")
         return None
 
     room_map = {}
@@ -148,11 +152,6 @@ def main():
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
-    def on_event_change():
-        st.session_state.room_map_data = None
-        st.session_state.selected_event_name = st.session_state.event_selector
-        st.session_state.selected_room_names = []
-
     events = get_events()
     if not events:
         st.warning("現在開催中のイベントが見つかりませんでした。")
@@ -162,16 +161,28 @@ def main():
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
         options=list(event_options.keys()),
-        key="event_selector",
-        on_change=on_event_change
+        key="event_selector"
     )
     
     if not selected_event_name:
         st.warning("イベントを選択してください。")
         return
 
-    st.info(f"選択されたイベント: **{selected_event_name}**")
     selected_event_data = event_options.get(selected_event_name)
+
+    # イベント期間の表示
+    started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at'), JST)
+    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
+    event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
+    
+    st.info(f"選択されたイベント: **{selected_event_name}**")
+    st.write(f"イベント期間: **{event_period_str}**")
+
+    # セッションステートのリセット
+    if st.session_state.selected_event_name != selected_event_name:
+        st.session_state.selected_event_name = selected_event_name
+        st.session_state.room_map_data = None
+        st.session_state.selected_room_names = []
 
     if not selected_event_data:
         st.error(f"選択されたイベント '{selected_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
@@ -191,14 +202,18 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    selected_room_names = st.multiselect(
-        "比較したいルームを選択 (複数選択可):", 
-        options=list(st.session_state.room_map_data.keys()),
-        default=st.session_state.selected_room_names
-    )
+    # フォームを使ってプルダウンが閉じないようにする
+    with st.form("room_selection_form"):
+        st.session_state.selected_room_names_temp = st.multiselect(
+            "比較したいルームを選択 (複数選択可):", 
+            options=list(st.session_state.room_map_data.keys()),
+            default=st.session_state.selected_room_names,
+            key="room_selector"
+        )
+        submit_button = st.form_submit_button("表示する")
 
-    if selected_room_names != st.session_state.selected_room_names:
-        st.session_state.selected_room_names = selected_room_names
+    if submit_button:
+        st.session_state.selected_room_names = st.session_state.selected_room_names_temp
         st.rerun()
 
     if not st.session_state.selected_room_names:
@@ -211,9 +226,7 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
     
-    JST = pytz.timezone('Asia/Tokyo')
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-
     st.write(f"最終更新日時 (日本時間): {current_time}")
 
     data_to_display = []
@@ -223,7 +236,6 @@ def main():
         room_info = get_room_event_info(room_id)
         
         if not isinstance(room_info, dict):
-            st.warning(f"ルームID {room_id} のAPIレスポンスが不正な形式です。スキップします。")
             all_info_found = False
             continue
         
@@ -258,11 +270,9 @@ def main():
                     "残り時間": remain_time_str,
                 })
             except Exception as e:
-                st.error(f"データ処理中にエラーが発生しました（ルームID: {room_id}）。エラー: {e}")
                 all_info_found = False
                 continue
         else:
-            st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。")
             all_info_found = False
     
     if data_to_display:
@@ -295,9 +305,9 @@ def main():
                             labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
             st.plotly_chart(fig_gap, use_container_width=True)
 
-    if not all_info_found:
+    if not all_info_found and st.session_state.selected_room_names:
         st.warning("一部のルーム情報が取得できませんでした。")
-    elif not data_to_display:
+    elif not data_to_display and st.session_state.selected_room_names:
         st.warning("選択されたルームの情報を取得できませんでした。")
 
     time.sleep(5)
