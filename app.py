@@ -132,7 +132,7 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-@st.cache_data(ttl=5)  # ライブ配信情報は5秒で更新
+# キャッシュを完全に削除
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
@@ -146,6 +146,7 @@ def get_onlives_rooms():
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
+                        # ルームIDを確実に取得
                         room_id = room.get('room_id')
                         
                         # ライブ情報がネストされている場合の対応を強化
