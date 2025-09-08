@@ -356,7 +356,13 @@ def main():
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
-                    styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
+                    def highlight_rows(row):
+                        styles = [''] * len(row)
+                        if row.name % 2 == 1:
+                            styles = ['background-color: #f0f2f6'] * len(row) # 薄い灰色
+                        return styles
+
+                    styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
                     st.dataframe(styled_df, use_container_width=True, hide_index=True)
