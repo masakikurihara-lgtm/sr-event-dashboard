@@ -149,7 +149,6 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
-    # セッションステートの初期化
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
@@ -164,6 +163,7 @@ def main():
         st.session_state.room_map_data = None
         st.session_state.selected_event_name = st.session_state.event_selector
         st.session_state.selected_room_names = []
+        # イベント変更時に再実行
         st.rerun()
 
     events = get_events()
@@ -205,16 +205,14 @@ def main():
         return
     
     def on_room_change():
-        # ルーム選択が変更されたらセッションステートを更新
         st.session_state.selected_room_names = st.session_state.room_selector
-        # st.rerun()は不要。multiselectの変更だけでページが再実行される
     
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
         default=st.session_state.selected_room_names,
         key="room_selector",
-        on_change=on_room_change # ここでコールバック関数を指定
+        on_change=on_room_change
     )
     
     if not selected_room_names:
