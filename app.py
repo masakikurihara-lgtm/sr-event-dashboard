@@ -166,7 +166,8 @@ def main():
     
     def reset_room_data():
         st.session_state.room_map_data = None
-        st.session_state.event_selector = None # 念のためセレクターもリセット
+        if 'event_selector' in st.session_state:
+            del st.session_state['event_selector']
 
     events = get_events()
     if not events:
@@ -181,7 +182,10 @@ def main():
         on_change=reset_room_data
     )
     
-    # 修正箇所: dict.get() を使用して安全にデータを取得
+    if selected_event_name is None:
+        st.warning("イベントを選択してください。")
+        return
+
     selected_event_data = event_options.get(selected_event_name)
 
     if not selected_event_data:
