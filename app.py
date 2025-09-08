@@ -132,7 +132,6 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# キャッシュを完全に削除
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
@@ -146,27 +145,21 @@ def get_onlives_rooms():
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
-                        # ルームIDを確実に取得
                         room_id = room.get('room_id')
-                        
-                        # ライブ情報がネストされている場合の対応を強化
                         if room_id is None:
                             live_info = room.get('live_info')
                             if isinstance(live_info, dict) and 'room_id' in live_info:
                                 room_id = live_info['room_id']
-                        
                         if room_id is None:
                             room_info = room.get('room')
                             if isinstance(room_info, dict) and 'room_id' in room_info:
                                 room_id = room_info['room_id']
                         
-                        # 確実にint型に変換し、エラーをキャッチ
                         try:
                             if room_id:
                                 onlives.add(int(room_id))
                         except (ValueError, TypeError):
-                            continue # 無効なIDはスキップ
-    
+                            continue
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
     except ValueError:
@@ -180,7 +173,6 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
-    # セッションステートの初期化
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
@@ -208,8 +200,6 @@ def main():
         return
 
     selected_event_data = event_options.get(selected_event_name)
-
-    # イベント期間とURLリンク
     event_url = f"https://www.showroom-live.com/event/{selected_event_data.get('event_url_key')}"
     started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at'), JST)
     ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
@@ -218,7 +208,6 @@ def main():
     st.info(f"選択されたイベント: **{selected_event_name}**")
     st.markdown(f"**▶ [イベントページへ移動する]({event_url})**", unsafe_allow_html=True)
 
-    # セッションステートのリセット
     if st.session_state.selected_event_name != selected_event_name:
         st.session_state.selected_event_name = selected_event_name
         st.session_state.room_map_data = None
@@ -243,14 +232,21 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # フォームを使ってプルダウンが閉じないようにする
     with st.form("room_selection_form"):
-        st.session_state.selected_room_names_temp = st.multiselect(
-            "比較したいルームを選択 (複数選択可):", 
-            options=list(st.session_state.room_map_data.keys()),
-            default=st.session_state.selected_room_names,
-            key="multiselect_key"
-        )
+        # ①「全てのルームを選択」機能を追加
+        select_all = st.checkbox("全てのルームを選択", key="select_all_checkbox")
+        
+        room_options = list(st.session_state.room_map_data.keys())
+        
+        if select_all:
+            st.session_state.selected_room_names_temp = room_options
+        else:
+            st.session_state.selected_room_names_temp = st.multiselect(
+                "比較したいルームを選択 (複数選択可):", 
+                options=room_options,
+                default=st.session_state.selected_room_names,
+                key="multiselect_key"
+            )
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
@@ -265,34 +261,30 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
 
-    # イベント期間と残り時間のレイアウト
+    # ②「イベント情報」を削除し、文言を強調
     with st.container(border=True):
-        st.subheader("イベント情報")
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            st.write("イベント期間")
+            st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
             st.write(f"**{event_period_str}**")
 
         with col2:
-            st.write("残り時間")
+            st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
             time_placeholder = st.empty()
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
     
-    # ライブ中のルームIDを毎回取得
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
     final_remain_time = None
     
-    # 選択されたルームが存在するかチェック
     if st.session_state.selected_room_names:
         
         for room_name in st.session_state.selected_room_names:
             try:
-                # `room_map_data`に存在しないキーを参照する可能性を考慮
                 if room_name not in st.session_state.room_map_data:
                     st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
                     continue
@@ -306,7 +298,7 @@ def main():
             
                 rank_info = None
                 remain_time_sec = None
-
+                
                 if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                     rank_info = room_info['ranking']
                     remain_time_sec = room_info.get('remain_time')
@@ -321,21 +313,20 @@ def main():
                         rank_info = event_data['ranking']
                         remain_time_sec = event_data.get('remain_time')
                 
-                # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
-                    # int()で確実に型を合わせる
                     is_live = int(room_id) in onlives_rooms
                     
+                    # ③「上位とのポイント差」を追加し、「下位の順位」を削除
                     data_to_display.append({
                         "ライブ中": "🔴" if is_live else "",
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
+                        "上位とのポイント差": rank_info.get('upper_gap', 'N/A') if rank_info.get('upper_rank', 0) > 0 else 0,
                         "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
-                        "下位の順位": rank_info.get('lower_rank', 'N/A')
                     })
                     
-                    if final_remain_time is None: # 一度だけ残り時間を設定
+                    if final_remain_time is None:
                         final_remain_time = remain_time_sec
 
                 else:
@@ -348,28 +339,27 @@ def main():
         if data_to_display:
             df = pd.DataFrame(data_to_display)
             
-            # 順位でソート
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
 
             st.subheader("📊 比較対象ルームのステータス")
             
-            # DataFrameの列が期待通りに存在するかチェックしてからスタイルを適用
-            required_cols = ['現在のポイント', '下位とのポイント差']
+            required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
                     df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+                    df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
                     df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
                     
                     styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
-                        {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
+                        {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
-                    st.dataframe(styled_df, use_container_width=True, hide_index=True) # インデックス非表示
+                    st.dataframe(styled_df, use_container_width=True, hide_index=True)
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
-                    st.dataframe(df, use_container_width=True, hide_index=True) # インデックス非表示
+                    st.dataframe(df, use_container_width=True, hide_index=True)
             else:
-                st.dataframe(df, use_container_width=True, hide_index=True) # インデックス非表示
+                st.dataframe(df, use_container_width=True, hide_index=True)
                 st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
 
             st.subheader("📈 ポイントと順位の比較")
@@ -378,7 +368,7 @@ def main():
                 fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
                                     title="各ルームの現在のポイント", 
                                     color="ルーム名",
-                                    hover_data=["現在の順位", "下位とのポイント差"],
+                                    hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_points, use_container_width=True)
             else:
@@ -397,7 +387,8 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
+            # ②「イベント終了まで」の文言を削除
+            time_placeholder.metric(label="残り時間", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
