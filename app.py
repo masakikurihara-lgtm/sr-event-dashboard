@@ -67,7 +67,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     st.info("複数のAPIエンドポイントを試行してランキングデータを取得します。")
     all_ranking_data = []
     
-    # 候補URLを試行
     for base_url in RANKING_API_CANDIDATES:
         try:
             temp_ranking_data = []
@@ -95,11 +94,10 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 
                 temp_ranking_data.extend(ranking_list)
             
-            # 取得したデータにroom_idが含まれているかチェック
             if temp_ranking_data and any('room_id' in r for r in temp_ranking_data):
                 st.success(f"ルームIDを含むランキングデータ取得に成功しました。使用したURL: {base_url}")
                 all_ranking_data = temp_ranking_data
-                break # 成功したらループを抜ける
+                break
             else:
                 st.warning(f"取得したデータにルームIDが含まれていませんでした。次の候補を試します。使用したURL: {base_url}")
                 
@@ -111,7 +109,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
         st.error("どのAPIからもルームIDを含むランキングデータを取得できませんでした。")
         return None
 
-    # ランキングデータを整形して、room_nameとroom_idをマッピングする
     room_map = {}
     for room_info in all_ranking_data:
         room_id = room_info.get('room_id')
@@ -123,7 +120,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 'rank': room_info.get('rank'),
                 'point': room_info.get('point')
             }
-            # ルーム情報に 'user' がある場合はその中の 'name' を使用
             if 'user' in room_info and 'name' in room_info['user']:
                 room_map[room_name]['room_name_from_user'] = room_info['user']['name']
     
@@ -131,13 +127,12 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     st.subheader("デバッグ情報")
     if room_map:
         st.success(f"有効なルームIDを含むルーム情報が {len(room_map)} 件見つかりました。")
-        st.json(list(room_map.items())[0] if room_map else {}) # 最初の1件だけ表示
+        st.json(list(room_map.items())[0] if room_map else {})
     else:
         st.error("有効なルームIDを含むルーム情報が見つかりませんでした。")
     st.write("---")
 
     return room_map
-
 
 def get_room_event_info(room_id):
     """Fetches event and support info for a specific room."""
@@ -146,7 +141,22 @@ def get_room_event_info(room_id):
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
-        return data
+        
+        # デバッグログを追加
+        st.subheader(f"ルームID {room_id} のAPIレスポンス")
+        st.write(f"ステータスコード: {response.status_code}")
+        
+        # 取得したデータの構造を詳細に表示
+        if 'event_and_support_info' in data:
+            st.success("event_and_support_info キーが見つかりました。")
+            event_info = data['event_and_support_info']
+            st.json(event_info)
+            return event_info
+        else:
+            st.warning("event_and_support_info キーが見つかりませんでした。")
+            st.json(data) # 親キーがない場合はレスポンス全体を表示
+            return data
+            
     except requests.exceptions.RequestException as e:
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
@@ -157,6 +167,10 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
+    # Initialize session state
+    if "room_map_data" not in st.session_state:
+        st.session_state.room_map_data = None
+
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     events = get_events()
@@ -178,22 +192,25 @@ def main():
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
-    room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
-    if not room_map_data:
+    # Cache room_map_data to avoid re-fetching on every rerun
+    if st.session_state.room_map_data is None:
+        st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+
+    if not st.session_state.room_map_data:
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
-        options=list(room_map_data.keys()),
-        default=[list(room_map_data.keys())[0]]
+        options=list(st.session_state.room_map_data.keys()),
+        default=[list(st.session_state.room_map_data.keys())[0]]
     )
     
     if not selected_room_names:
         st.warning("最低1つのルームを選択してください。")
         return
 
-    selected_room_ids = [room_map_data[name]['room_id'] for name in selected_room_names]
+    selected_room_ids = [st.session_state.room_map_data[name]['room_id'] for name in selected_room_names]
 
     # --- Real-time Dashboard Section ---
     st.header("3. リアルタイムダッシュボード")
@@ -212,12 +229,13 @@ def main():
             
             for room_id in selected_room_ids:
                 room_info = get_room_event_info(room_id)
+                # ルーム情報からランキングデータを取得する際のロジックを修正
                 if room_info and 'ranking' in room_info:
                     rank_info = room_info['ranking']
                     remain_time_sec = room_info.get('remain_time', 0)
                     remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
 
-                    room_name = [name for name, info in room_map_data.items() if info['room_id'] == room_id][0]
+                    room_name = [name for name, info in st.session_state.room_map_data.items() if info['room_id'] == room_id][0]
 
                     data_to_display.append({
                         "ルーム名": room_name,
