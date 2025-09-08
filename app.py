@@ -181,7 +181,13 @@ def main():
         on_change=reset_room_data
     )
     
-    selected_event_data = event_options[selected_event_name]
+    # 修正箇所: dict.get() を使用して安全にデータを取得
+    selected_event_data = event_options.get(selected_event_name)
+
+    if not selected_event_data:
+        st.error(f"選択されたイベント '{selected_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
+        return
+
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
     st.info(f"選択されたイベント: **{selected_event_name}**")
