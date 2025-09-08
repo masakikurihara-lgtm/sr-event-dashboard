@@ -132,7 +132,7 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-@st.cache_data(ttl=60)
+# @st.cache_dataを削除し、必要に応じてキャッシュをクリア
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
@@ -260,6 +260,7 @@ def main():
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
     
+    # ライブ中情報を取得
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
@@ -375,7 +376,10 @@ def main():
             time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
-        
+    
+    # 強制的にキャッシュをクリアして最新情報を取得
+    get_onlives_rooms.clear()
+    
     time.sleep(5)
     st.rerun()
 
