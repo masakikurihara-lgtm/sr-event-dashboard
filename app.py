@@ -392,7 +392,8 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            time_placeholder.metric(label="", value=remain_time_readable)
+            # st.metricからst.writeに変更
+            time_placeholder.write(f"**{remain_time_readable}**")
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
