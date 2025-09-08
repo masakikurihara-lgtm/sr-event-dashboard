@@ -343,9 +343,8 @@ def main():
             live_status = df['ライブ中']
             df = df.drop(columns=['ライブ中'])
             
-            # ②「上位とのポイント差」を絶対値（マイナスなし）で表示
+            # ポイント差を絶対値で再計算
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            # 1位の「上位とのポイント差」は0
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
 
