@@ -144,8 +144,9 @@ def get_onlives_rooms():
 
         if isinstance(data, dict):
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
-                if live_type in data and isinstance(data[live_type], list):
+                if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
+                        # ルームIDを確実に取得
                         room_id = room.get('room_id') or (room.get('live_info') or {}).get('room_id') or (room.get('room') or {}).get('room_id')
                         
                         if room_id:
@@ -265,6 +266,7 @@ def main():
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
     
+    # ライブ中のルームIDを毎回取得
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
@@ -306,7 +308,6 @@ def main():
                 
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
-                    # int()で確実に型を合わせる
                     is_live = int(room_id) in onlives_rooms
                     
                     data_to_display.append({
