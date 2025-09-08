@@ -263,7 +263,6 @@ def main():
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
-    index_labels = []
     final_remain_time = None
     
     # 選択されたルームが存在するかチェック
@@ -307,13 +306,10 @@ def main():
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
                         "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
-                        "下位の順位": rank_info.get('lower_rank', 'N/A')
+                        "下位の順位": rank_info.get('lower_rank', 'N/A'),
+                        "ライブ中": "🔴 Live" if room_id in onlives_rooms else ""
                     })
                     
-                    # ライブステータスとルームIDを組み合わせて一意のインデックスを作成
-                    index_label = f"🔴 Live | {room_id}" if room_id in onlives_rooms else f" | {room_id}"
-                    index_labels.append(index_label)
-
                     if final_remain_time is None: # 一度だけ残り時間を設定
                         final_remain_time = remain_time_sec
 
@@ -325,8 +321,12 @@ def main():
                 continue
 
         if data_to_display:
-            df = pd.DataFrame(data_to_display, index=index_labels)
-            df.index.name = "ライブ中"
+            df = pd.DataFrame(data_to_display)
+            
+            # 順位でソート
+            df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+            df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+            df = df[['ライブ中', 'ルーム名', '現在の順位', '現在のポイント', '下位とのポイント差', '下位の順位']]
 
             st.subheader("📊 比較対象ルームのステータス")
             
@@ -340,12 +340,12 @@ def main():
                     styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
                     )
-                    st.dataframe(styled_df, use_container_width=True, hide_index=False)
+                    st.dataframe(styled_df, use_container_width=True)
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
-                    st.dataframe(df, use_container_width=True, hide_index=False)
+                    st.dataframe(df, use_container_width=True)
             else:
-                st.dataframe(df, use_container_width=True, hide_index=False)
+                st.dataframe(df, use_container_width=True)
                 st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
 
             st.subheader("📈 ポイントと順位の比較")
