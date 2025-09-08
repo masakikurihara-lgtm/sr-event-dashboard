@@ -142,6 +142,9 @@ def get_onlives_rooms():
         response.raise_for_status()
         data = response.json()
 
+        st.sidebar.subheader("デバッグ情報: ライブ中API")
+        st.sidebar.json(data) # 生のAPIレスポンスを出力
+
         if isinstance(data, dict):
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data[live_type], list):
@@ -157,6 +160,10 @@ def get_onlives_rooms():
                         
                         if room_id:
                             onlives.add(int(room_id)) # int型に変換して追加
+
+        st.sidebar.write(f"取得したライブ中のルームID: {onlives}")
+        st.sidebar.write(f"セット内のIDの型: {type(list(onlives)[0]) if onlives else 'None'}")
+
 
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
@@ -289,7 +296,12 @@ def main():
                     
                 room_id = st.session_state.room_map_data[room_name]['room_id']
                 room_info = get_room_event_info(room_id)
-            
+                
+                st.sidebar.write(f"---")
+                st.sidebar.write(f"**ルーム名: {room_name}**")
+                st.sidebar.write(f"イベントデータから取得したID: {room_id} (型: {type(room_id)})")
+
+                
                 if not isinstance(room_info, dict):
                     st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                     continue
@@ -313,6 +325,9 @@ def main():
                 
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                    
+                    st.sidebar.write(f"ライブ中のルームIDセットに、このルームのID({int(room_id)})は含まれていますか？ -> {int(room_id) in onlives_rooms}")
+                    
                     data_to_display.append({
                         "ライブ中": "🔴" if int(room_id) in onlives_rooms else "",
                         "ルーム名": room_name,
@@ -330,6 +345,7 @@ def main():
 
             except Exception as e:
                 st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
+                st.sidebar.write(f"データ処理中のエラー: {e}")
                 continue
 
         if data_to_display:
