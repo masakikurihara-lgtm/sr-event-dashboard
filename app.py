@@ -132,18 +132,31 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# 新しいヘルパー関数
-@st.cache_data(ttl=15) # ライブ状態チェックはより短いTTLで
-def is_room_live(room_id):
-    """Checks if a specific room is currently live."""
-    url = f"https://www.showroom-live.com/api/room/status?room_id={room_id}"
+@st.cache_data(ttl=5)  # ライブ配信情報は5秒で更新
+def get_onlives_rooms():
+    """Fetches a list of currently live room IDs."""
+    onlives = set()
     try:
+        url = "https://www.showroom-live.com/api/live/onlives"
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
-        return data.get('is_live') == 1
-    except requests.exceptions.RequestException:
-        return False
+
+        if isinstance(data, dict):
+            for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
+                if live_type in data and isinstance(data[live_type], list):
+                    for room in data[live_type]:
+                        room_id = room.get('room_id') or (room.get('live_info') or {}).get('room_id') or (room.get('room') or {}).get('room_id')
+                        
+                        if room_id:
+                            onlives.add(int(room_id))
+    
+    except requests.exceptions.RequestException as e:
+        st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
+    except ValueError:
+        st.warning("ライブ配信情報のJSONデコードに失敗しました。")
+    return onlives
+
 
 # --- Main Application Logic ---
 
@@ -251,6 +264,8 @@ def main():
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
+    
+    onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
     final_remain_time = None
@@ -291,8 +306,11 @@ def main():
                 
                 # 必要なデータがすべて存在するかチェック
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                    # int()で確実に型を合わせる
+                    is_live = int(room_id) in onlives_rooms
+                    
                     data_to_display.append({
-                        "ライブ中": "🔴" if is_room_live(room_id) else "", # 新しい関数でライブ状況を判定
+                        "ライブ中": "🔴" if is_live else "",
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
