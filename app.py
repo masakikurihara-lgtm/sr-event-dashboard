@@ -76,7 +76,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 response = requests.get(url, headers=HEADERS, timeout=10)
 
                 if response.status_code == 404:
-                    st.warning(f"URLが有効ではありませんでした: {url}")
                     break
                 
                 response.raise_for_status()
@@ -96,14 +95,11 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 temp_ranking_data.extend(ranking_list)
             
             if temp_ranking_data and any('room_id' in r for r in temp_ranking_data):
-                st.success(f"ルームIDを含むランキングデータ取得に成功しました。使用したURL: {base_url}")
+                st.success(f"ルームIDを含むランキングデータ取得に成功しました。")
                 all_ranking_data = temp_ranking_data
                 break
-            else:
-                st.warning(f"取得したデータにルームIDが含まれていませんでした。次の候補を試します。使用したURL: {base_url}")
-                
-        except requests.exceptions.RequestException as e:
-            st.error(f"API呼び出し中にエラー: {e}")
+            
+        except requests.exceptions.RequestException:
             continue
 
     if not all_ranking_data:
@@ -121,8 +117,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 'rank': room_info.get('rank'),
                 'point': room_info.get('point')
             }
-            if 'user' in room_info and 'name' in room_info['user']:
-                room_map[room_name]['room_name_from_user'] = room_info['user']['name']
     
     st.write("---")
     st.subheader("デバッグ情報")
@@ -133,7 +127,8 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
         st.error("有効なルームIDを含むルーム情報が見つかりませんでした。")
     st.write("---")
 
-# @st.cache_data(ttl=5)
+    return room_map
+
 def get_room_event_info(room_id):
     """Fetches event and support info for a specific room."""
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -154,6 +149,7 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
+    # セッションステートの初期化
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
@@ -167,7 +163,6 @@ def main():
     def on_event_change():
         st.session_state.room_map_data = None
         st.session_state.selected_event_name = st.session_state.event_selector
-        # イベントを変更した際に、選択中のルームリストをリセット
         st.session_state.selected_room_names = []
 
     events = get_events()
@@ -208,7 +203,6 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # ルーム選択をセッションステートで管理
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
@@ -216,10 +210,8 @@ def main():
         key="room_selector"
     )
     
-    # ルーム選択が変更されたらセッションステートを更新
     if selected_room_names != st.session_state.selected_room_names:
         st.session_state.selected_room_names = selected_room_names
-        # ルーム選択が変更されたので、ダッシュボードを再描画
         st.rerun()
 
     if not selected_room_names:
@@ -251,7 +243,6 @@ def main():
         rank_info = None
         remain_time_sec = None
 
-        # 複数のAPIレスポンス形式に対応
         if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
             rank_info = room_info['ranking']
             remain_time_sec = room_info.get('remain_time')
@@ -322,7 +313,6 @@ def main():
     elif not data_to_display:
         st.warning("選択されたルームの情報を取得できませんでした。")
 
-    # 5秒待機後に再実行
     time.sleep(5)
     st.rerun()
 
