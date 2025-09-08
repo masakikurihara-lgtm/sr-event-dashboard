@@ -269,10 +269,10 @@ def main():
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
             time_placeholder = st.empty()
-            
+
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
-
+    
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
@@ -392,7 +392,7 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            time_placeholder.markdown(f"<p style='font-size: 3rem; margin-top: -1.5rem; text-align: center; font-weight: bold;'>{remain_time_readable}</p>", unsafe_allow_html=True)
+            time_placeholder.write(f"**{remain_time_readable}**")
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
