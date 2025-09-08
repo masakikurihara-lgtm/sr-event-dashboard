@@ -180,7 +180,7 @@ def main():
         st.session_state.selected_room_names = []
     
     # --- Event Selection Section ---
-    st.markdown("<h2 style='background-color: #f0f2f6; padding: 10px; border-radius: 5px;'>1. イベントを選択</h2>", unsafe_allow_html=True)
+    st.header("1. イベントを選択")
     
     events = get_events()
     if not events:
@@ -221,7 +221,7 @@ def main():
     selected_event_id = selected_event_data.get('event_id')
     
     # --- Room Selection Section ---
-    st.markdown("<h2 style='background-color: #f0f2f6; padding: 10px; border-radius: 5px;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
+    st.header("2. 比較したいルームを選択")
     
     if st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
@@ -256,7 +256,7 @@ def main():
         return
 
     # --- Real-time Dashboard Section ---
-    st.markdown("<h2 style='background-color: #f0f2f6; padding: 10px; border-radius: 5px;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
+    st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
 
     with st.container(border=True):
@@ -356,16 +356,25 @@ def main():
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
-                    def highlight_rows(row):
-                        styles = [''] * len(row)
-                        if row.name % 2 == 1:
-                            styles = ['background-color: #f0f2f6'] * len(row) # 薄い灰色
-                        return styles
+                    def highlight_max_and_alternate(s):
+                        if s.name == '現在のポイント':
+                            is_max = s == s.max()
+                            return ['background-color: yellow' if v else '' for v in is_max]
                         
-                    styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).set_table_styles([
-                        {'selector': 'thead', 'props': [('background-color', '#d9e0e8')]},
-                        {'selector': 'th', 'props': [('color', 'black')]}
-                    ]).format(
+                        styles = [''] * len(s)
+                        for i in range(len(s)):
+                            if i % 2 == 1:
+                                styles[i] = 'background-color: #f0f2f6'
+                        return styles
+
+                    def format_header(df):
+                        styles = [{'selector': 'th',
+                                   'props': [('background-color', '#d9e0e8'),
+                                             ('color', 'black'),
+                                             ('font-weight', 'bold')]}]
+                        return styles
+
+                    styled_df = df.style.apply(lambda x: highlight_max_and_alternate(x), axis=0).set_table_styles(format_header(df)).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
                     st.dataframe(styled_df, use_container_width=True, hide_index=True)
@@ -388,6 +397,7 @@ def main():
             else:
                 st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
             
+            # 上位とのポイント差のグラフを追加
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", 
