@@ -164,6 +164,7 @@ def main():
         st.session_state.room_map_data = None
         st.session_state.selected_event_name = st.session_state.event_selector
         st.session_state.selected_room_names = []
+        st.rerun()
 
     events = get_events()
     if not events:
@@ -203,17 +204,19 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
+    def on_room_change():
+        # ルーム選択が変更されたらセッションステートを更新
+        st.session_state.selected_room_names = st.session_state.room_selector
+        # st.rerun()は不要。multiselectの変更だけでページが再実行される
+    
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
         default=st.session_state.selected_room_names,
-        key="room_selector"
+        key="room_selector",
+        on_change=on_room_change # ここでコールバック関数を指定
     )
     
-    if selected_room_names != st.session_state.selected_room_names:
-        st.session_state.selected_room_names = selected_room_names
-        st.rerun()
-
     if not selected_room_names:
         st.warning("最低1つのルームを選択してください。")
         return
