@@ -133,8 +133,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
         st.error("有効なルームIDを含むルーム情報が見つかりませんでした。")
     st.write("---")
 
-    return room_map
-
+# @st.cache_data(ttl=5)
 def get_room_event_info(room_id):
     """Fetches event and support info for a specific room."""
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -142,11 +141,6 @@ def get_room_event_info(room_id):
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
-        
-        # デバッグ用にAPIレスポンス全体を表示
-        # st.subheader(f"ルームID {room_id} のAPIレスポンス (生データ)")
-        # st.write(f"ステータスコード: {response.status_code}")
-        # st.json(data)
         
         return data
             
@@ -162,15 +156,19 @@ def main():
     
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
-    if "current_event_name" not in st.session_state:
-        st.session_state.current_event_name = None
+    if "selected_event_name" not in st.session_state:
+        st.session_state.selected_event_name = None
+    if "selected_room_names" not in st.session_state:
+        st.session_state.selected_room_names = []
 
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
     def on_event_change():
         st.session_state.room_map_data = None
-        st.session_state.current_event_name = st.session_state.event_selector
+        st.session_state.selected_event_name = st.session_state.event_selector
+        # イベントを変更した際に、選択中のルームリストをリセット
+        st.session_state.selected_room_names = []
 
     events = get_events()
     if not events:
@@ -185,16 +183,15 @@ def main():
         on_change=on_event_change
     )
     
-    # セッションステートを使用して選択されたイベント名を追跡
-    if st.session_state.current_event_name:
-        st.info(f"選択されたイベント: **{st.session_state.current_event_name}**")
-        selected_event_data = event_options.get(st.session_state.current_event_name)
-    else:
+    if not selected_event_name:
         st.warning("イベントを選択してください。")
         return
 
+    st.info(f"選択されたイベント: **{selected_event_name}**")
+    selected_event_data = event_options.get(selected_event_name)
+
     if not selected_event_data:
-        st.error(f"選択されたイベント '{st.session_state.current_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
+        st.error(f"選択されたイベント '{selected_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
         return
 
     selected_event_key = selected_event_data.get('event_url_key', '')
@@ -211,12 +208,20 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
+    # ルーム選択をセッションステートで管理
     selected_room_names = st.multiselect(
         "比較したいルームを選択 (複数選択可):", 
         options=list(st.session_state.room_map_data.keys()),
-        default=[list(st.session_state.room_map_data.keys())[0]]
+        default=st.session_state.selected_room_names,
+        key="room_selector"
     )
     
+    # ルーム選択が変更されたらセッションステートを更新
+    if selected_room_names != st.session_state.selected_room_names:
+        st.session_state.selected_room_names = selected_room_names
+        # ルーム選択が変更されたので、ダッシュボードを再描画
+        st.rerun()
+
     if not selected_room_names:
         st.warning("最低1つのルームを選択してください。")
         return
@@ -227,106 +232,99 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
     
-    # 自動更新を管理するプレースホルダー
-    dashboard_placeholder = st.empty()
-    
     JST = pytz.timezone('Asia/Tokyo')
+    current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+
+    st.write(f"最終更新日時 (日本時間): {current_time}")
+
+    data_to_display = []
+    all_info_found = True
     
-    while True: # ループを追加して自動更新を実現
-        with st.spinner('最新情報を取得中...'):
-            current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-            
-            with dashboard_placeholder.container():
-                st.write(f"最終更新日時 (日本時間): {current_time}")
+    for room_id in selected_room_ids:
+        room_info = get_room_event_info(room_id)
+        
+        if not isinstance(room_info, dict):
+            st.warning(f"ルームID {room_id} のAPIレスポンスが不正な形式です。スキップします。")
+            all_info_found = False
+            continue
+        
+        rank_info = None
+        remain_time_sec = None
 
-                data_to_display = []
-                all_info_found = True
-                
-                for room_id in selected_room_ids:
-                    room_info = get_room_event_info(room_id)
-                    
-                    if not isinstance(room_info, dict):
-                        st.warning(f"ルームID {room_id} のAPIレスポンスが不正な形式です。スキップします。")
-                        all_info_found = False
-                        continue
-                    
-                    rank_info = None
-                    remain_time_sec = None
+        # 複数のAPIレスポンス形式に対応
+        if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
+            rank_info = room_info['ranking']
+            remain_time_sec = room_info.get('remain_time')
+        elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
+            event_info = room_info['event_and_support_info']
+            if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
+                rank_info = event_info['ranking']
+                remain_time_sec = event_info.get('remain_time')
+        elif 'event' in room_info and isinstance(room_info['event'], dict):
+            event_data = room_info['event']
+            if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
+                rank_info = event_data['ranking']
+                remain_time_sec = event_data.get('remain_time')
 
-                    if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
-                        rank_info = room_info['ranking']
-                        remain_time_sec = room_info.get('remain_time')
-                    elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
-                        event_info = room_info['event_and_support_info']
-                        if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
-                            rank_info = event_info['ranking']
-                            remain_time_sec = event_info.get('remain_time')
-                    elif 'event' in room_info and isinstance(room_info['event'], dict):
-                        event_data = room_info['event']
-                        if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
-                            rank_info = event_data['ranking']
-                            remain_time_sec = event_data.get('remain_time')
+        if rank_info and remain_time_sec is not None:
+            try:
+                remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
+                room_name = [name for name, info in st.session_state.room_map_data.items() if info['room_id'] == room_id][0]
 
-                    if rank_info and remain_time_sec is not None:
-                        try:
-                            remain_time_str = str(datetime.timedelta(seconds=remain_time_sec))
-                            room_name = [name for name, info in st.session_state.room_map_data.items() if info['room_id'] == room_id][0]
+                data_to_display.append({
+                    "ルーム名": room_name,
+                    "現在の順位": rank_info.get('rank', 'N/A'),
+                    "現在のポイント": rank_info.get('point', 'N/A'),
+                    "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
+                    "下位の順位": rank_info.get('lower_rank', 'N/A'),
+                    "残り時間": remain_time_str,
+                })
+            except Exception as e:
+                st.error(f"データ処理中にエラーが発生しました（ルームID: {room_id}）。エラー: {e}")
+                all_info_found = False
+                continue
+        else:
+            st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。")
+            all_info_found = False
+    
+    if data_to_display:
+        df = pd.DataFrame(data_to_display)
+        
+        df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+        df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
+        
+        st.subheader("📊 比較対象ルームのステータス")
+        st.dataframe(df_sorted.style.highlight_max(axis=0, subset=['現在のポイント']).format(
+            {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
+        ), use_container_width=True)
 
-                            data_to_display.append({
-                                "ルーム名": room_name,
-                                "現在の順位": rank_info.get('rank', 'N/A'),
-                                "現在のポイント": rank_info.get('point', 'N/A'),
-                                "下位とのポイント差": rank_info.get('lower_gap', 'N/A') if rank_info.get('lower_rank', 0) > 0 else 0,
-                                "下位の順位": rank_info.get('lower_rank', 'N/A'),
-                                "残り時間": remain_time_str,
-                            })
-                        except Exception as e:
-                            st.error(f"データ処理中にエラーが発生しました（ルームID: {room_id}）。エラー: {e}")
-                            all_info_found = False
-                            continue
-                    else:
-                        st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。")
-                        st.subheader(f"ルームID {room_id} のAPIレスポンス (生データ)")
-                        st.json(room_info)
-                        all_info_found = False
-                
-                if data_to_display:
-                    df = pd.DataFrame(data_to_display)
-                    
-                    df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-                    df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
-                    
-                    st.subheader("📊 比較対象ルームのステータス")
-                    st.dataframe(df_sorted.style.highlight_max(axis=0, subset=['現在のポイント']).format(
-                        {'現在のポイント': '{:,}', '下位とのポイント差': '{:,}'}
-                    ), use_container_width=True)
+        st.subheader("📈 ポイントと順位の比較")
+        
+        df_sorted['現在のポイント'] = pd.to_numeric(df_sorted['現在のポイント'], errors='coerce')
+        fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
+                            title="各ルームの現在のポイント", 
+                            color="ルーム名",
+                            hover_data=["現在の順位", "下位とのポイント差"],
+                            labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+        st.plotly_chart(fig_points, use_container_width=True)
 
-                    st.subheader("📈 ポイントと順位の比較")
-                    
-                    df_sorted['現在のポイント'] = pd.to_numeric(df_sorted['現在のポイント'], errors='coerce')
-                    fig_points = px.bar(df_sorted, x="ルーム名", y="現在のポイント", 
-                                        title="各ルームの現在のポイント", 
-                                        color="ルーム名",
-                                        hover_data=["現在の順位", "下位とのポイント差"],
-                                        labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-                    st.plotly_chart(fig_points, use_container_width=True)
+        if len(selected_room_names) > 1 and "下位とのポイント差" in df_sorted.columns:
+            df_sorted['下位とのポイント差'] = pd.to_numeric(df_sorted['下位とのポイント差'], errors='coerce')
+            fig_gap = px.bar(df_sorted, x="ルーム名", y="下位とのポイント差", 
+                            title="下位とのポイント差", 
+                            color="ルーム名",
+                            hover_data=["現在の順位", "現在のポイント"],
+                            labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+            st.plotly_chart(fig_gap, use_container_width=True)
 
-                    if len(selected_room_names) > 1 and "下位とのポイント差" in df_sorted.columns:
-                        df_sorted['下位とのポイント差'] = pd.to_numeric(df_sorted['下位とのポイント差'], errors='coerce')
-                        fig_gap = px.bar(df_sorted, x="ルーム名", y="下位とのポイント差", 
-                                        title="下位とのポイント差", 
-                                        color="ルーム名",
-                                        hover_data=["現在の順位", "現在のポイント"],
-                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                        st.plotly_chart(fig_gap, use_container_width=True)
+    if not all_info_found:
+        st.warning("一部のルーム情報が取得できませんでした。")
+    elif not data_to_display:
+        st.warning("選択されたルームの情報を取得できませんでした。")
 
-                if not all_info_found:
-                    st.warning("一部のルーム情報が取得できませんでした。")
-                elif not data_to_display:
-                    st.warning("選択されたルームの情報を取得できませんでした。")
-
-        # 5秒待機後に再実行
-        time.sleep(5)
+    # 5秒待機後に再実行
+    time.sleep(5)
+    st.rerun()
 
 if __name__ == "__main__":
     main()
