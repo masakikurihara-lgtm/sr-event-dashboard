@@ -264,7 +264,7 @@ def main():
         
         with col1:
             st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
-            st.write(f"{event_period_str}")
+            st.write(f"**{event_period_str}**")
 
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
@@ -392,7 +392,7 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            time_placeholder.write(f"**{remain_time_readable}**")
+            time_placeholder.metric(label="", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
