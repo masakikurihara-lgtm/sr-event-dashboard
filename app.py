@@ -392,9 +392,8 @@ def main():
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-            # Streamlitのst.metricウィジェットを使用して残り時間を表示
-            # label_visibilityをhiddenに設定することで、ラベル（残り時間）自体を非表示にし、値のみを目立たせる
-            time_placeholder.metric(label="残り時間", value=remain_time_readable, label_visibility="hidden")
+            # st.metricからst.writeに変更
+            time_placeholder.write(f"**{remain_time_readable}**")
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
     
