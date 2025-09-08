@@ -264,7 +264,7 @@ def main():
         
         with col1:
             st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
-            st.write(f"**{event_period_str}**")
+            st.markdown(f"<div style='display:flex;justify-content:center;'>{event_period_str}</div>", unsafe_allow_html=True)
 
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
