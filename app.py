@@ -54,16 +54,17 @@ def get_events():
     return events
 
 # ランキングAPIの候補を定義
+# room_idが含まれる可能性が高いものを優先
 RANKING_API_CANDIDATES = [
-    "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
-    "https://www.showroom-live.com/api/event/{event_url_key}/room_ranking?page={page}",
     "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
+    "https://www.showroom-live.com/api/event/room_ranking?event_id={event_id}&page={page}",
+    "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
     "https://www.showroom-live.com/api/event/rank_list?event_id={event_id}&page={page}",
 ]
 
-def get_event_ranking(event_url_key, event_id, max_pages=10):
-    """Fetches ranking data by trying multiple API endpoints."""
-    st.info("複数のAPIエンドポイントを試行してランキングデータを取得します。")
+def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
+    """Fetches ranking data including room_id by trying multiple API endpoints."""
+    st.info("複数のAPIエンドポイントを試行して、ルームIDを含むランキングデータを取得します。")
     for base_url in RANKING_API_CANDIDATES:
         try:
             all_ranking_data = []
@@ -71,7 +72,7 @@ def get_event_ranking(event_url_key, event_id, max_pages=10):
                 url = base_url.format(event_url_key=event_url_key, event_id=event_id, page=page)
                 
                 response = requests.get(url, headers=HEADERS, timeout=10)
-                if response.status_code == 404: # 404 Not Found は次の候補へ
+                if response.status_code == 404:
                     st.warning(f"URLが有効ではありませんでした: {url}")
                     break
                 
@@ -87,18 +88,21 @@ def get_event_ranking(event_url_key, event_id, max_pages=10):
                     ranking_list = data
                 
                 if not ranking_list:
-                    # ページが空の場合はループ終了
                     break
                 
                 all_ranking_data.extend(ranking_list)
             
-            if all_ranking_data:
+            # 取得したデータにroom_idが含まれているかチェック
+            if all_ranking_data and 'room_id' in all_ranking_data[0]:
                 st.success(f"ランキングデータ取得に成功しました。使用したURL: {base_url}")
                 return all_ranking_data
+            else:
+                st.warning(f"取得したデータにルームIDが含まれていませんでした。次の候補を試します。使用したURL: {base_url}")
+                continue # Try next URL
         
         except requests.exceptions.RequestException as e:
             st.error(f"API呼び出し中にエラー: {e}")
-            continue # Try next URL
+            continue
 
     return None
 
@@ -141,10 +145,10 @@ def main():
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
-    # ランキングデータを取得
-    ranking_data = get_event_ranking(selected_event_key, selected_event_id)
+    # ルームIDを含むランキングデータを取得
+    ranking_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
     if not ranking_data:
-        st.warning("このイベントの参加者情報を取得できませんでした。")
+        st.warning("このイベントの参加者情報を取得できませんでした。ルームIDが含まれるAPIが見つかりませんでした。")
         return
         
     rooms = ranking_data
