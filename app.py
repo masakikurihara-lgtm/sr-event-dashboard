@@ -132,26 +132,35 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-@st.cache_data(ttl=60)
+# キャッシュを削除し、動的キャッシュで常に最新情報を取得
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
     try:
         url = "https://www.showroom-live.com/api/live/onlives"
-        response = requests.get(url, headers=HEADERS, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        # 動的にキャッシュを適用し、常に最新情報を取得
+        @st.cache_data(ttl=5) # 5秒間キャッシュ
+        def _get_onlives_rooms_cached():
+            response = requests.get(url, headers=HEADERS, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            
+            live_rooms = set()
+            for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
+                if live_type in data and isinstance(data[live_type], list):
+                    for room in data[live_type]:
+                        if 'room_id' in room:
+                            live_rooms.add(room['room_id'])
+            return live_rooms
         
-        for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
-            if live_type in data and isinstance(data[live_type], list):
-                for room in data[live_type]:
-                    if 'room_id' in room:
-                        onlives.add(room['room_id'])
+        onlives = _get_onlives_rooms_cached()
+
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
     except ValueError:
         st.warning("ライブ配信情報のJSONデコードに失敗しました。")
     return onlives
+
 
 # --- Main Application Logic ---
 
@@ -375,7 +384,7 @@ def main():
             time_placeholder.metric(label="イベント終了まで", value=remain_time_readable)
         else:
             time_placeholder.info("残り時間情報を取得できませんでした。")
-        
+    
     time.sleep(5)
     st.rerun()
 
