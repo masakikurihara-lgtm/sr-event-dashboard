@@ -59,6 +59,7 @@ RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
 ]
 
+@st.cache_data(ttl=300)
 def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     """
     Fetches ranking data, including room_id, by trying multiple API endpoints.
@@ -134,6 +135,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
 
     return room_map
 
+@st.cache_data(ttl=5)
 def get_room_event_info(room_id):
     """Fetches event and support info for a specific room."""
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -141,11 +143,6 @@ def get_room_event_info(room_id):
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
-        
-        st.subheader(f"ルームID {room_id} のAPIレスポンス")
-        st.write(f"ステータスコード: {response.status_code}")
-        st.json(data)
-        
         return data
             
     except requests.exceptions.RequestException as e:
@@ -160,14 +157,15 @@ def main():
     
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
+    if "current_event_name" not in st.session_state:
+        st.session_state.current_event_name = None
 
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
-    def reset_room_data():
+    def on_event_change():
         st.session_state.room_map_data = None
-        if 'event_selector' in st.session_state:
-            del st.session_state['event_selector']
+        st.session_state.current_event_name = st.session_state.event_selector
 
     events = get_events()
     if not events:
@@ -179,28 +177,30 @@ def main():
         "イベント名を選択してください:", 
         options=list(event_options.keys()),
         key="event_selector",
-        on_change=reset_room_data
+        on_change=on_event_change
     )
     
-    if selected_event_name is None:
+    # セッションステートを使用して選択されたイベント名を追跡
+    if st.session_state.current_event_name:
+        st.info(f"選択されたイベント: **{st.session_state.current_event_name}**")
+        selected_event_data = event_options.get(st.session_state.current_event_name)
+    else:
         st.warning("イベントを選択してください。")
         return
 
-    selected_event_data = event_options.get(selected_event_name)
-
     if not selected_event_data:
-        st.error(f"選択されたイベント '{selected_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
+        st.error(f"選択されたイベント '{st.session_state.current_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
         return
 
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
-    st.info(f"選択されたイベント: **{selected_event_name}**")
     
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
     if st.session_state.room_map_data is None:
-        st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+        with st.spinner('イベント参加者情報を取得中...'):
+            st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
 
     if not st.session_state.room_map_data:
         st.warning("このイベントの参加者情報を取得できませんでした。")
@@ -222,21 +222,22 @@ def main():
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
     
-    # @st.experimental_fragment を使用して、このセクションのみを再実行
-    @st.experimental_fragment
-    def dashboard_fragment(selected_room_ids):
-        current_time = datetime.datetime.now(pytz.timezone('Asia/Tokyo')).strftime("%Y-%m-%d %H:%M:%S")
-        st.write(f"最終更新日時 (日本時間): {current_time}")
-        
+    # 自動更新を管理するプレースホルダー
+    dashboard_placeholder = st.empty()
+    
+    JST = pytz.timezone('Asia/Tokyo')
+    
+    with st.spinner('最新情報を取得中...'):
+        current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+        dashboard_placeholder.write(f"最終更新日時 (日本時間): {current_time}")
+
         data_to_display = []
-        all_info_found = True
         
         for room_id in selected_room_ids:
             room_info = get_room_event_info(room_id)
             
             if not isinstance(room_info, dict):
-                st.error(f"ルームID {room_id} のAPIレスポンスが不正な形式です。")
-                all_info_found = False
+                st.warning(f"ルームID {room_id} のAPIレスポンスが不正な形式です。スキップします。")
                 continue
 
             rank_info = None
@@ -266,15 +267,12 @@ def main():
                     })
                 except Exception as e:
                     st.error(f"データ処理中にエラーが発生しました（ルームID: {room_id}）。エラー: {e}")
-                    all_info_found = False
                     continue
             else:
                 st.warning(f"ルームID {room_id} のランキング情報が見つかりませんでした。`ranking`または`event_and_support_info`キーがありません。")
-                all_info_found = False
         
         if data_to_display:
             df = pd.DataFrame(data_to_display)
-            
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df_sorted = df.sort_values(by="現在の順位").reset_index(drop=True)
             
@@ -302,15 +300,9 @@ def main():
                                 labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_gap, use_container_width=True)
 
-        if not all_info_found:
-            st.warning("一部のルーム情報が取得できませんでした。")
-        elif not data_to_display:
-            st.warning("選択されたルームの情報を取得できませんでした。")
-
-        time.sleep(5)
-        st.rerun()
-
-    dashboard_fragment(selected_room_ids)
+    # 5秒待機後に再実行
+    time.sleep(5)
+    st.rerun()
 
 if __name__ == "__main__":
     main()
