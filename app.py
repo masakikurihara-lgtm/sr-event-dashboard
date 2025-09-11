@@ -24,6 +24,7 @@ def get_events():
     """Fetches a list of ongoing SHOWROOM events."""
     events = []
     page = 1
+    # 念のため最大10ページまで取得
     for _ in range(10):
         url = f"https://www.showroom-live.com/api/event/search?page={page}&include_ended=0"
         try:
@@ -136,15 +137,18 @@ def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
     try:
+        # onlives APIは通常ページ分割がなく、一度に全件取得します
         url = "https://www.showroom-live.com/api/live/onlives"
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
 
         if isinstance(data, dict):
+            # 公式、タレント、アマチュアの全カテゴリをチェック
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
+                        # APIレスポンスの構造揺れに対応
                         room_id = room.get('room_id')
                         if room_id is None:
                             live_info = room.get('live_info')
@@ -356,11 +360,21 @@ def main():
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
+                    # ===== 変更点: ここから =====
                     def highlight_rows(row):
-                        styles = [''] * len(row)
-                        if row.name % 2 == 1:
-                            styles = ['background-color: #fafafa'] * len(row) # 薄い灰色
-                        return styles
+                        """
+                        ライブ中のルームの行をハイライトし、それ以外の行を縞模様にする関数
+                        """
+                        # ライブ中の場合、背景色を薄い緑色に設定
+                        if row['ライブ中'] == '🔴':
+                            return ['background-color: #e6fff2'] * len(row)
+                        # ライブ中でない奇数行の場合、背景色を薄い灰色に設定 (縞模様)
+                        elif row.name % 2 == 1:
+                            return ['background-color: #fafafa'] * len(row)
+                        # それ以外 (ライブ中でない偶数行) はスタイルなし
+                        else:
+                            return [''] * len(row)
+                    # ===== 変更点: ここまで =====
 
                     styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
@@ -385,7 +399,6 @@ def main():
             else:
                 st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
             
-            # 上位とのポイント差のグラフを追加
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", 
