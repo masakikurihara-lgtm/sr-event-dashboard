@@ -142,40 +142,41 @@ def get_onlives_rooms():
         response.raise_for_status()
         data = response.json()
 
-        # (既存のデータ抽出ロジックはそのまま)
+        # APIレスポンスの複数の構造パターンに対応
+        all_lives = []
         if isinstance(data, dict):
+            # パターン1: {"onlives": [{"lives": [...]}]}
+            if 'onlives' in data and isinstance(data['onlives'], list):
+                for genre_group in data['onlives']:
+                    if 'lives' in genre_group and isinstance(genre_group['lives'], list):
+                        all_lives.extend(genre_group['lives'])
+            
+            # パターン2: {"official_lives": [...], "talent_lives": [...]}
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
-                    for room in data[live_type]:
-                        room_id = room.get('room_id')
-                        if room_id is None:
-                            live_info = room.get('live_info')
-                            if isinstance(live_info, dict) and 'room_id' in live_info:
-                                room_id = live_info['room_id']
-                        if room_id is None:
-                            room_info = room.get('room')
-                            if isinstance(room_info, dict) and 'room_id' in room_info:
-                                room_id = room_info['room_id']
-                        
-                        try:
-                            if room_id:
-                                onlives.add(int(room_id))
-                        except (ValueError, TypeError):
-                            continue
+                    all_lives.extend(data[live_type])
+
+        for room in all_lives:
+            room_id = None
+            if isinstance(room, dict):
+                # 様々なキーから room_id を探す
+                room_id = room.get('room_id')
+                if room_id is None and 'live_info' in room and isinstance(room['live_info'], dict):
+                    room_id = room['live_info'].get('room_id')
+                if room_id is None and 'room' in room and isinstance(room['room'], dict):
+                    room_id = room['room'].get('room_id')
+            
+            if room_id:
+                try:
+                    onlives.add(int(room_id))
+                except (ValueError, TypeError):
+                    continue # 数値に変換できないIDはスキップ
+
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
-    except ValueError:
-        st.warning("ライブ配信情報のJSONデコードに失敗しました。")
-
-    # ===== ▼▼▼ デバッグコードを追加 ▼▼▼ =====
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### ⚙️ デバッグ情報")
-    st.sidebar.write(f"取得したライブ中ID数: `{len(onlives)}`")
-    if onlives:
-        st.sidebar.write("取得ID (先頭5件):", list(onlives)[:5])
-    st.sidebar.markdown("---")
-    # ===== ▲▲▲ ここまで追加 ▲▲▲ =====
-
+    except (ValueError, AttributeError):
+        st.warning("ライブ配信情報のJSONデコードまたは解析に失敗しました。")
+    
     return onlives
 
 # --- Main Application Logic ---
