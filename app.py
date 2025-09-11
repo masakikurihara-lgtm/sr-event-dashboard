@@ -137,18 +137,16 @@ def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
     try:
-        # onlives APIは通常ページ分割がなく、一度に全件取得します
         url = "https://www.showroom-live.com/api/live/onlives"
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
 
+        # (既存のデータ抽出ロジックはそのまま)
         if isinstance(data, dict):
-            # 公式、タレント、アマチュアの全カテゴリをチェック
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     for room in data[live_type]:
-                        # APIレスポンスの構造揺れに対応
                         room_id = room.get('room_id')
                         if room_id is None:
                             live_info = room.get('live_info')
@@ -168,6 +166,16 @@ def get_onlives_rooms():
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
     except ValueError:
         st.warning("ライブ配信情報のJSONデコードに失敗しました。")
+
+    # ===== ▼▼▼ デバッグコードを追加 ▼▼▼ =====
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ⚙️ デバッグ情報")
+    st.sidebar.write(f"取得したライブ中ID数: `{len(onlives)}`")
+    if onlives:
+        st.sidebar.write("取得ID (先頭5件):", list(onlives)[:5])
+    st.sidebar.markdown("---")
+    # ===== ▲▲▲ ここまで追加 ▲▲▲ =====
+
     return onlives
 
 # --- Main Application Logic ---
