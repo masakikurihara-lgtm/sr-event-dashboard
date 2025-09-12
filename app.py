@@ -440,8 +440,10 @@ def main():
                         else:
                             return [''] * len(row)
                     
-                    # 💡修正：format適用前にNaNを0に置き換える
-                    df_to_format = df.fillna(0)
+                    df_to_format = df.copy()
+                    for col in required_cols:
+                        df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
+
                     styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
@@ -488,42 +490,96 @@ def main():
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
         # --- スペシャルギフト履歴表示セクション ---
-        st.subheader("🎁 スペシャルギフト履歴（ライブ中のルームのみ）")
+        st.subheader("🎁 スペシャルギフト履歴")
+        st.markdown("""
+            <style>
+            .gift-list-container {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+                height: 400px; /* 固定の高さ */
+                overflow-y: scroll; /* 縦スクロールを有効にする */
+                width: 100%;
+            }
+            .gift-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 0;
+                border-bottom: 1px solid #eee;
+            }
+            .gift-item:last-child {
+                border-bottom: none;
+            }
+            .gift-image {
+                width: 30px;
+                height: 30px;
+                border-radius: 5px;
+                object-fit: contain;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         
-        # 選択されたルーム数に基づいて列を作成
-        columns = st.columns(len(st.session_state.selected_room_names))
-        
-        for i, room_name in enumerate(st.session_state.selected_room_names):
-            with columns[i]:
-                st.markdown(f"**{room_name}**")
-                room_id = st.session_state.room_map_data[room_name]['room_id']
-                
-                if int(room_id) in onlives_rooms:
-                    gift_list_map = get_gift_list(room_id)
-                    gift_log = get_gift_log(room_id)
+        # ライブ中のルームだけを絞り込み、順位でソート
+        live_rooms_data = []
+        if st.session_state.selected_room_names and st.session_state.room_map_data:
+            for room_name in st.session_state.selected_room_names:
+                if room_name in st.session_state.room_map_data:
+                    room_id = st.session_state.room_map_data[room_name]['room_id']
+                    if int(room_id) in onlives_rooms:
+                        live_rooms_data.append({
+                            "room_name": room_name,
+                            "room_id": room_id,
+                            "rank": st.session_state.room_map_data[room_name].get('rank', float('inf')) 
+                        })
+            live_rooms_data.sort(key=lambda x: x['rank'])
+            
+        # ライブ中のルームの数に応じて、動的に列幅を決定
+        col_count = len(live_rooms_data)
+        if col_count > 0:
+            columns = st.columns(col_count, gap="small")
+
+            for i, room_data in enumerate(live_rooms_data):
+                with columns[i]:
+                    room_name = room_data['room_name']
+                    room_id = room_data['room_id']
                     
-                    if gift_log:
-                        # 縦にリスト表示
-                        for log in gift_log:
-                            gift_id = log.get('gift_id')
-                            gift_info = gift_list_map.get(gift_id, {})
+                    st.markdown(f"<h4 style='text-align: center;'>{room_name}</h4>", unsafe_allow_html=True)
+                    
+                    if int(room_id) in onlives_rooms:
+                        gift_list_map = get_gift_list(room_id)
+                        gift_log = get_gift_log(room_id)
+                        
+                        if gift_log:
+                            # 💡修正：最新のギフトが上に来るようにcreated_atでソート
+                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                             
-                            gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                            gift_image = gift_info.get('image', '')
-                            gift_count = log.get('num', 0)
-                            
-                            # 💡修正：タイムスタンプと個数に加えて、ギフト画像と名前を表示
-                            st.markdown(f"""
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <small>{gift_time}</small>
-                                    <img src="{gift_image}" style="width: 30px; height: 30px; border-radius: 5px;" />
-                                    <span>×{gift_count}</span>
-                                </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
+                            for log in gift_log:
+                                gift_id = log.get('gift_id')
+                                gift_info = gift_list_map.get(gift_id, {})
+                                
+                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                gift_image = gift_info.get('image', '')
+                                gift_count = log.get('num', 0)
+                                
+                                gift_name = gift_info.get('name', '')
+                                
+                                st.markdown(f"""
+                                    <div class="gift-item">
+                                        <small>{gift_time}</small>
+                                        <img src="{gift_image}" class="gift-image" />
+                                        <span>×{gift_count}</span>
+                                        <small>{gift_name}</small>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("ギフト履歴がありません。")
                     else:
-                        st.info("ギフト履歴がありません。")
-                else:
-                    st.info("ライブ配信していません。")
+                        st.info("ライブ配信していません。")
+        else:
+            st.info("選択されたルームに現在ライブ配信中のルームはありません。")
         
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
