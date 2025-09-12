@@ -35,7 +35,7 @@ def get_events():
             elif isinstance(data, list):
                 page_events = data
             if not page_events:
-                    break
+                break
             events.extend(page_events)
             page += 1
         except requests.exceptions.RequestException as e:
@@ -195,7 +195,7 @@ def main():
 
     event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
-        "イベント名を選択してください:", 
+        "イベント名を選択してください:",
         options=list(event_options.keys()), key="event_selector")
     if not selected_event_name:
         st.warning("イベントを選択してください。")
@@ -235,7 +235,7 @@ def main():
 
     with st.form("room_selection_form"):
         select_top_15 = st.checkbox(
-            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
+            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）",
             key="select_top_15_checkbox")
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
@@ -381,41 +381,40 @@ def main():
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
-            
+
             # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
             st.markdown("""
             <style>
             .container-wrapper {
                 display: flex;
-                flex-wrap: wrap; 
+                flex-wrap: wrap;
                 gap: 15px;
             }
             .room-container {
-                width: 180px; 
+                width: 180px;
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px;
                 display: flex;
                 flex-direction: column;
+                height: 500px;
             }
             .room-title {
                 text-align: center;
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                display: -webkit-box; /* 修正: 複数行表示のために追加 */
-                -webkit-line-clamp: 3; /* 修正: 3行で省略するように設定 */
-                -webkit-box-orient: vertical; /* 修正: 複数行表示のために追加 */
-                overflow: hidden; 
-                white-space: normal; /* 修正: normal に変更 */
-                text-overflow: ellipsis; /* 修正: ellipsis は不要なため削除 */
+                height: 4.5em; /* 3行固定 (1.5em/line) */
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
             }
             .gift-list-container {
                 flex-grow: 1;
-                height: 400px;
                 overflow-y: scroll;
                 -ms-overflow-style: none;
                 scrollbar-width: none;
@@ -446,60 +445,50 @@ def main():
             }
             </style>
             """, unsafe_allow_html=True)
-            
-            live_rooms_data = []
-            if st.session_state.selected_room_names and st.session_state.room_map_data:
-                for room_name in st.session_state.selected_room_names:
-                    if room_name in st.session_state.room_map_data:
-                        room_id = st.session_state.room_map_data[room_name]['room_id']
-                        if int(room_id) in onlives_rooms:
-                            live_rooms_data.append({
-                                "room_name": room_name,
-                                "room_id": room_id,
-                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
-                            })
-                live_rooms_data.sort(key=lambda x: x['rank'])
-            
-            room_html_list = []
-            if len(live_rooms_data) > 0:
-                for room_data in live_rooms_data:
-                    room_name = room_data['room_name']
-                    room_id = room_data['room_id']
-                    rank = room_data.get('rank', 'N/A')
 
-                    if int(room_id) in onlives_rooms:
-                        gift_log = get_gift_log(room_id)
+            room_html_list = []
+            room_map = st.session_state.room_map_data
+            if room_map:
+                for room_name in st.session_state.selected_room_names:
+                    if room_name in room_map:
+                        room_id = room_map[room_name]['room_id']
+                        rank = room_map[room_name].get('rank', 'N/A')
+                        is_live = int(room_id) in onlives_rooms
                         
                         html_content = f"""
                         <div class="room-container">
                             <div class="room-title">
                                 {rank}位：{room_name}
                             </div>
-                            <div class="gift-list-container">
                         """
-                        if gift_log:
-                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                            for log in gift_log:
-                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                gift_image = log.get('image', '')
-                                gift_count = log.get('num', 0)
-                                html_content += (
-                                    f'<div class="gift-item">'
-                                    f'<div class="gift-header"><small>{gift_time}</small></div>'
-                                    f'<div class="gift-info-row">'
-                                    f'<img src="{gift_image}" class="gift-image" />'
-                                    f'<span>×{gift_count}</span>'
-                                    f'</div></div>'
-                                )
+
+                        if is_live:
+                            gift_log = get_gift_log(room_id)
+                            html_content += '<div class="gift-list-container">'
+                            if gift_log:
+                                gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                                for log in gift_log:
+                                    gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                    gift_image = log.get('image', '')
+                                    gift_count = log.get('num', 0)
+                                    html_content += (
+                                        f'<div class="gift-item">'
+                                        f'<div class="gift-header"><small>{gift_time}</small></div>'
+                                        f'<div class="gift-info-row">'
+                                        f'<img src=\"{gift_image}\" class=\"gift-image\" />'
+                                        f'<span>×{gift_count}</span>'
+                                        f'</div></div>'
+                                    )
+                                html_content += '</div>'
+                            else:
+                                html_content += '<p style="text-align: center;">ギフト履歴がありません。</p>'
                             html_content += '</div>'
                         else:
-                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
-                        
-                        html_content += '</div>'
+                            html_content += f'<p style="text-align: center;">ライブ配信していません。</p>'
+                            html_content += '</div>'
+
                         room_html_list.append(html_content)
-                    else:
-                        room_html_list.append(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
-                
+
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 st.markdown(html_container_content, unsafe_allow_html=True)
             else:
