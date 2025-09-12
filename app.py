@@ -7,7 +7,7 @@ import plotly.express as px
 import pytz
 
 # Set page configuration
-st.set_page_config(
+st.set_config(
     page_title="SHOWROOM Event Dashboard",
     page_icon="🎤",
     layout="wide",
@@ -192,10 +192,10 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-    # 💡 修正: multiselectのデフォルト値を管理する専用のセッションステート変数
-    if "multiselect_default_value" not in st.session_state:
-        st.session_state.multiselect_default_value = []
-    
+    # 💡 修正: multiselectの選択内容を管理するキーを追加
+    if "multiselect_key" not in st.session_state:
+        st.session_state.multiselect_key = []
+
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
@@ -237,7 +237,7 @@ def main():
         # イベント変更時に各種Stateを初期化
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
-        st.session_state.multiselect_default_value = [] # 💡 修正: multiselectのデフォルト値もリセット
+        st.session_state.multiselect_key = []
         if 'select_top_15_checkbox' in st.session_state:
             st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
         st.rerun()
@@ -265,22 +265,22 @@ def main():
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # 💡 修正: key="multiselect_key" を削除し、デフォルト値をセッションステートで制御する
-        selected_room_names_temp = st.multiselect(
+        # 💡 修正: multiselectにキーを割り当て
+        st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            default=st.session_state.multiselect_default_value,
+            key="multiselect_key",
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        if select_top_15:
+        # 💡 修正: submit_buttonが押された際のロジックを修正
+        if st.session_state.select_top_15_checkbox:
+            st.session_state.multiselect_key = top_15_rooms
             st.session_state.selected_room_names = top_15_rooms
-            st.session_state.multiselect_default_value = top_15_rooms
         else:
-            st.session_state.selected_room_names = selected_room_names_temp
-            st.session_state.multiselect_default_value = selected_room_names_temp
+            st.session_state.selected_room_names = st.session_state.multiselect_key
         st.rerun()
 
     if not st.session_state.selected_room_names:
