@@ -35,7 +35,7 @@ def get_events():
             elif isinstance(data, list):
                 page_events = data
             if not page_events:
-                    break
+                break
             events.extend(page_events)
             page += 1
         except requests.exceptions.RequestException as e:
@@ -406,8 +406,8 @@ def main():
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                height: 4.5rem; /* 修正: 高さを固定 */
-                overflow-y: auto; /* 修正: テキストが溢れた場合にスクロール可能にする */
+                height: 4.5rem; 
+                overflow-y: auto; 
                 white-space: normal;
             }
             .gift-list-container {
