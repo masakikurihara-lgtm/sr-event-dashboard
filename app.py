@@ -225,9 +225,8 @@ def main():
         
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
-        # session_stateからチェックボックスのキーを削除してリセットする
         if 'select_top_15_checkbox' in st.session_state:
-            del st.session_state['select_top_15_checkbox']
+            st.session_state.select_top_15_checkbox = False
         st.rerun()
 
     room_count_text = ""
@@ -240,24 +239,23 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # ===== ▼▼▼ エラー回避のためロジックを修正 ▼▼▼ =====
+    # ===== ▼▼▼ ここからロジックを大幅に修正 ▼▼▼ =====
     with st.form("room_selection_form"):
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # 現在の選択状態が「上位15」と一致するかどうかを判定
+        # チェックボックス。「上位15ルーム」と現在の選択が一致する場合にのみTrueになるように状態を管理
         is_currently_top_15 = set(st.session_state.selected_room_names) == set(top_15_rooms)
+        st.session_state.select_top_15_checkbox = is_currently_top_15
 
-        # チェックボックスを描画。デフォルト値は前のランの状態から決定する。
         select_top_15 = st.checkbox(
             "上位15ルームまでを選択",
-            value=is_currently_top_15, # `value` を使って表示状態を制御
             key="select_top_15_checkbox"
         )
 
-        # ルーム選択リストを描画
+        # ルーム選択リスト。常に現在の選択状態(session_state)をデフォルトとして表示
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
@@ -268,20 +266,24 @@ def main():
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # フォーム送信時のロジック
-        # ユーザーが手動で multiselect を変更したかどうかを判定
-        user_made_manual_change = set(selected_room_names_temp) != set(st.session_state.selected_room_names)
-
-        # 1. チェックボックスがONにされた場合（手動変更なし）
-        if select_top_15 and not user_made_manual_change:
+        # 「表示する」ボタンが押されたときの処理
+        
+        # 1. ユーザーがチェックボックスをONにした場合
+        # (元々OFFで今回ONにした、という意味)
+        if select_top_15 and not is_currently_top_15:
             st.session_state.selected_room_names = top_15_rooms
-        # 2. それ以外の場合（手動変更があった、またはチェックボックスがOFFにされた）
+        
+        # 2. ユーザーが手動でルーム選択リストを変更した場合
+        # (チェックボックスの状態に関わらず、multiselectの内容を正とする)
         else:
             st.session_state.selected_room_names = selected_room_names_temp
+
+        # 3. 最終的な選択状態が「上位15ルーム」と一致するかを判定し、次回のチェックボックス状態を確定させる
+        final_is_top_15 = set(st.session_state.selected_room_names) == set(top_15_rooms)
+        st.session_state.select_top_15_checkbox = final_is_top_15
         
-        # rerunして画面を再描画
         st.rerun()
-    # ===== ▲▲▲ ここまでロジックを修正 ▲▲▲ =====
+    # ===== ▲▲▲ ここまでロジックを大幅に修正 ▲▲▲ =====
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
