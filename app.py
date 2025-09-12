@@ -388,14 +388,13 @@ def main():
             <style>
             .container-wrapper {
                 display: flex;
-                flex-wrap: wrap; /* 修正: 横に並びきらない場合は折り返す */
+                flex-wrap: nowrap;
                 overflow-x: auto;
                 padding-bottom: 10px;
                 gap: 15px;
             }
             .room-container {
-                min-width: 180px; /* 修正: 最小幅を設定し、柔軟に幅を調整 */
-                flex-grow: 1; /* 追加: 各コンテナが均等にスペースを埋める */
+                width: 180px;
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
@@ -409,8 +408,10 @@ def main():
                 font-size: 1.1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                /* 修正: 高さを固定せず、自動調整にする */
-                display: block;
+                height: 40px;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
                 overflow: hidden;
             }
             .gift-list-container {
@@ -497,7 +498,6 @@ def main():
                         html_content += '</div>'
                         room_html_list.append(html_content)
                     else:
-                        # 修正: ライブ配信していない場合のHTMLも正しく閉じるように修正
                         room_html_list.append(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
                 
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
