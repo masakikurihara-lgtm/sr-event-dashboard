@@ -383,8 +383,12 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
 
             # ===== 修正版スペシャルギフト履歴 =====
-            gift_section = st.empty()
-            with gift_section.container():
+            if "gift_section" not in st.session_state:
+                st.session_state.gift_section = st.empty()
+            else:
+                st.session_state.gift_section.empty()
+
+            with st.session_state.gift_section.container():
                 st.subheader("🎁 スペシャルギフト履歴")
                 st.markdown("""
                 <style>
