@@ -562,29 +562,29 @@ def main():
                             if gift_log:
                                 gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
     
-                                # 修正: HTML文字列の結合を廃止し、個別の要素として描画
-                                st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
-                                for log in gift_log:
-                                    gift_id = log.get('gift_id')
-                                    gift_info = gift_list_map.get(gift_id, {})
-                                    
-                                    gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                    gift_image = log.get('image', '')
-                                    gift_count = log.get('num', 0)
-                                    
-                                    st.markdown(f"""
-                                        <div class="gift-item">
-                                            <div class="gift-header">
-                                                <small>{gift_time}</small>
+                                # 修正: st.container()を使い、その中で個々の要素を描画
+                                with st.container():
+                                    st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
+                                    for log in gift_log:
+                                        gift_id = log.get('gift_id')
+                                        gift_info = gift_list_map.get(gift_id, {})
+                                        
+                                        gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                        gift_image = log.get('image', '')
+                                        gift_count = log.get('num', 0)
+                                        
+                                        st.markdown(f"""
+                                            <div class="gift-item">
+                                                <div class="gift-header">
+                                                    <small>{gift_time}</small>
+                                                </div>
+                                                <div class="gift-info-row">
+                                                    <img src="{gift_image}" class="gift-image" />
+                                                    <span>×{gift_count}</span>
+                                                </div>
                                             </div>
-                                            <div class="gift-info-row">
-                                                <img src="{gift_image}" class="gift-image" />
-                                                <span>×{gift_count}</span>
-                                            </div>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-    
-                                st.markdown('</div>', unsafe_allow_html=True)
+                                        """, unsafe_allow_html=True)
+                                    st.markdown('</div>', unsafe_allow_html=True)
                             else:
                                 st.info("ギフト履歴がありません。")
                         else:
