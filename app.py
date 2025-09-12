@@ -565,7 +565,7 @@ def main():
                                 gift_info = gift_list_map.get(gift_id, {})
                                 
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                gift_image = gift_info.get('image', '')
+                                gift_image = log.get('image', '')
                                 gift_count = log.get('num', 0)
                                 gift_name = gift_info.get('name', '')
                                 
