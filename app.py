@@ -383,47 +383,43 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
 
             # ===== 修正版スペシャルギフト履歴 =====
-            if "gift_section" not in st.session_state:
-                st.session_state.gift_section = st.empty()
-            else:
-                st.session_state.gift_section.empty()
-
-            with st.session_state.gift_section.container():
-                st.subheader("🎁 スペシャルギフト履歴")
-                st.markdown("""
-                <style>
-                .gift-list-container {
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                    padding: 10px;
-                    height: 400px;
-                    overflow-y: scroll;
-                    width: 100%;
-                }
-                .gift-item {
-                    display: flex;
-                    flex-direction: column;
-                    padding: 8px 0;
-                    border-bottom: 1px solid #eee;
-                    gap: 4px;
-                }
-                .gift-item:last-child {border-bottom: none;}
-                .gift-header {font-weight: bold;}
-                .gift-info-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-                .gift-image {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 5px;
-                    object-fit: contain;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-
+            # 新しいロジック: st.container()を直接使用して、その内部を常に再構築する
+            st.subheader("🎁 スペシャルギフト履歴")
+            st.markdown("""
+            <style>
+            .gift-list-container {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+                height: 400px;
+                overflow-y: scroll;
+                width: 100%;
+            }
+            .gift-item {
+                display: flex;
+                flex-direction: column;
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                gap: 4px;
+            }
+            .gift-item:last-child {border-bottom: none;}
+            .gift-header {font-weight: bold;}
+            .gift-info-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .gift-image {
+                width: 30px;
+                height: 30px;
+                border-radius: 5px;
+                object-fit: contain;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            with st.container():
                 live_rooms_data = []
                 if st.session_state.selected_room_names and st.session_state.room_map_data:
                     for room_name in st.session_state.selected_room_names:
@@ -436,7 +432,7 @@ def main():
                                     "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
                                 })
                     live_rooms_data.sort(key=lambda x: x['rank'])
-
+            
                 col_count = len(live_rooms_data)
                 if col_count > 0:
                     columns = st.columns(col_count, gap="small")
