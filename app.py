@@ -144,9 +144,16 @@ def get_gift_list(room_id):
         
         gift_list_map = {}
         for gift in data.get('gift_list', []):
+            try:
+                # 💡修正：ポイントを確実に整数に変換する
+                point_value = int(gift.get('point', 0))
+            except (ValueError, TypeError):
+                # 変換に失敗した場合は0とする
+                point_value = 0
+            
             gift_list_map[gift['gift_id']] = {
                 'name': gift.get('gift_name', 'N/A'),
-                'point': gift.get('point', 0),
+                'point': point_value,
                 'image': gift.get('image', '')
             }
         return gift_list_map
@@ -498,13 +505,19 @@ def main():
                     gift_id = log.get('gift_id')
                     gift_info = gift_list_map.get(gift_id, {})
                     
+                    try:
+                        # 💡修正：ポイントと個数を確実に整数に変換してから計算
+                        point_calc = int(gift_info.get('point', 0)) * int(log.get('num', 0))
+                    except (ValueError, TypeError):
+                        point_calc = 0
+                        
                     all_gift_log.append({
                         "ルーム名": room_name,
-                        "時間": datetime.datetime.fromtimestamp(log.get('created_at'), JST).strftime("%H:%M:%S"),
+                        "時間": datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S"),
                         "ギフト": gift_info.get('image'),
                         "ギフト名": gift_info.get('name'),
                         "個数": log.get('num'),
-                        "ポイント": gift_info.get('point') * log.get('num', 0),
+                        "ポイント": point_calc,
                     })
 
         if all_gift_log:
