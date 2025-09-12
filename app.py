@@ -351,29 +351,15 @@ def main():
     data_to_display = []
     final_remain_time = None
     
-    # ライブ中のルームだけを絞り込み、順位でソート
-    live_rooms_data = []
-    if st.session_state.selected_room_names and st.session_state.room_map_data:
+    if st.session_state.selected_room_names:
+        
         for room_name in st.session_state.selected_room_names:
-            if room_name in st.session_state.room_map_data:
-                room_id = st.session_state.room_map_data[room_name]['room_id']
-                if int(room_id) in onlives_rooms:
-                    live_rooms_data.append({
-                        "room_name": room_name,
-                        "room_id": room_id,
-                        "rank": st.session_state.room_map_data[room_name].get('rank', float('inf')) 
-                    })
-        live_rooms_data.sort(key=lambda x: x['rank'])
-
-    if live_rooms_data:
-        # --- ライブ中のルームのステータス表示 ---
-        st.subheader("📊 ライブ中のルームのステータス")
-
-        for room_data in live_rooms_data:
-            room_name = room_data['room_name']
-            room_id = room_data['room_id']
-
             try:
+                if room_name not in st.session_state.room_map_data:
+                    st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
+                    continue
+                    
+                room_id = st.session_state.room_map_data[room_name]['room_id']
                 room_info = get_room_event_info(room_id)
             
                 if not isinstance(room_info, dict):
@@ -398,8 +384,10 @@ def main():
                         remain_time_sec = event_data.get('remain_time')
                 
                 if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                    is_live = int(room_id) in onlives_rooms
+                    
                     data_to_display.append({
-                        "ライブ中": "🔴",
+                        "ライブ中": "🔴" if is_live else "",
                         "ルーム名": room_name,
                         "現在の順位": rank_info.get('rank', 'N/A'),
                         "現在のポイント": rank_info.get('point', 'N/A'),
@@ -419,14 +407,40 @@ def main():
 
         if data_to_display:
             df = pd.DataFrame(data_to_display)
+            
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+            
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+            
+            live_status = df['ライブ中']
+            df = df.drop(columns=['ライブ中'])
+            
+            df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
+            if not df.empty:
+                df.at[0, '上位とのポイント差'] = 0
 
+            df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+
+            df.insert(0, 'ライブ中', live_status)
+
+            st.subheader("📊 比較対象ルームのステータス")
+            
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
-                    styled_df = df.style.highlight_max(axis=0, subset=['現在のポイント']).format(
+                    def highlight_rows(row):
+                        """
+                        ライブ中のルームの行をハイライトし、それ以外の行を縞模様にする関数
+                        """
+                        if row['ライブ中'] == '🔴':
+                            return ['background-color: #e6fff2'] * len(row)
+                        elif row.name % 2 == 1:
+                            return ['background-color: #fafafa'] * len(row)
+                        else:
+                            return [''] * len(row)
+
+                    styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
                     st.dataframe(styled_df, use_container_width=True, hide_index=True)
@@ -436,87 +450,78 @@ def main():
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 st.warning("データに不備があるため、ハイライトやフォーマットを適用できませんでした。")
-        else:
-            st.info("選択されたルームに現在ライブ配信中のルームはありません。")
-        
-        # --- スペシャルギフト履歴表示セクション ---
-        st.subheader("🎁 スペシャルギフト履歴")
-        st.markdown("""
-            <style>
-            .gift-list-container {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                padding: 10px;
-                height: 400px; /* 固定の高さ */
-                overflow-y: scroll; /* 縦スクロールを有効にする */
-                width: 100%;
-            }
-            .gift-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 4px 0;
-                border-bottom: 1px solid #eee;
-            }
-            .gift-item:last-child {
-                border-bottom: none;
-            }
-            .gift-image {
-                width: 30px;
-                height: 30px;
-                border-radius: 5px;
-                object-fit: contain;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # ライブ中のルームの数に応じて、動的に列幅を決定
-        col_count = len(live_rooms_data)
-        if col_count > 0:
-            columns = st.columns(col_count, gap="small")
 
-            for i, room_data in enumerate(live_rooms_data):
-                with columns[i]:
-                    room_name = room_data['room_name']
-                    room_id = room_data['room_id']
+            st.subheader("📈 ポイントと順位の比較")
+            
+            if '現在のポイント' in df.columns:
+                fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
+                                     title="各ルームの現在のポイント", 
+                                     color="ルーム名",
+                                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
+                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_points, use_container_width=True)
+            else:
+                st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
+            
+            if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
+                df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", 
+                                     title="上位とのポイント差", 
+                                     color="ルーム名",
+                                     hover_data=["現在の順位", "現在のポイント"],
+                                     labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_upper_gap, use_container_width=True)
+            elif len(st.session_state.selected_room_names) > 1:
+                st.warning("上位とのポイント差データが不完全なため、上位とのポイント差グラフを表示できません。")
+
+            if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
+                df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
+                                 title="下位とのポイント差", 
+                                 color="ルーム名",
+                                 hover_data=["現在の順位", "現在のポイント"],
+                                 labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_lower_gap, use_container_width=True)
+            elif len(st.session_state.selected_room_names) > 1:
+                st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
+
+        # --- スペシャルギフト履歴表示セクション ---
+        st.subheader("🎁 スペシャルギフト履歴（ライブ中のルームのみ）")
+        
+        # 選択されたルーム数に基づいて列を作成
+        columns = st.columns(len(st.session_state.selected_room_names))
+        
+        for i, room_name in enumerate(st.session_state.selected_room_names):
+            with columns[i]:
+                st.markdown(f"**{room_name}**")
+                room_id = st.session_state.room_map_data[room_name]['room_id']
+                
+                if int(room_id) in onlives_rooms:
+                    gift_list_map = get_gift_list(room_id)
+                    gift_log = get_gift_log(room_id)
                     
-                    st.markdown(f"<h4 style='text-align: center;'>{room_name}</h4>", unsafe_allow_html=True)
-                    
-                    if int(room_id) in onlives_rooms:
-                        gift_list_map = get_gift_list(room_id)
-                        gift_log = get_gift_log(room_id)
-                        
-                        if gift_log:
-                            # 💡修正：最新のギフトが上に来るようにcreated_atでソート
-                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                    if gift_log:
+                        # 縦にリスト表示
+                        for log in gift_log:
+                            gift_id = log.get('gift_id')
+                            gift_info = gift_list_map.get(gift_id, {})
                             
-                            st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
-                            for log in gift_log:
-                                gift_id = log.get('gift_id')
-                                gift_info = gift_list_map.get(gift_id, {})
-                                
-                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                gift_image = gift_info.get('image', '')
-                                gift_count = log.get('num', 0)
-                                
-                                # 💡修正：ギフト名も表示
-                                gift_name = gift_info.get('name', '')
-                                
-                                st.markdown(f"""
-                                    <div class="gift-item">
-                                        <small>{gift_time}</small>
-                                        <img src="{gift_image}" class="gift-image" />
-                                        <span>×{gift_count}</span>
-                                        <small>{gift_name}</small>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
-                        else:
-                            st.info("ギフト履歴がありません。")
+                            gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                            gift_image = gift_info.get('image', '')
+                            gift_count = log.get('num', 0)
+                            
+                            # 💡修正：タイムスタンプと個数に加えて、ギフト画像と名前を表示
+                            st.markdown(f"""
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <small>{gift_time}</small>
+                                    <img src="{gift_image}" style="width: 30px; height: 30px; border-radius: 5px;" />
+                                    <span>×{gift_count}</span>
+                                </div>
+                            """, unsafe_allow_html=True)
                     else:
-                        st.info("ライブ配信していません。")
-        else:
-            st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                        st.info("ギフト履歴がありません。")
+                else:
+                    st.info("ライブ配信していません。")
         
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
