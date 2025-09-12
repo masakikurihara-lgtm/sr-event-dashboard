@@ -35,7 +35,7 @@ def get_events():
             elif isinstance(data, list):
                 page_events = data
             if not page_events:
-                break
+                    break
             events.extend(page_events)
             page += 1
         except requests.exceptions.RequestException as e:
@@ -397,19 +397,21 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
+                height: 500px;
                 display: flex;
                 flex-direction: column;
-                height: 500px;
             }
             .room-title {
                 text-align: center;
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                max-height: 4.5rem; 
-                overflow-y: auto; 
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden; 
                 white-space: normal;
-                border: 1px solid red; /* Debugging border */
+                height: 4.5rem; /* 修正: ルーム名称のエリアを3行分に固定 */
             }
             .gift-list-container {
                 flex-grow: 1;
@@ -446,6 +448,19 @@ def main():
             
             live_rooms_data = []
             if st.session_state.selected_room_names and st.session_state.room_map_data:
+                for room_name in st.session_state.selected_room_names:
+                    if room_name in st.session_state.room_map_data:
+                        room_id = st.session_state.room_map_data[room_name]['room_id']
+                        if int(room_id) in onlives_rooms:
+                            live_rooms_data.append({
+                                "room_name": room_name,
+                                "room_id": room_id,
+                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
+                            })
+                live_rooms_data.sort(key=lambda x: x['rank'])
+            
+            room_html_list = []
+            if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
