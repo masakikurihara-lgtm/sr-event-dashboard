@@ -481,7 +481,7 @@ def main():
             elif len(st.session_state.selected_room_names) > 1:
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
-        # --- スペシャルギフト履歴表示セクション ---
+# --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
         # 💡 修正: より堅牢なCSS構造に変更
         st.markdown("""
@@ -567,7 +567,6 @@ def main():
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
                                 gift_image = log.get('image', '')
                                 gift_count = log.get('num', 0)
-                                gift_name = gift_info.get('name', '')
                                 
                                 gift_list_html += f"""
                                     <div class="gift-item">
