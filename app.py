@@ -483,7 +483,7 @@ def main():
 
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
-        # 💡修正: ギフト表示用のCSSを再度見直し、より堅牢なレイアウトに
+        # 💡修正: カスタムCSSを再構築
         st.markdown("""
             <style>
             .gift-list-container {
@@ -496,37 +496,43 @@ def main():
             }
             .gift-item {
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
-                gap: 4px;
             }
             .gift-item:last-child {
                 border-bottom: none;
-            }
-            .gift-header {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .gift-info-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                flex-wrap: wrap;
             }
             .gift-image {
                 width: 30px;
                 height: 30px;
                 border-radius: 5px;
                 object-fit: contain;
-                min-width: 30px; /* 画像が小さくなりすぎないように */
+                min-width: 30px;
+            }
+            .gift-info {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                flex-grow: 1;
+                min-width: 0; /* overflow-hiddenを有効にするため */
+            }
+            .gift-time {
+                font-size: 0.8rem;
+                color: #555;
             }
             .gift-name {
-                flex-grow: 1;
-                word-break: break-all;
-                white-space: normal;
-                min-width: 50px; /* 名前が短すぎるとレイアウトが崩れるのを防ぐ */
+                font-weight: bold;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis; /* はみ出したテキストを...で表示 */
+            }
+            .gift-num {
+                font-size: 1rem;
+                font-weight: bold;
+                white-space: nowrap;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -566,25 +572,24 @@ def main():
                             st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
+                                
+                                # 💡修正: gift_idからgift_list_mapを使い、ギフト情報を取得
                                 gift_info = gift_list_map.get(gift_id, {})
                                 
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                
-                                # 💡修正: gift_list_mapから画像のURLを取得
                                 gift_image = gift_info.get('image', '')
                                 gift_count = log.get('num', 0)
-                                gift_name = gift_info.get('name', '')
+                                gift_name = gift_info.get('name', 'ギフト名不明')
                                 
+                                # 💡修正: HTMLをよりシンプルかつ堅牢に
                                 st.markdown(f"""
                                     <div class="gift-item">
-                                        <div class="gift-header">
-                                            <small>{gift_time}</small>
+                                        <img src="{gift_image}" class="gift-image" onerror="this.src='https://static.showroom-live.com/image/gift/noimage.png'">
+                                        <div class="gift-info">
+                                            <div class="gift-name">{gift_name}</div>
+                                            <div class="gift-time">{gift_time}</div>
                                         </div>
-                                        <div class="gift-info-row">
-                                            <img src="{gift_image}" class="gift-image" />
-                                            <span>×{gift_count}</span>
-                                            <small class="gift-name">{gift_name}</small>
-                                        </div>
+                                        <div class="gift-num">×{gift_count}</div>
                                     </div>
                                 """, unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
