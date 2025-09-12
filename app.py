@@ -397,20 +397,18 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px;
+                min-height: 500px; /* 修正: min-height に変更 */
                 display: flex;
                 flex-direction: column;
             }
             .room-title {
                 text-align: center;
-                font-size: 1rem; /* 修正: フォントサイズを調整 */
+                font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
                 display: block;
                 overflow: hidden; 
-                white-space: nowrap; 
-                text-overflow: ellipsis; 
-                padding: 5px; /* 追加: パディングを追加 */
+                white-space: normal; /* 修正: normal に変更 */
             }
             .gift-list-container {
                 flex-grow: 1;
