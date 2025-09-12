@@ -31,7 +31,7 @@ def get_events():
             response = requests.get(url, headers=HEADERS, timeout=5)
             response.raise_for_status()
             data = response.json()
-            
+
             page_events = []
             if isinstance(data, dict):
                 if 'events' in data:
@@ -232,10 +232,8 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-    # 💡 修正: multiselectのデフォルト値を管理する専用のセッションステート変数
     if "multiselect_default_value" not in st.session_state:
         st.session_state.multiselect_default_value = []
-    # 💡 修正: multiselectのキーを動的に変更するためのカウンター
     if "multiselect_key_counter" not in st.session_state:
         st.session_state.multiselect_key_counter = 0
 
@@ -280,10 +278,10 @@ def main():
         # イベント変更時に各種Stateを初期化
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
-        st.session_state.multiselect_default_value = [] # 💡 修正: multiselectのデフォルト値もリセット
-        st.session_state.multiselect_key_counter = 0 # 💡 修正: キーをリセット
+        st.session_state.multiselect_default_value = []
+        st.session_state.multiselect_key_counter = 0
         if 'select_top_15_checkbox' in st.session_state:
-            st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
+            st.session_state.select_top_15_checkbox = False
         st.rerun()
 
     room_count_text = ""
@@ -297,19 +295,16 @@ def main():
         return
     
     with st.form("room_selection_form"):
-        # 💡 修正: 注意書きを太字に
         select_top_15 = st.checkbox(
             "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
             key="select_top_15_checkbox"
         )
         
-        # ルーム一覧をポイントで降順ソート
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # 💡 修正: keyを動的に変更
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
@@ -323,7 +318,7 @@ def main():
         if st.session_state.select_top_15_checkbox:
             st.session_state.selected_room_names = top_15_rooms
             st.session_state.multiselect_default_value = top_15_rooms
-            st.session_state.multiselect_key_counter += 1 # 💡 修正: キーをインクリメントして再描画
+            st.session_state.multiselect_key_counter += 1
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
@@ -493,52 +488,41 @@ def main():
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴（ライブ中のルームのみ）")
         
-        all_gift_log = []
-        for room_name in st.session_state.selected_room_names:
-            room_id = st.session_state.room_map_data[room_name]['room_id']
-            # ライブ中のルームのみギフトログを取得
-            if int(room_id) in onlives_rooms:
-                gift_list_map = get_gift_list(room_id)
-                gift_log = get_gift_log(room_id)
+        # 選択されたルーム数に基づいて列を作成
+        columns = st.columns(len(st.session_state.selected_room_names))
+        
+        for i, room_name in enumerate(st.session_state.selected_room_names):
+            with columns[i]:
+                st.markdown(f"**{room_name}**")
+                room_id = st.session_state.room_map_data[room_name]['room_id']
                 
-                for log in gift_log:
-                    gift_id = log.get('gift_id')
-                    gift_info = gift_list_map.get(gift_id, {})
+                if int(room_id) in onlives_rooms:
+                    gift_list_map = get_gift_list(room_id)
+                    gift_log = get_gift_log(room_id)
                     
-                    try:
-                        # 💡修正：ポイントと個数を確実に整数に変換してから計算
-                        point_calc = int(gift_info.get('point', 0)) * int(log.get('num', 0))
-                    except (ValueError, TypeError):
-                        point_calc = 0
-                        
-                    all_gift_log.append({
-                        "ルーム名": room_name,
-                        "時間": datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S"),
-                        "ギフト": gift_info.get('image'),
-                        "ギフト名": gift_info.get('name'),
-                        "個数": log.get('num'),
-                        "ポイント": point_calc,
-                    })
-
-        if all_gift_log:
-            gift_df = pd.DataFrame(all_gift_log)
-            gift_df = gift_df.sort_values(by="時間", ascending=False)
-
-            st.dataframe(
-                gift_df, 
-                use_container_width=True, 
-                hide_index=True,
-                column_order=["時間", "ルーム名", "ギフト", "ギフト名", "個数", "ポイント"],
-                column_config={
-                    "時間": st.column_config.DatetimeColumn("時間", format="%-H:%M:%S"),
-                    "ギフト": st.column_config.ImageColumn("ギフト"),
-                    "ポイント": st.column_config.NumberColumn("ポイント", format="%,d"),
-                }
-            )
-        else:
-            st.info("現在ライブ中のルームがないか、ギフト履歴がありません。")
-
-
+                    if gift_log:
+                        # 縦にリスト表示
+                        for log in gift_log:
+                            gift_id = log.get('gift_id')
+                            gift_info = gift_list_map.get(gift_id, {})
+                            
+                            gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                            gift_image = gift_info.get('image', '')
+                            gift_count = log.get('num', 0)
+                            
+                            # 💡修正：タイムスタンプと個数に加えて、ギフト画像と名前を表示
+                            st.markdown(f"""
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <small>{gift_time}</small>
+                                    <img src="{gift_image}" style="width: 30px; height: 30px; border-radius: 5px;" />
+                                    <span>×{gift_count}</span>
+                                </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("ギフト履歴がありません。")
+                else:
+                    st.info("ライブ配信していません。")
+        
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
             time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
