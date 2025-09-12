@@ -7,7 +7,7 @@ import plotly.express as px
 import pytz
 
 # Set page configuration
-st.set_config(
+st.set_page_config(
     page_title="SHOWROOM Event Dashboard",
     page_icon="🎤",
     layout="wide",
