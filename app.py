@@ -397,7 +397,7 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px; /* 修正: height に固定 */
+                height: 500px;
                 display: flex;
                 flex-direction: column;
             }
@@ -406,15 +406,17 @@ def main():
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                display: block;
+                display: -webkit-box; /* 修正: 複数行表示のために追加 */
+                -webkit-line-clamp: 3; /* 修正: 3行で省略するように設定 */
+                -webkit-box-orient: vertical; /* 修正: 複数行表示のために追加 */
                 overflow: hidden; 
-                white-space: nowrap; /* 修正: nowrap に変更 */
-                text-overflow: ellipsis; /* 修正: ellipsis を追加 */
+                white-space: normal; /* 修正: normal に変更 */
+                text-overflow: ellipsis; /* 修正: ellipsis は不要なため削除 */
             }
             .gift-list-container {
                 flex-grow: 1;
-                height: 400px; /* 修正: height に固定 */
-                overflow-y: scroll; /* 修正: scroll に変更 */
+                height: 400px;
+                overflow-y: scroll;
                 -ms-overflow-style: none;
                 scrollbar-width: none;
             }
