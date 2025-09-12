@@ -558,7 +558,8 @@ def main():
                         
                         if gift_log:
                             gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                            
+
+                            with st.container():
                             st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
