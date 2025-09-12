@@ -392,7 +392,7 @@ def main():
                 gap: 15px;
             }
             .room-container {
-                width: 180px;
+                width: 180px; 
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
@@ -407,9 +407,9 @@ def main():
                 font-weight: bold;
                 margin-bottom: 10px;
                 display: block;
-                overflow: hidden;
-                white-space: nowrap;
-                text-overflow: ellipsis;
+                overflow: hidden; 
+                white-space: nowrap; 
+                text-overflow: ellipsis; 
             }
             .gift-list-container {
                 flex-grow: 1;
