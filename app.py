@@ -482,51 +482,9 @@ def main():
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
 # --- スペシャルギフト履歴表示セクション ---
-        st.subheader("🎁 スペシャルギフト履歴")
-        # 💡 修正: より堅牢なCSS構造に変更
-        st.markdown("""
-            <style>
-            .gift-list-container {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                padding: 10px;
-                height: 400px;
-                overflow-y: scroll;
-                width: 100%;
-            }
-            .gift-item {
-                display: flex;
-                flex-direction: column; /* 縦並び */
-                padding: 8px 0;
-                border-bottom: 1px solid #eee;
-                gap: 4px;
-            }
-            .gift-item:last-child {
-                border-bottom: none;
-            }
-            .gift-header {
-                font-weight: bold;
-            }
-            .gift-info-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                flex-wrap: wrap; /* ギフト名が長くなったら折り返す */
-            }
-            .gift-image {
-                width: 30px;
-                height: 30px;
-                border-radius: 5px;
-                object-fit: contain;
-            }
-            .gift-name {
-                flex-grow: 1;
-                word-break: break-all; /* 単語の途中で強制的に改行 */
-                white-space: normal;
-            }
-            </style>
-        """, unsafe_allow_html=True)
         
+        gift_history_placeholder = st.empty()
+
         live_rooms_data = []
         if st.session_state.selected_room_names and st.session_state.room_map_data:
             for room_name in st.session_state.selected_room_names:
@@ -541,52 +499,92 @@ def main():
             live_rooms_data.sort(key=lambda x: x['rank'])
             
         col_count = len(live_rooms_data)
-        if col_count > 0:
-            columns = st.columns(col_count, gap="small")
-
-            for i, room_data in enumerate(live_rooms_data):
-                with columns[i]:
-                    room_name = room_data['room_name']
-                    room_id = room_data['room_id']
-                    rank = room_data.get('rank', 'N/A')
-                    
-                    st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
-                    
-                    if int(room_id) in onlives_rooms:
-                        gift_list_map = get_gift_list(room_id)
-                        gift_log = get_gift_log(room_id)
+        
+        with gift_history_placeholder.container():
+            st.subheader("🎁 スペシャルギフト履歴")
+            st.markdown("""
+                <style>
+                .gift-list-container {
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    padding: 10px;
+                    height: 400px;
+                    overflow-y: scroll;
+                    width: 100%;
+                }
+                .gift-item {
+                    display: flex;
+                    flex-direction: column;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #eee;
+                    gap: 4px;
+                }
+                .gift-item:last-child {
+                    border-bottom: none;
+                }
+                .gift-header {
+                    font-weight: bold;
+                }
+                .gift-info-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+                .gift-image {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 5px;
+                    object-fit: contain;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            if col_count > 0:
+                columns = st.columns(col_count, gap="small")
+    
+                for i, room_data in enumerate(live_rooms_data):
+                    with columns[i]:
+                        room_name = room_data['room_name']
+                        room_id = room_data['room_id']
+                        rank = room_data.get('rank', 'N/A')
                         
-                        if gift_log:
-                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-
-                            gift_list_html = '<div class="gift-list-container">'
-                            for log in gift_log:
-                                gift_id = log.get('gift_id')
-                                gift_info = gift_list_map.get(gift_id, {})
-                                
-                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                gift_image = log.get('image', '')
-                                gift_count = log.get('num', 0)
-                                
-                                gift_list_html += f"""
-                                    <div class="gift-item">
-                                        <div class="gift-header">
-                                            <small>{gift_time}</small>
-                                        </div>
-                                        <div class="gift-info-row">
-                                            <img src="{gift_image}" class="gift-image" />
-                                            <span>×{gift_count}</span>
-                                        </div>
-                                    </div>
-                                """
-                            gift_list_html += '</div>'
-                            st.markdown(gift_list_html, unsafe_allow_html=True)
+                        st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
+                        
+                        if int(room_id) in onlives_rooms:
+                            gift_list_map = get_gift_list(room_id)
+                            gift_log = get_gift_log(room_id)
+                            
+                            if gift_log:
+                                gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+    
+                                gift_list_html = '<div class="gift-list-container">'
+                                for log in gift_log:
+                                    gift_id = log.get('gift_id')
+                                    gift_info = gift_list_map.get(gift_id, {})
+                                    
+                                    gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                    gift_image = log.get('image', '')
+                                    gift_count = log.get('num', 0)
+                                    
+                                    gift_list_html += '<div class="gift-item">'
+                                    gift_list_html += '<div class="gift-header">'
+                                    gift_list_html += f'<small>{gift_time}</small>'
+                                    gift_list_html += '</div>'
+                                    gift_list_html += '<div class="gift-info-row">'
+                                    gift_list_html += f'<img src="{gift_image}" class="gift-image" />'
+                                    gift_list_html += f'<span>×{gift_count}</span>'
+                                    gift_list_html += '</div>'
+                                    gift_list_html += '</div>'
+    
+                                gift_list_html += '</div>'
+                                st.markdown(gift_list_html, unsafe_allow_html=True)
+                            else:
+                                st.info("ギフト履歴がありません。")
                         else:
-                            st.info("ギフト履歴がありません。")
-                    else:
-                        st.info("ライブ配信していません。")
-        else:
-            st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                            st.info("ライブ配信していません。")
+            else:
+                st.info("選択されたルームに現在ライブ配信中のルームはありません。")
         
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
