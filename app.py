@@ -133,6 +133,39 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
+@st.cache_data(ttl=30)
+def get_gift_list(room_id):
+    """Fetches gift list for a specific room."""
+    url = f"https://www.showroom-live.com/api/live/gift_list?room_id={room_id}"
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        gift_list_map = {}
+        for gift in data.get('gift_list', []):
+            gift_list_map[gift['gift_id']] = {
+                'name': gift.get('gift_name', 'N/A'),
+                'point': gift.get('point', 0),
+                'image': gift.get('image', '')
+            }
+        return gift_list_map
+    except requests.exceptions.RequestException as e:
+        st.error(f"ルームID {room_id} のギフトリスト取得中にエラーが発生しました: {e}")
+        return {}
+
+@st.cache_data(ttl=5)
+def get_gift_log(room_id):
+    """Fetches recent gift logs for a specific room."""
+    url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=5)
+        response.raise_for_status()
+        return response.json().get('gift_log', [])
+    except requests.exceptions.RequestException as e:
+        st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。ライブ配信中か確認してください: {e}")
+        return []
+
 def get_onlives_rooms():
     """Fetches a list of currently live room IDs."""
     onlives = set()
@@ -449,6 +482,49 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
             elif len(st.session_state.selected_room_names) > 1:
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
+
+        # --- スペシャルギフト履歴表示セクション ---
+        st.subheader("🎁 スペシャルギフト履歴（ライブ中のルームのみ）")
+        
+        all_gift_log = []
+        for room_name in st.session_state.selected_room_names:
+            room_id = st.session_state.room_map_data[room_name]['room_id']
+            # ライブ中のルームのみギフトログを取得
+            if int(room_id) in onlives_rooms:
+                gift_list_map = get_gift_list(room_id)
+                gift_log = get_gift_log(room_id)
+                
+                for log in gift_log:
+                    gift_id = log.get('gift_id')
+                    gift_info = gift_list_map.get(gift_id, {})
+                    
+                    all_gift_log.append({
+                        "ルーム名": room_name,
+                        "時間": datetime.datetime.fromtimestamp(log.get('created_at'), JST).strftime("%H:%M:%S"),
+                        "ギフト": gift_info.get('image'),
+                        "ギフト名": gift_info.get('name'),
+                        "個数": log.get('num'),
+                        "ポイント": gift_info.get('point') * log.get('num', 0),
+                    })
+
+        if all_gift_log:
+            gift_df = pd.DataFrame(all_gift_log)
+            gift_df = gift_df.sort_values(by="時間", ascending=False)
+
+            st.dataframe(
+                gift_df, 
+                use_container_width=True, 
+                hide_index=True,
+                column_order=["時間", "ルーム名", "ギフト", "ギフト名", "個数", "ポイント"],
+                column_config={
+                    "時間": st.column_config.DatetimeColumn("時間", format="%-H:%M:%S"),
+                    "ギフト": st.column_config.ImageColumn("ギフト"),
+                    "ポイント": st.column_config.NumberColumn("ポイント", format="%,d"),
+                }
+            )
+        else:
+            st.info("現在ライブ中のルームがないか、ギフト履歴がありません。")
+
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
