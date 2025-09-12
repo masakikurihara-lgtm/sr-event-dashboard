@@ -417,8 +417,10 @@ def main():
             }
             </style>
             """, unsafe_allow_html=True)
-            
-            with st.container():
+
+            # 新しいロジック: st.empty()を使用してプレースホルダーを作成し、その中身を毎回更新する
+            gift_history_placeholder = st.empty()
+            with gift_history_placeholder.container():
                 live_rooms_data = []
                 if st.session_state.selected_room_names and st.session_state.room_map_data:
                     for room_name in st.session_state.selected_room_names:
