@@ -482,28 +482,10 @@ def main():
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
 
-        # --- スペシャルギフト履歴表示セクション ---
+# --- スペシャルギフト履歴表示セクション ---
         
-        # コンテナのプレースホルダーを定義 (変更なし)
-        gift_history_placeholder = st.empty()
-
-        live_rooms_data = []
-        if st.session_state.selected_room_names and st.session_state.room_map_data:
-            for room_name in st.session_state.selected_room_names:
-                if room_name in st.session_state.room_map_data:
-                    room_id = st.session_state.room_map_data[room_name]['room_id']
-                    if int(room_id) in onlives_rooms:
-                        live_rooms_data.append({
-                            "room_name": room_name,
-                            "room_id": room_id,
-                            "rank": st.session_state.room_map_data[room_name].get('rank', float('inf')) 
-                        })
-            live_rooms_data.sort(key=lambda x: x['rank'])
-            
-        col_count = len(live_rooms_data)
-        
-        # 修正: 全ての表示内容をこのコンテナ内に移動
-        with gift_history_placeholder.container():
+        # 修正: コンテナのプレースホルダーを削除し、直接コンテナを使用
+        with st.container():
             # 修正: ここにサブヘッダーとスタイルを移動させます
             st.subheader("🎁 スペシャルギフト履歴")
             st.markdown("""
@@ -543,6 +525,21 @@ def main():
                 }
                 </style>
             """, unsafe_allow_html=True)
+            
+            live_rooms_data = []
+            if st.session_state.selected_room_names and st.session_state.room_map_data:
+                for room_name in st.session_state.selected_room_names:
+                    if room_name in st.session_state.room_map_data:
+                        room_id = st.session_state.room_map_data[room_name]['room_id']
+                        if int(room_id) in onlives_rooms:
+                            live_rooms_data.append({
+                                "room_name": room_name,
+                                "room_id": room_id,
+                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf')) 
+                            })
+                live_rooms_data.sort(key=lambda x: x['rank'])
+                
+            col_count = len(live_rooms_data)
             
             if col_count > 0:
                 columns = st.columns(col_count, gap="small")
