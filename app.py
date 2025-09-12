@@ -406,12 +406,9 @@ def main():
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                display: -webkit-box;
-                -webkit-line-clamp: 3;
-                -webkit-box-orient: vertical;
+                height: 4.5rem; /* 修正: 高さを固定 */
                 overflow-y: auto; /* 修正: テキストが溢れた場合にスクロール可能にする */
                 white-space: normal;
-                height: 4.5rem; 
             }
             .gift-list-container {
                 flex-grow: 1;
