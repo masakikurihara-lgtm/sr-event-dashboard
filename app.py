@@ -388,13 +388,12 @@ def main():
             <style>
             .container-wrapper {
                 display: flex;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                padding-bottom: 10px;
+                flex-wrap: wrap; 
                 gap: 15px;
             }
             .room-container {
-                width: 180px;
+                min-width: 180px; 
+                flex-grow: 1; 
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
@@ -408,11 +407,8 @@ def main():
                 font-size: 1.1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                height: 40px;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                overflow: hidden;
+                display: block;
+                overflow-wrap: break-word; /* 修正: ルーム名が長すぎても折り返す */
             }
             .gift-list-container {
                 flex-grow: 1;
@@ -493,7 +489,7 @@ def main():
                                 )
                             html_content += '</div>'
                         else:
-                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
+                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p>'
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
