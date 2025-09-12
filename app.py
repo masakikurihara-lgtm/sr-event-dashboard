@@ -483,7 +483,7 @@ def main():
 
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
-        # 💡 修正: より堅牢なCSS構造に変更
+        # 💡修正: ギフト表示用のCSSを再度見直し、より堅牢なレイアウトに
         st.markdown("""
             <style>
             .gift-list-container {
@@ -496,7 +496,7 @@ def main():
             }
             .gift-item {
                 display: flex;
-                flex-direction: column; /* 縦並び */
+                flex-direction: column;
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
                 gap: 4px;
@@ -505,24 +505,28 @@ def main():
                 border-bottom: none;
             }
             .gift-header {
-                font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }
             .gift-info-row {
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                flex-wrap: wrap; /* ギフト名が長くなったら折り返す */
+                flex-wrap: wrap;
             }
             .gift-image {
                 width: 30px;
                 height: 30px;
                 border-radius: 5px;
                 object-fit: contain;
+                min-width: 30px; /* 画像が小さくなりすぎないように */
             }
             .gift-name {
                 flex-grow: 1;
-                word-break: break-all; /* 単語の途中で強制的に改行 */
+                word-break: break-all;
                 white-space: normal;
+                min-width: 50px; /* 名前が短すぎるとレイアウトが崩れるのを防ぐ */
             }
             </style>
         """, unsafe_allow_html=True)
@@ -565,6 +569,8 @@ def main():
                                 gift_info = gift_list_map.get(gift_id, {})
                                 
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                
+                                # 💡修正: gift_list_mapから画像のURLを取得
                                 gift_image = gift_info.get('image', '')
                                 gift_count = log.get('num', 0)
                                 gift_name = gift_info.get('name', '')
