@@ -185,15 +185,14 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
+    # セッションステートの初期化
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-    # 💡 修正: multiselectのデフォルト値を管理する新しいセッションステート
-    if "multiselect_default_value" not in st.session_state:
-        st.session_state.multiselect_default_value = []
+    # 💡 修正: multiselectのデフォルト値を管理する新しいセッションステートを削除し、直接キーで管理
     
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
@@ -236,7 +235,8 @@ def main():
         # イベント変更時に各種Stateを初期化
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
-        st.session_state.multiselect_default_value = [] # 💡 追加: multiselectのデフォルト値もリセット
+        if 'multiselect_key' in st.session_state:
+            del st.session_state.multiselect_key # multiselectのキーをリセット
         if 'select_top_15_checkbox' in st.session_state:
             st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
         st.rerun()
@@ -264,25 +264,26 @@ def main():
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # multiselectの選択状態を一時的に保持
+        # multiselectの選択状態を直接セッションステートで管理
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            # 💡 修正: multiselectのデフォルト値に専用のセッションステート変数を使用
-            default=st.session_state.multiselect_default_value,
+            # 💡 修正: `default`に直接セッションステートのキーを使用
+            default=st.session_state.get("multiselect_key", []),
             key="multiselect_key"
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # 💡 修正: チェックボックスがONの場合は、multiselectのデフォルト値も上位15に設定する
         if select_top_15:
+            # 💡 修正: チェックボックスがONの場合は、multiselectの値を上位15に設定
             st.session_state.selected_room_names = top_15_rooms
-            st.session_state.multiselect_default_value = top_15_rooms
+            st.session_state.multiselect_key = top_15_rooms
         else:
+            # 💡 修正: チェックボックスがOFFの場合は、手動で選択した内容に設定
             st.session_state.selected_room_names = selected_room_names_temp
-            st.session_state.multiselect_default_value = selected_room_names_temp
+            st.session_state.multiselect_key = selected_room_names_temp
         st.rerun()
 
     if not st.session_state.selected_room_names:
