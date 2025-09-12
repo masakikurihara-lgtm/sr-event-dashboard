@@ -484,7 +484,7 @@ def main():
 
 # --- スペシャルギフト履歴表示セクション ---
         
-        # コンテナのプレースホルダーを定義 (変更なし)
+        # 修正: コンテナのプレースホルダーを定義 (変更なし)
         gift_history_placeholder = st.empty()
 
         live_rooms_data = []
