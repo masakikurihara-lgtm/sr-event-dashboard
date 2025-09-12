@@ -173,7 +173,7 @@ def get_onlives_rooms():
     return onlives
 
 def main():
-    st.title("🎤 SHOWROOMイベント可視化ツール")
+    st.title("🎤 SHOWROOM Event Dashboard")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
 
     if "room_map_data" not in st.session_state:
@@ -397,7 +397,7 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                min-height: 500px; /* 修正: min-height に変更 */
+                height: 500px; /* 修正: height に固定 */
                 display: flex;
                 flex-direction: column;
             }
@@ -408,11 +408,13 @@ def main():
                 margin-bottom: 10px;
                 display: block;
                 overflow: hidden; 
-                white-space: normal; /* 修正: normal に変更 */
+                white-space: nowrap; /* 修正: nowrap に変更 */
+                text-overflow: ellipsis; /* 修正: ellipsis を追加 */
             }
             .gift-list-container {
                 flex-grow: 1;
-                overflow-y: scroll;
+                height: 400px; /* 修正: height に固定 */
+                overflow-y: scroll; /* 修正: scroll に変更 */
                 -ms-overflow-style: none;
                 scrollbar-width: none;
             }
