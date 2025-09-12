@@ -439,8 +439,10 @@ def main():
                             return ['background-color: #fafafa'] * len(row)
                         else:
                             return [''] * len(row)
-
-                    styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
+                    
+                    # 💡修正：format適用前にNaNを0に置き換える
+                    df_to_format = df.fillna(0)
+                    styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
                     st.dataframe(styled_df, use_container_width=True, hide_index=True)
