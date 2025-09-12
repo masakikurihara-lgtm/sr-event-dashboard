@@ -177,24 +177,23 @@ def get_onlives_rooms():
 
 # --- Main Application Logic ---
 
-# 💡 修正: 不要なコールバック関数を削除
-# def reset_top15_checkbox():
-#     if "select_top_15_checkbox_value" in st.session_state and st.session_state["select_top_15_checkbox_value"]:
-#         st.session_state["select_top_15_checkbox_value"] = False
+# 💡 修正: multiselectが変更されたときにチェックボックスをリセットするコールバック関数
+def reset_top15_checkbox():
+    st.session_state.is_top_15_selected = False
 
 def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
+    # 💡 修正: セッションステートの初期化をより堅牢に
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
-    # 💡 修正: multiselectの初期値を制御するキー
-    if "multiselect_default_value" not in st.session_state:
-        st.session_state.multiselect_default_value = []
+    if "is_top_15_selected" not in st.session_state:
+        st.session_state.is_top_15_selected = False
     
     st.header("1. イベントを選択")
     
@@ -233,10 +232,8 @@ def main():
         
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
-        # 💡 修正: セッションステートのリセット
-        st.session_state.multiselect_default_value = []
-        st.session_state["select_top_15_checkbox"] = False
-        st.session_state["submitted"] = False
+        # 💡 修正: 新しいイベントが選択されたら、状態を完全にリセット
+        st.session_state.is_top_15_selected = False
         st.rerun()
 
     room_count_text = ""
@@ -249,48 +246,35 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # ===== ▼▼▼ 修正されたフォームロジック ▼▼▼ =====
-    with st.form("room_selection_form"):
-        room_map = st.session_state.room_map_data
-        sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
-        room_options = [room[0] for room in sorted_rooms]
-        top_15_rooms = room_options[:15]
-
-        # 💡 修正: `multiselect`の`default`をセッションステートで制御
-        selected_room_names_temp = st.multiselect(
-            "比較したいルームを選択 (複数選択可):", 
-            options=room_options,
-            default=st.session_state.multiselect_default_value,
-            key="multiselect_key"
-        )
-        
-        # 💡 修正: `checkbox`の`value`をセッションステートで制御
-        select_top_15_value = st.checkbox(
-            "上位15ルームまでを選択",
-            value=st.session_state.get("select_top_15_checkbox", False),
-            key="select_top_15_checkbox_value"
-        )
-        
+    room_map = st.session_state.room_map_data
+    sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
+    room_options = [room[0] for room in sorted_rooms]
+    top_15_rooms = room_options[:15]
+    
+    # 💡 修正: multiselectとcheckboxをフォームの外に配置
+    selected_room_names_current = st.multiselect(
+        "比較したいルームを選択 (複数選択可):",
+        options=room_options,
+        default=st.session_state.selected_room_names,
+        on_change=reset_top15_checkbox
+    )
+    
+    is_top_15_selected = st.checkbox(
+        "上位15ルームまでを選択",
+        value=st.session_state.is_top_15_selected
+    )
+    
+    with st.form("display_form"):
         submitted = st.form_submit_button("表示する")
-
+    
+    # 💡 修正: submitボタンが押された際のロジック
     if submitted:
-        # 💡 フォーム送信時のロジック
-        if st.session_state.select_top_15_checkbox_value:
+        st.session_state.is_top_15_selected = is_top_15_selected
+        if st.session_state.is_top_15_selected:
             st.session_state.selected_room_names = top_15_rooms
-            st.session_state.multiselect_default_value = top_15_rooms
         else:
-            st.session_state.selected_room_names = st.session_state.multiselect_key
-            st.session_state.multiselect_default_value = st.session_state.multiselect_key
-            
-        st.session_state["select_top_15_checkbox"] = st.session_state.select_top_15_checkbox_value
-        st.session_state["submitted"] = True
+            st.session_state.selected_room_names = selected_room_names_current
         st.rerun()
-
-    # フォームがまだ送信されていない場合、またはリセットされた場合の初期表示
-    if not st.session_state.get("submitted", False) and not st.session_state.selected_room_names:
-        st.session_state.selected_room_names = st.session_state.multiselect_default_value
-
-    # ===== ▲▲▲ 修正されたフォームロジック ▲▲▲ =====
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
