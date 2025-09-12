@@ -483,7 +483,7 @@ def main():
 
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
-        # 💡修正: カスタムCSSを再構築
+        # 💡修正: カスタムCSSとHTMLを再構築
         st.markdown("""
             <style>
             .gift-list-container {
@@ -493,46 +493,34 @@ def main():
                 height: 400px;
                 overflow-y: scroll;
                 width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
             }
             .gift-item {
                 display: flex;
-                flex-direction: row;
                 align-items: center;
-                gap: 8px;
-                padding: 8px 0;
+                gap: 10px;
+                padding: 8px;
                 border-bottom: 1px solid #eee;
             }
             .gift-item:last-child {
                 border-bottom: none;
             }
             .gift-image {
-                width: 30px;
-                height: 30px;
-                border-radius: 5px;
+                width: 40px;
+                height: 40px;
                 object-fit: contain;
-                min-width: 30px;
-            }
-            .gift-info {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-                flex-grow: 1;
-                min-width: 0; /* overflow-hiddenを有効にするため */
             }
             .gift-time {
                 font-size: 0.8rem;
                 color: #555;
             }
-            .gift-name {
-                font-weight: bold;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis; /* はみ出したテキストを...で表示 */
-            }
             .gift-num {
-                font-size: 1rem;
+                font-size: 1.2rem;
                 font-weight: bold;
-                white-space: nowrap;
+                color: #ff4c4c;
+                margin-left: auto;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -573,23 +561,17 @@ def main():
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
                                 
-                                # 💡修正: gift_idからgift_list_mapを使い、ギフト情報を取得
                                 gift_info = gift_list_map.get(gift_id, {})
                                 
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
                                 gift_image = gift_info.get('image', '')
                                 gift_count = log.get('num', 0)
-                                gift_name = gift_info.get('name', 'ギフト名不明')
                                 
-                                # 💡修正: HTMLをよりシンプルかつ堅牢に
                                 st.markdown(f"""
                                     <div class="gift-item">
-                                        <img src="{gift_image}" class="gift-image" onerror="this.src='https://static.showroom-live.com/image/gift/noimage.png'">
-                                        <div class="gift-info">
-                                            <div class="gift-name">{gift_name}</div>
-                                            <div class="gift-time">{gift_time}</div>
-                                        </div>
-                                        <div class="gift-num">×{gift_count}</div>
+                                        <img src="{gift_image}" class="gift-image">
+                                        <span class="gift-time">{gift_time}</span>
+                                        <span class="gift-num">×{gift_count}</span>
                                     </div>
                                 """, unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
