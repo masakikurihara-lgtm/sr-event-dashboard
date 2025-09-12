@@ -391,7 +391,7 @@ def main():
                 flex-wrap: nowrap;
                 overflow-x: auto;
                 padding-bottom: 10px;
-                gap: 15px; /* ここでコンテナ間の間隔を調整 */
+                gap: 15px;
             }
             .room-container {
                 width: 180px;
@@ -408,9 +408,9 @@ def main():
                 font-size: 1.1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                height: 40px; /* タイトル部分の高さを固定 */
+                height: 40px;
                 display: -webkit-box;
-                -webkit-line-clamp: 2; /* 2行に制限 */
+                -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
                 overflow: hidden;
             }
@@ -447,68 +447,63 @@ def main():
             </style>
             """, unsafe_allow_html=True)
             
-            # st.empty()を使用してプレースホルダーを作成
-            gift_history_placeholder = st.empty()
+            live_rooms_data = []
+            if st.session_state.selected_room_names and st.session_state.room_map_data:
+                for room_name in st.session_state.selected_room_names:
+                    if room_name in st.session_state.room_map_data:
+                        room_id = st.session_state.room_map_data[room_name]['room_id']
+                        if int(room_id) in onlives_rooms:
+                            live_rooms_data.append({
+                                "room_name": room_name,
+                                "room_id": room_id,
+                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
+                            })
+                live_rooms_data.sort(key=lambda x: x['rank'])
             
-            # このプレースホルダーに対して直接要素を追加する
-            with gift_history_placeholder:
-                live_rooms_data = []
-                if st.session_state.selected_room_names and st.session_state.room_map_data:
-                    for room_name in st.session_state.selected_room_names:
-                        if room_name in st.session_state.room_map_data:
-                            room_id = st.session_state.room_map_data[room_name]['room_id']
-                            if int(room_id) in onlives_rooms:
-                                live_rooms_data.append({
-                                    "room_name": room_name,
-                                    "room_id": room_id,
-                                    "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
-                                })
-                    live_rooms_data.sort(key=lambda x: x['rank'])
-                
-                col_count = len(live_rooms_data)
-                if col_count > 0:
-                    columns = st.columns(col_count, gap="small")
-                    for i, room_data in enumerate(live_rooms_data):
-                        with columns[i]:
-                            room_name = room_data['room_name']
-                            room_id = room_data['room_id']
-                            rank = room_data.get('rank', 'N/A')
-                            
-                            if int(room_id) in onlives_rooms:
-                                gift_log = get_gift_log(room_id)
-                                
-                                # HTML全体を一つの文字列として構築し、幅を固定する
-                                html_content = f"""
-                                <div class="room-container">
-                                    <div class="room-title">
-                                        {rank}位：{room_name}
-                                    </div>
-                                    <div class="gift-list-container">
-                                """
-                                if gift_log:
-                                    gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                                    for log in gift_log:
-                                        gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                        gift_image = log.get('image', '')
-                                        gift_count = log.get('num', 0)
-                                        html_content += (
-                                            f'<div class="gift-item">'
-                                            f'<div class="gift-header"><small>{gift_time}</small></div>'
-                                            f'<div class="gift-info-row">'
-                                            f'<img src="{gift_image}" class="gift-image" />'
-                                            f'<span>×{gift_count}</span>'
-                                            f'</div></div>'
-                                        )
-                                    html_content += '</div>'
-                                else:
-                                    html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
-                                
-                                html_content += '</div>' # room-containerの閉じタグ
-                                st.markdown(html_content, unsafe_allow_html=True)
-                            else:
-                                st.markdown(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>', unsafe_allow_html=True)
-                else:
-                    st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+            col_count = len(live_rooms_data)
+            if col_count > 0:
+                html_container_content = '<div class="container-wrapper">'
+                for room_data in live_rooms_data:
+                    room_name = room_data['room_name']
+                    room_id = room_data['room_id']
+                    rank = room_data.get('rank', 'N/A')
+                    
+                    if int(room_id) in onlives_rooms:
+                        gift_log = get_gift_log(room_id)
+                        
+                        html_content = f"""
+                        <div class="room-container">
+                            <div class="room-title">
+                                {rank}位：{room_name}
+                            </div>
+                            <div class="gift-list-container">
+                        """
+                        if gift_log:
+                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                            for log in gift_log:
+                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                gift_image = log.get('image', '')
+                                gift_count = log.get('num', 0)
+                                html_content += (
+                                    f'<div class="gift-item">'
+                                    f'<div class="gift-header"><small>{gift_time}</small></div>'
+                                    f'<div class="gift-info-row">'
+                                    f'<img src="{gift_image}" class="gift-image" />'
+                                    f'<span>×{gift_count}</span>'
+                                    f'</div></div>'
+                                )
+                            html_content += '</div>'
+                        else:
+                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
+                        
+                        html_content += '</div>'
+                        html_container_content += html_content
+                    else:
+                        html_container_content += f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>'
+                html_container_content += '</div>'
+                st.markdown(html_container_content, unsafe_allow_html=True)
+            else:
+                st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
 
         if final_remain_time is not None:
