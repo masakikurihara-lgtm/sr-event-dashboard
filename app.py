@@ -397,9 +397,9 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px;
                 display: flex;
                 flex-direction: column;
+                height: 500px;
             }
             .room-title {
                 text-align: center;
@@ -409,9 +409,9 @@ def main():
                 display: -webkit-box;
                 -webkit-line-clamp: 3;
                 -webkit-box-orient: vertical;
-                overflow: hidden; 
+                overflow-y: auto; /* 修正: テキストが溢れた場合にスクロール可能にする */
                 white-space: normal;
-                height: 4.5rem; /* 修正: ルーム名称のエリアを3行分に固定 */
+                height: 4.5rem; 
             }
             .gift-list-container {
                 flex-grow: 1;
