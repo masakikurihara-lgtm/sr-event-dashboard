@@ -191,6 +191,9 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
+    # 💡 修正: multiselectのデフォルト値を管理する新しいセッションステート
+    if "multiselect_default_value" not in st.session_state:
+        st.session_state.multiselect_default_value = []
     
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
@@ -230,14 +233,14 @@ def main():
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
         
-        # ===== 修正点②: イベント変更時に各種Stateを初期化 =====
+        # イベント変更時に各種Stateを初期化
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
+        st.session_state.multiselect_default_value = [] # 💡 追加: multiselectのデフォルト値もリセット
         if 'select_top_15_checkbox' in st.session_state:
             st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
         st.rerun()
 
-    # ===== 修正点③: 参加ルーム数を表示 =====
     room_count_text = ""
     if st.session_state.room_map_data:
         room_count = len(st.session_state.room_map_data)
@@ -249,40 +252,38 @@ def main():
         return
     
     with st.form("room_selection_form"):
-        # ===== 修正点①: 「上位15ルームまでを選択」機能に変更 =====
+        # 💡 修正: 注意書きを太字に
         select_top_15 = st.checkbox(
-            "上位15ルームまでを選択（※チェックされている場合はこちらが優先されます）", 
-            key="select_top_15_checkbox" # keyを明示的に指定
+            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
+            key="select_top_15_checkbox"
         )
         
         # ルーム一覧をポイントで降順ソート
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
         room_options = [room[0] for room in sorted_rooms]
-
-        # チェックボックスの状態に応じて、multiselectのデフォルト選択を変更
-        default_selection = st.session_state.selected_room_names
-        if select_top_15:
-            default_selection = room_options[:15]
+        top_15_rooms = room_options[:15]
 
         # multiselectの選択状態を一時的に保持
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            default=default_selection,
+            # 💡 修正: multiselectのデフォルト値に専用のセッションステート変数を使用
+            default=st.session_state.multiselect_default_value,
             key="multiselect_key"
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # チェックボックスがONの場合は、multiselectの結果ではなく上位15件を優先する
+        # 💡 修正: チェックボックスがONの場合は、multiselectのデフォルト値も上位15に設定する
         if select_top_15:
-            st.session_state.selected_room_names = room_options[:15]
+            st.session_state.selected_room_names = top_15_rooms
+            st.session_state.multiselect_default_value = top_15_rooms
         else:
             st.session_state.selected_room_names = selected_room_names_temp
+            st.session_state.multiselect_default_value = selected_room_names_temp
         st.rerun()
-
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
