@@ -142,13 +142,16 @@ def get_onlives_rooms():
         response.raise_for_status()
         data = response.json()
 
+        # APIレスポンスの複数の構造パターンに対応
         all_lives = []
         if isinstance(data, dict):
+            # パターン1: {"onlives": [{"lives": [...]}]}
             if 'onlives' in data and isinstance(data['onlives'], list):
                 for genre_group in data['onlives']:
                     if 'lives' in genre_group and isinstance(genre_group['lives'], list):
                         all_lives.extend(genre_group['lives'])
             
+            # パターン2: {"official_lives": [...], "talent_lives": [...]}
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     all_lives.extend(data[live_type])
@@ -156,6 +159,7 @@ def get_onlives_rooms():
         for room in all_lives:
             room_id = None
             if isinstance(room, dict):
+                # 様々なキーから room_id を探す
                 room_id = room.get('room_id')
                 if room_id is None and 'live_info' in room and isinstance(room['live_info'], dict):
                     room_id = room['live_info'].get('room_id')
@@ -166,7 +170,7 @@ def get_onlives_rooms():
                 try:
                     onlives.add(int(room_id))
                 except (ValueError, TypeError):
-                    continue
+                    continue # 数値に変換できないIDはスキップ
 
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
@@ -188,6 +192,7 @@ def main():
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
     
+    # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
     events = get_events()
@@ -213,22 +218,26 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     
     st.info(f"選択されたイベント: **{selected_event_name}**")
-    
+
+    # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
+    # イベントが変更されたか、またはルームデータがまだない場合に取得
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
         
+        # ===== 修正点②: イベント変更時に各種Stateを初期化 =====
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         if 'select_top_15_checkbox' in st.session_state:
-            st.session_state.select_top_15_checkbox = False
+            st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
         st.rerun()
 
+    # ===== 修正点③: 参加ルーム数を表示 =====
     room_count_text = ""
     if st.session_state.room_map_data:
         room_count = len(st.session_state.room_map_data)
@@ -239,51 +248,41 @@ def main():
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
-    # ===== ▼▼▼ ここからロジックを大幅に修正 ▼▼▼ =====
     with st.form("room_selection_form"):
+        # ===== 修正点①: 「上位15ルームまでを選択」機能に変更 =====
+        select_top_15 = st.checkbox(
+            "上位15ルームまでを選択", 
+            key="select_top_15_checkbox" # keyを明示的に指定
+        )
+        
+        # ルーム一覧をポイントで降順ソート
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
         room_options = [room[0] for room in sorted_rooms]
-        top_15_rooms = room_options[:15]
 
-        # チェックボックス。「上位15ルーム」と現在の選択が一致する場合にのみTrueになるように状態を管理
-        is_currently_top_15 = set(st.session_state.selected_room_names) == set(top_15_rooms)
-        st.session_state.select_top_15_checkbox = is_currently_top_15
+        # チェックボックスの状態に応じて、multiselectのデフォルト選択を変更
+        default_selection = st.session_state.selected_room_names
+        if select_top_15:
+            default_selection = room_options[:15]
 
-        select_top_15 = st.checkbox(
-            "上位15ルームまでを選択",
-            key="select_top_15_checkbox"
-        )
-
-        # ルーム選択リスト。常に現在の選択状態(session_state)をデフォルトとして表示
+        # multiselectの選択状態を一時的に保持
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            default=st.session_state.selected_room_names,
+            default=default_selection,
             key="multiselect_key"
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # 「表示する」ボタンが押されたときの処理
-        
-        # 1. ユーザーがチェックボックスをONにした場合
-        # (元々OFFで今回ONにした、という意味)
-        if select_top_15 and not is_currently_top_15:
-            st.session_state.selected_room_names = top_15_rooms
-        
-        # 2. ユーザーが手動でルーム選択リストを変更した場合
-        # (チェックボックスの状態に関わらず、multiselectの内容を正とする)
+        # チェックボックスがONの場合は、multiselectの結果ではなく上位15件を優先する
+        if select_top_15:
+            st.session_state.selected_room_names = room_options[:15]
         else:
             st.session_state.selected_room_names = selected_room_names_temp
-
-        # 3. 最終的な選択状態が「上位15ルーム」と一致するかを判定し、次回のチェックボックス状態を確定させる
-        final_is_top_15 = set(st.session_state.selected_room_names) == set(top_15_rooms)
-        st.session_state.select_top_15_checkbox = final_is_top_15
-        
         st.rerun()
-    # ===== ▲▲▲ ここまでロジックを大幅に修正 ▲▲▲ =====
+
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
@@ -313,6 +312,7 @@ def main():
     final_remain_time = None
     
     if st.session_state.selected_room_names:
+        
         for room_name in st.session_state.selected_room_names:
             try:
                 if room_name not in st.session_state.room_map_data:
@@ -326,7 +326,8 @@ def main():
                     st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                     continue
             
-                rank_info = None; remain_time_sec = None
+                rank_info = None
+                remain_time_sec = None
                 
                 if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                     rank_info = room_info['ranking']
@@ -346,27 +347,41 @@ def main():
                     is_live = int(room_id) in onlives_rooms
                     
                     data_to_display.append({
-                        "ライブ中": "🔴" if is_live else "", "ルーム名": room_name,
-                        "現在の順位": rank_info.get('rank', 'N/A'), "現在のポイント": rank_info.get('point', 'N/A'),
-                        "上位とのポイント差": rank_info.get('upper_gap', 'N/A'), "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
+                        "ライブ中": "🔴" if is_live else "",
+                        "ルーム名": room_name,
+                        "現在の順位": rank_info.get('rank', 'N/A'),
+                        "現在のポイント": rank_info.get('point', 'N/A'),
+                        "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
+                        "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
                     })
                     
-                    if final_remain_time is None: final_remain_time = remain_time_sec
-                else: st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+                    if final_remain_time is None:
+                        final_remain_time = remain_time_sec
+
+                else:
+                    st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+
             except Exception as e:
                 st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                 continue
 
         if data_to_display:
             df = pd.DataFrame(data_to_display)
+            
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+            
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+            
             live_status = df['ライブ中']
             df = df.drop(columns=['ライブ中'])
+            
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            if not df.empty: df.at[0, '上位とのポイント差'] = 0
+            if not df.empty:
+                df.at[0, '上位とのポイント差'] = 0
+
             df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+
             df.insert(0, 'ライブ中', live_status)
 
             st.subheader("📊 比較対象ルームのステータス")
@@ -375,9 +390,16 @@ def main():
             if all(col in df.columns for col in required_cols):
                 try:
                     def highlight_rows(row):
-                        if row['ライブ中'] == '🔴': return ['background-color: #e6fff2'] * len(row)
-                        elif row.name % 2 == 1: return ['background-color: #fafafa'] * len(row)
-                        else: return [''] * len(row)
+                        """
+                        ライブ中のルームの行をハイライトし、それ以外の行を縞模様にする関数
+                        """
+                        if row['ライブ中'] == '🔴':
+                            return ['background-color: #e6fff2'] * len(row)
+                        elif row.name % 2 == 1:
+                            return ['background-color: #fafafa'] * len(row)
+                        else:
+                            return [''] * len(row)
+
                     styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
                     )
@@ -392,32 +414,42 @@ def main():
             st.subheader("📈 ポイントと順位の比較")
             
             if '現在のポイント' in df.columns:
-                fig_points = px.bar(df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
+                fig_points = px.bar(df, x="ルーム名", y="現在のポイント", 
+                                     title="各ルームの現在のポイント", 
+                                     color="ルーム名",
                                      hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                      labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_points, use_container_width=True)
-            else: st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
+            else:
+                st.warning("ポイントデータが不完全なため、ポイントグラフを表示できません。")
             
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", title="上位とのポイント差", color="ルーム名",
+                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差", 
+                                     title="上位とのポイント差", 
+                                     color="ルーム名",
                                      hover_data=["現在の順位", "現在のポイント"],
                                      labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_upper_gap, use_container_width=True)
-            elif len(st.session_state.selected_room_names) > 1: st.warning("上位とのポイント差データが不完全なため、上位とのポイント差グラフを表示できません。")
+            elif len(st.session_state.selected_room_names) > 1:
+                st.warning("上位とのポイント差データが不完全なため、上位とのポイント差グラフを表示できません。")
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", title="下位とのポイント差", color="ルーム名",
+                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差", 
+                                 title="下位とのポイント差", 
+                                 color="ルーム名",
                                  hover_data=["現在の順位", "現在のポイント"],
                                  labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
-            elif len(st.session_state.selected_room_names) > 1: st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
+            elif len(st.session_state.selected_room_names) > 1:
+                st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
             time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-        else: time_placeholder.info("残り時間情報を取得できませんでした。")
+        else:
+            time_placeholder.info("残り時間情報を取得できませんでした。")
     
     time.sleep(5)
     st.rerun()
