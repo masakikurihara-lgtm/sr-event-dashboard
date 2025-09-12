@@ -24,13 +24,14 @@ def get_events():
     """Fetches a list of ongoing SHOWROOM events."""
     events = []
     page = 1
+    # 念のため最大10ページまで取得
     for _ in range(10):
         url = f"https://www.showroom-live.com/api/event/search?page={page}&include_ended=0"
         try:
             response = requests.get(url, headers=HEADERS, timeout=5)
             response.raise_for_status()
             data = response.json()
-            
+
             page_events = []
             if isinstance(data, dict):
                 if 'events' in data:
@@ -54,6 +55,7 @@ def get_events():
             
     return events
 
+# ランキングAPIの候補を定義
 RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
     "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
@@ -217,6 +219,7 @@ def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
     
+    # セッションステートの初期化
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
     if "selected_event_name" not in st.session_state:
@@ -228,6 +231,7 @@ def main():
     if "multiselect_key_counter" not in st.session_state:
         st.session_state.multiselect_key_counter = 0
 
+    # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
     events = get_events()
@@ -254,6 +258,7 @@ def main():
     
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
+    # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
     selected_event_key = selected_event_data.get('event_url_key', '')
@@ -315,6 +320,7 @@ def main():
         st.warning("最低1つのルームを選択してください。")
         return
 
+    # --- Real-time Dashboard Section ---
     st.header("3. リアルタイムダッシュボード")
     st.info("5秒ごとに自動更新されます。")
 
@@ -477,52 +483,48 @@ def main():
 
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
-        st.info("ライブ配信中のルームのみ表示されます。")
-        
+        # 💡 修正: より堅牢なCSS構造に変更
         st.markdown("""
-        <style>
-        .gift-log-container {
-            display: flex;
-            flex-wrap: wrap; /* アイテムの折り返しを有効にする */
-            gap: 10px;
-            justify-content: flex-start; /* 左寄せにする */
-            max-height: 400px; /* 高さを指定 */
-            overflow-y: scroll; /* スクロール可能にする */
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .gift-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border: 1px solid #ccc;
-            padding: 5px;
-            border-radius: 8px;
-            width: 100px; /* アイテムの幅を固定 */
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .gift-image {
-            width: 50px; /* 画像のサイズを調整 */
-            height: 50px;
-            object-fit: contain; /* アスペクト比を維持して画像を収める */
-            margin: 5px 0;
-        }
-        .gift-name {
-            font-size: 0.7em;
-            color: #555;
-            white-space: nowrap; /* テキストの折り返しを防ぐ */
-            overflow: hidden; /* はみ出したテキストを隠す */
-            text-overflow: ellipsis; /* ...で表示 */
-            max-width: 90px;
-        }
-        .gift-count {
-            font-size: 0.9em;
-            font-weight: bold;
-            color: #333;
-        }
-        </style>
+            <style>
+            .gift-list-container {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+                height: 400px;
+                overflow-y: scroll;
+                width: 100%;
+            }
+            .gift-item {
+                display: flex;
+                flex-direction: column; /* 縦並び */
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                gap: 4px;
+            }
+            .gift-item:last-child {
+                border-bottom: none;
+            }
+            .gift-header {
+                font-weight: bold;
+            }
+            .gift-info-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap; /* ギフト名が長くなったら折り返す */
+            }
+            .gift-image {
+                width: 30px;
+                height: 30px;
+                border-radius: 5px;
+                object-fit: contain;
+            }
+            .gift-name {
+                flex-grow: 1;
+                word-break: break-all; /* 単語の途中で強制的に改行 */
+                white-space: normal;
+            }
+            </style>
         """, unsafe_allow_html=True)
         
         live_rooms_data = []
@@ -538,50 +540,60 @@ def main():
                         })
             live_rooms_data.sort(key=lambda x: x['rank'])
             
-        if live_rooms_data:
-            for room_data in live_rooms_data:
-                room_name = room_data['room_name']
-                room_id = room_data['room_id']
-                
-                st.markdown(f"**{room_name}**")
-                
-                gift_list_map = get_gift_list(room_id)
-                gift_log = get_gift_log(room_id)
-                
-                if gift_log:
-                    # ギフト履歴のHTMLを一つの文字列として構築
-                    html_content = '<div class="gift-log-container">'
-                    for log in gift_log:
-                        gift_id = log.get('gift_id')
-                        gift_info = gift_list_map.get(gift_id, {})
-                        
-                        gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                        gift_image = gift_info.get('image', '')
-                        gift_count = log.get('num', 0)
-                        gift_name = gift_info.get('name', '')
-                        
-                        html_content += f"""
-                            <div class="gift-item">
-                                <small>{gift_time}</small>
-                                <img src="{gift_image}" class="gift-image" />
-                                <span class="gift-count">×{gift_count}</span>
-                                <small class="gift-name">{gift_name}</small>
-                            </div>
-                        """
-                    html_content += '</div>'
+        col_count = len(live_rooms_data)
+        if col_count > 0:
+            columns = st.columns(col_count, gap="small")
+
+            for i, room_data in enumerate(live_rooms_data):
+                with columns[i]:
+                    room_name = room_data['room_name']
+                    room_id = room_data['room_id']
+                    rank = room_data.get('rank', 'N/A')
                     
-                    st.markdown(html_content, unsafe_allow_html=True)
-                else:
-                    st.info("ギフト履歴がありません。")
-                
+                    st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
+                    
+                    if int(room_id) in onlives_rooms:
+                        gift_list_map = get_gift_list(room_id)
+                        gift_log = get_gift_log(room_id)
+                        
+                        if gift_log:
+                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                            
+                            st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
+                            for log in gift_log:
+                                gift_id = log.get('gift_id')
+                                gift_info = gift_list_map.get(gift_id, {})
+                                
+                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                gift_image = gift_info.get('image', '')
+                                gift_count = log.get('num', 0)
+                                gift_name = gift_info.get('name', '')
+                                
+                                st.markdown(f"""
+                                    <div class="gift-item">
+                                        <div class="gift-header">
+                                            <small>{gift_time}</small>
+                                        </div>
+                                        <div class="gift-info-row">
+                                            <img src="{gift_image}" class="gift-image" />
+                                            <span>×{gift_count}</span>
+                                            <small class="gift-name">{gift_name}</small>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("ギフト履歴がありません。")
+                    else:
+                        st.info("ライブ配信していません。")
         else:
             st.info("選択されたルームに現在ライブ配信中のルームはありません。")
         
-    if final_remain_time is not None:
-        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-    else:
-        time_placeholder.info("残り時間情報を取得できませんでした。")
+        if final_remain_time is not None:
+            remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+            time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
+        else:
+            time_placeholder.info("残り時間情報を取得できませんでした。")
     
     time.sleep(5)
     st.rerun()
