@@ -145,22 +145,14 @@ def get_gift_list(room_id):
         gift_list_map = {}
         for gift in data.get('gift_list', []):
             try:
-                # 💡修正：ポイントを確実に整数に変換する
                 point_value = int(gift.get('point', 0))
             except (ValueError, TypeError):
-                # 変換に失敗した場合は0とする
                 point_value = 0
             
-            # 💡修正：画像URLのドメインを統一
-            image_url = gift.get('image', '').replace(
-                'https://static.showroom-live.com/image/gift',
-                'https://image.showroom-live.com/image/gift'
-            )
-
             gift_list_map[gift['gift_id']] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
-                'image': image_url
+                'image': gift.get('image', '')
             }
         return gift_list_map
     except requests.exceptions.RequestException as e:
@@ -188,16 +180,13 @@ def get_onlives_rooms():
         response.raise_for_status()
         data = response.json()
 
-        # APIレスポンスの複数の構造パターンに対応
         all_lives = []
         if isinstance(data, dict):
-            # パターン1: {"onlives": [{"lives": [...]}]}
             if 'onlives' in data and isinstance(data['onlives'], list):
                 for genre_group in data['onlives']:
                     if 'lives' in genre_group and isinstance(genre_group['lives'], list):
                         all_lives.extend(genre_group['lives'])
             
-            # パターン2: {"official_lives": [...], "talent_lives": [...]}
             for live_type in ['official_lives', 'talent_lives', 'amateur_lives']:
                 if live_type in data and isinstance(data.get(live_type), list):
                     all_lives.extend(data[live_type])
@@ -205,7 +194,6 @@ def get_onlives_rooms():
         for room in all_lives:
             room_id = None
             if isinstance(room, dict):
-                # 様々なキーから room_id を探す
                 room_id = room.get('room_id')
                 if room_id is None and 'live_info' in room and isinstance(room['live_info'], dict):
                     room_id = room['live_info'].get('room_id')
@@ -216,7 +204,7 @@ def get_onlives_rooms():
                 try:
                     onlives.add(int(room_id))
                 except (ValueError, TypeError):
-                    continue # 数値に変換できないIDはスキップ
+                    continue
 
     except requests.exceptions.RequestException as e:
         st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
@@ -276,12 +264,10 @@ def main():
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
-    # イベントが変更されたか、またはルームデータがまだない場合に取得
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
         
-        # イベント変更時に各種Stateを初期化
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
@@ -503,8 +489,8 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 400px; /* 固定の高さ */
-                overflow-y: scroll; /* 縦スクロールを有効にする */
+                height: 400px;
+                overflow-y: scroll;
                 width: 100%;
             }
             .gift-item {
@@ -513,7 +499,7 @@ def main():
                 gap: 8px;
                 padding: 4px 0;
                 border-bottom: 1px solid #eee;
-                flex-wrap: wrap; /* 💡修正：要素を折り返す */
+                flex-wrap: wrap;
             }
             .gift-item:last-child {
                 border-bottom: none;
@@ -524,10 +510,19 @@ def main():
                 border-radius: 5px;
                 object-fit: contain;
             }
+            .gift-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap; /* 💡修正: 折り返しを有効にする */
+            }
+            .gift-name {
+                flex-grow: 1; /* 💡修正: 残りのスペースを埋める */
+                word-break: break-all; /* 💡修正: 単語の途中で改行 */
+            }
             </style>
         """, unsafe_allow_html=True)
         
-        # ライブ中のルームだけを絞り込み、順位でソート
         live_rooms_data = []
         if st.session_state.selected_room_names and st.session_state.room_map_data:
             for room_name in st.session_state.selected_room_names:
@@ -541,7 +536,6 @@ def main():
                         })
             live_rooms_data.sort(key=lambda x: x['rank'])
             
-        # ライブ中のルームの数に応じて、動的に列幅を決定
         col_count = len(live_rooms_data)
         if col_count > 0:
             columns = st.columns(col_count, gap="small")
@@ -559,7 +553,6 @@ def main():
                         gift_log = get_gift_log(room_id)
                         
                         if gift_log:
-                            # 💡修正：最新のギフトが上に来るようにcreated_atでソート
                             gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                             
                             st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
@@ -576,9 +569,11 @@ def main():
                                 st.markdown(f"""
                                     <div class="gift-item">
                                         <small>{gift_time}</small>
-                                        <img src="{gift_image}" class="gift-image" />
-                                        <span>×{gift_count}</span>
-                                        <small>{gift_name}</small>
+                                        <div class="gift-info">
+                                            <img src="{gift_image}" class="gift-image" />
+                                            <span>×{gift_count}</span>
+                                            <small class="gift-name">{gift_name}</small>
+                                        </div>
                                     </div>
                                 """, unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
