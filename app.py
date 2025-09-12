@@ -577,7 +577,6 @@ def main():
                                         <div class="gift-info-row">
                                             <img src="{gift_image}" class="gift-image" />
                                             <span>×{gift_count}</span>
-                                            <small class="gift-name">{gift_name}</small>
                                         </div>
                                     </div>
                                 """, unsafe_allow_html=True)
