@@ -483,7 +483,7 @@ def main():
 
         # --- スペシャルギフト履歴表示セクション ---
         st.subheader("🎁 スペシャルギフト履歴")
-        # 💡修正: カスタムCSSとHTMLを再構築
+        # 💡 修正: より堅牢なCSS構造に変更
         st.markdown("""
             <style>
             .gift-list-container {
@@ -493,34 +493,36 @@ def main():
                 height: 400px;
                 overflow-y: scroll;
                 width: 100%;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
             }
             .gift-item {
                 display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 8px;
+                flex-direction: column; /* 縦並び */
+                padding: 8px 0;
                 border-bottom: 1px solid #eee;
+                gap: 4px;
             }
             .gift-item:last-child {
                 border-bottom: none;
             }
+            .gift-header {
+                font-weight: bold;
+            }
+            .gift-info-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap; /* ギフト名が長くなったら折り返す */
+            }
             .gift-image {
-                width: 40px;
-                height: 40px;
+                width: 30px;
+                height: 30px;
+                border-radius: 5px;
                 object-fit: contain;
             }
-            .gift-time {
-                font-size: 0.8rem;
-                color: #555;
-            }
-            .gift-num {
-                font-size: 1.2rem;
-                font-weight: bold;
-                color: #ff4c4c;
-                margin-left: auto;
+            .gift-name {
+                flex-grow: 1;
+                word-break: break-all; /* 単語の途中で強制的に改行 */
+                white-space: normal;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -560,18 +562,23 @@ def main():
                             st.markdown('<div class="gift-list-container">', unsafe_allow_html=True)
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
-                                
                                 gift_info = gift_list_map.get(gift_id, {})
                                 
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
                                 gift_image = gift_info.get('image', '')
                                 gift_count = log.get('num', 0)
+                                gift_name = gift_info.get('name', '')
                                 
                                 st.markdown(f"""
                                     <div class="gift-item">
-                                        <img src="{gift_image}" class="gift-image">
-                                        <span class="gift-time">{gift_time}</span>
-                                        <span class="gift-num">×{gift_count}</span>
+                                        <div class="gift-header">
+                                            <small>{gift_time}</small>
+                                        </div>
+                                        <div class="gift-info-row">
+                                            <img src="{gift_image}" class="gift-image" />
+                                            <span>×{gift_count}</span>
+                                            <small class="gift-name">{gift_name}</small>
+                                        </div>
                                     </div>
                                 """, unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
