@@ -35,7 +35,7 @@ def get_events():
             elif isinstance(data, list):
                 page_events = data
             if not page_events:
-                break
+                    break
             events.extend(page_events)
             page += 1
         except requests.exceptions.RequestException as e:
@@ -382,7 +382,7 @@ def main():
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
             
-            # --- 修正版スペシャルギフト履歴 ---
+            # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
             st.markdown("""
             <style>
@@ -417,10 +417,12 @@ def main():
             }
             </style>
             """, unsafe_allow_html=True)
-
-            # 新しいロジック: st.empty()を使用してプレースホルダーを作成し、その中身を毎回更新する
+            
+            # st.empty()を使用してプレースホルダーを作成
             gift_history_placeholder = st.empty()
-            with gift_history_placeholder.container():
+            
+            # このプレースホルダーに対して直接要素を追加する
+            with gift_history_placeholder:
                 live_rooms_data = []
                 if st.session_state.selected_room_names and st.session_state.room_map_data:
                     for room_name in st.session_state.selected_room_names:
@@ -433,7 +435,7 @@ def main():
                                     "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
                                 })
                     live_rooms_data.sort(key=lambda x: x['rank'])
-            
+                
                 col_count = len(live_rooms_data)
                 if col_count > 0:
                     columns = st.columns(col_count, gap="small")
@@ -444,7 +446,6 @@ def main():
                             rank = room_data.get('rank', 'N/A')
                             st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
                             if int(room_id) in onlives_rooms:
-                                gift_list_map = get_gift_list(room_id)
                                 gift_log = get_gift_log(room_id)
                                 if gift_log:
                                     gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
