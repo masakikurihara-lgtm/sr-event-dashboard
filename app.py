@@ -265,13 +265,11 @@ def main():
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # multiselectの選択状態を直接セッションステートで管理
+        # 💡 修正: key="multiselect_key" を削除し、デフォルト値をセッションステートで制御する
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            # 💡 修正: defaultに専用のセッションステート変数を使用
             default=st.session_state.multiselect_default_value,
-            key="multiselect_key"
         )
         
         submit_button = st.form_submit_button("表示する")
@@ -279,11 +277,9 @@ def main():
     if submit_button:
         if select_top_15:
             st.session_state.selected_room_names = top_15_rooms
-            # 💡 修正: multiselectのデフォルト値を更新
             st.session_state.multiselect_default_value = top_15_rooms
         else:
             st.session_state.selected_room_names = selected_room_names_temp
-            # 💡 修正: multiselectのデフォルト値を更新
             st.session_state.multiselect_default_value = selected_room_names_temp
         st.rerun()
 
