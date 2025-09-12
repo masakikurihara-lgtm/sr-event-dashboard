@@ -415,17 +415,6 @@ def main():
                 border-radius: 5px;
                 object-fit: contain;
             }
-            .column-container {
-                display: flex;
-                flex-wrap: nowrap;
-                gap: 10px;
-                overflow-x: auto;
-            }
-            .room-column {
-                flex: 0 0 150px;
-                max-width: 150px;
-                padding: 10px;
-            }
             </style>
             """, unsafe_allow_html=True)
             
@@ -447,40 +436,45 @@ def main():
                                 })
                     live_rooms_data.sort(key=lambda x: x['rank'])
                 
-                if live_rooms_data:
-                    st.markdown('<div class="column-container">', unsafe_allow_html=True)
-                    for room_data in live_rooms_data:
-                        room_name = room_data['room_name']
-                        room_id = room_data['room_id']
-                        rank = room_data.get('rank', 'N/A')
-                        
-                        st.markdown(f'<div class="room-column">', unsafe_allow_html=True)
-                        st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
-                        if int(room_id) in onlives_rooms:
-                            gift_log = get_gift_log(room_id)
-                            if gift_log:
-                                gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                                gift_list_html = '<div class="gift-list-container">'
-                                for log in gift_log:
-                                    gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                    gift_image = log.get('image', '')
-                                    gift_count = log.get('num', 0)
-                                    gift_list_html += (
-                                        f'<div class="gift-item">'
-                                        f'<div class="gift-header"><small>{gift_time}</small></div>'
-                                        f'<div class="gift-info-row">'
-                                        f'<img src="{gift_image}" class="gift-image" />'
-                                        f'<span>×{gift_count}</span>'
-                                        f'</div></div>'
-                                    )
-                                gift_list_html += '</div>'
-                                st.markdown(gift_list_html, unsafe_allow_html=True)
+                col_count = len(live_rooms_data)
+                if col_count > 0:
+                    columns = st.columns(col_count, gap="small")
+                    for i, room_data in enumerate(live_rooms_data):
+                        with columns[i]:
+                            room_name = room_data['room_name']
+                            room_id = room_data['room_id']
+                            rank = room_data.get('rank', 'N/A')
+                            
+                            if int(room_id) in onlives_rooms:
+                                gift_log = get_gift_log(room_id)
+                                
+                                # HTML全体を一つの文字列として構築し、幅を固定する
+                                html_content = f"""
+                                <div style="width: 150px; text-align: center;">
+                                    <h4 style="text-align: center;">{rank}位：{room_name}</h4>
+                                    <div class="gift-list-container">
+                                """
+                                if gift_log:
+                                    gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                                    for log in gift_log:
+                                        gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                        gift_image = log.get('image', '')
+                                        gift_count = log.get('num', 0)
+                                        html_content += (
+                                            f'<div class="gift-item">'
+                                            f'<div class="gift-header"><small>{gift_time}</small></div>'
+                                            f'<div class="gift-info-row">'
+                                            f'<img src="{gift_image}" class="gift-image" />'
+                                            f'<span>×{gift_count}</span>'
+                                            f'</div></div>'
+                                        )
+                                    html_content += '</div>'
+                                else:
+                                    html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
+                                
+                                st.markdown(html_content, unsafe_allow_html=True)
                             else:
-                                st.info("ギフト履歴がありません。")
-                        else:
-                            st.info("ライブ配信していません。")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div style="width: 150px; text-align: center;"><h4 style="text-align: center;">{rank}位：{room_name}</h4><p>ライブ配信していません。</p></div>', unsafe_allow_html=True)
                 else:
                     st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
