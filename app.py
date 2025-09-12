@@ -388,11 +388,10 @@ def main():
             <style>
             .container-wrapper {
                 display: flex;
-                justify-content: center;
-                gap: 20px;
                 flex-wrap: nowrap;
                 overflow-x: auto;
                 padding-bottom: 10px;
+                gap: 15px; /* ここでコンテナ間の間隔を調整 */
             }
             .room-container {
                 width: 180px;
@@ -400,23 +399,29 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px; /* 高さを固定 */
+                height: 500px;
+                display: flex;
+                flex-direction: column;
             }
             .room-title {
                 text-align: center;
                 font-size: 1.1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                overflow-wrap: break-word; /* ルーム名を折り返す */
+                height: 40px; /* タイトル部分の高さを固定 */
+                display: -webkit-box;
+                -webkit-line-clamp: 2; /* 2行に制限 */
+                -webkit-box-orient: vertical;
+                overflow: hidden;
             }
             .gift-list-container {
-                height: calc(100% - 40px); /* タイトル部分を除いた高さを設定 */
+                flex-grow: 1;
                 overflow-y: scroll;
-                -ms-overflow-style: none;  /* IE and Edge */
-                scrollbar-width: none;  /* Firefox */
+                -ms-overflow-style: none;
+                scrollbar-width: none;
             }
             .gift-list-container::-webkit-scrollbar {
-                display: none; /* Chrome, Safari, Opera */
+                display: none;
             }
             .gift-item {
                 display: flex;
@@ -460,49 +465,50 @@ def main():
                                 })
                     live_rooms_data.sort(key=lambda x: x['rank'])
                 
-                # コンテナを中央寄せにするためのラッパーを作成
-                st.markdown('<div class="container-wrapper">', unsafe_allow_html=True)
-
-                if live_rooms_data:
-                    for room_data in live_rooms_data:
-                        room_name = room_data['room_name']
-                        room_id = room_data['room_id']
-                        rank = room_data.get('rank', 'N/A')
-                        
-                        gift_log = get_gift_log(room_id)
-                        
-                        # HTML全体を一つの文字列として構築
-                        html_content = f"""
-                        <div class="room-container">
-                            <div class="room-title">
-                                {rank}位：{room_name}
-                            </div>
-                            <div class="gift-list-container">
-                        """
-                        if gift_log:
-                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                            for log in gift_log:
-                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                                gift_image = log.get('image', '')
-                                gift_count = log.get('num', 0)
-                                html_content += (
-                                    f'<div class="gift-item">'
-                                    f'<div class="gift-header"><small>{gift_time}</small></div>'
-                                    f'<div class="gift-info-row">'
-                                    f'<img src="{gift_image}" class="gift-image" />'
-                                    f'<span>×{gift_count}</span>'
-                                    f'</div></div>'
-                                )
-                            html_content += '</div>'
-                        else:
-                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
-                        
-                        html_content += '</div>' # room-containerの閉じタグ
-                        st.markdown(html_content, unsafe_allow_html=True)
+                col_count = len(live_rooms_data)
+                if col_count > 0:
+                    columns = st.columns(col_count, gap="small")
+                    for i, room_data in enumerate(live_rooms_data):
+                        with columns[i]:
+                            room_name = room_data['room_name']
+                            room_id = room_data['room_id']
+                            rank = room_data.get('rank', 'N/A')
+                            
+                            if int(room_id) in onlives_rooms:
+                                gift_log = get_gift_log(room_id)
+                                
+                                # HTML全体を一つの文字列として構築し、幅を固定する
+                                html_content = f"""
+                                <div class="room-container">
+                                    <div class="room-title">
+                                        {rank}位：{room_name}
+                                    </div>
+                                    <div class="gift-list-container">
+                                """
+                                if gift_log:
+                                    gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                                    for log in gift_log:
+                                        gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                        gift_image = log.get('image', '')
+                                        gift_count = log.get('num', 0)
+                                        html_content += (
+                                            f'<div class="gift-item">'
+                                            f'<div class="gift-header"><small>{gift_time}</small></div>'
+                                            f'<div class="gift-info-row">'
+                                            f'<img src="{gift_image}" class="gift-image" />'
+                                            f'<span>×{gift_count}</span>'
+                                            f'</div></div>'
+                                        )
+                                    html_content += '</div>'
+                                else:
+                                    html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
+                                
+                                html_content += '</div>' # room-containerの閉じタグ
+                                st.markdown(html_content, unsafe_allow_html=True)
+                            else:
+                                st.markdown(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>', unsafe_allow_html=True)
                 else:
                     st.info("選択されたルームに現在ライブ配信中のルームはありません。")
-                
-                st.markdown('</div>', unsafe_allow_html=True) # container-wrapperの閉じタグ
 
 
         if final_remain_time is not None:
