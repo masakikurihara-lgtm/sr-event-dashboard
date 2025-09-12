@@ -392,7 +392,7 @@ def main():
                 padding: 10px;
                 height: 400px;
                 overflow-y: scroll;
-                width: 150px;
+                width: 100%;
             }
             .gift-item {
                 display: flex;
