@@ -275,13 +275,12 @@ def main():
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
+        # 💡 修正: フォーム送信時のロジック。multiselect_default_valueを更新して、再描画時に反映させる
         if select_top_15:
             st.session_state.selected_room_names = top_15_rooms
-            # 💡 修正: multiselectのデフォルト値を更新
             st.session_state.multiselect_default_value = top_15_rooms
         else:
             st.session_state.selected_room_names = selected_room_names_temp
-            # 💡 修正: multiselectのデフォルト値を更新
             st.session_state.multiselect_default_value = selected_room_names_temp
         st.rerun()
 
