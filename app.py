@@ -481,8 +481,10 @@ def main():
             elif len(st.session_state.selected_room_names) > 1:
                 st.warning("ポイント差データが不完全なため、ポイント差グラフを表示できません。")
 
+
 # --- スペシャルギフト履歴表示セクション ---
         
+        # 修正: コンテナのプレースホルダーを定義 (変更なし)
         gift_history_placeholder = st.empty()
 
         live_rooms_data = []
@@ -500,7 +502,9 @@ def main():
             
         col_count = len(live_rooms_data)
         
+        # 修正: 全ての表示内容をこのコンテナ内に移動
         with gift_history_placeholder.container():
+            # 修正: ここにサブヘッダーとスタイルを移動させます
             st.subheader("🎁 スペシャルギフト履歴")
             st.markdown("""
                 <style>
