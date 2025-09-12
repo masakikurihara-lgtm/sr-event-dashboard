@@ -195,7 +195,10 @@ def main():
     # 💡 修正: multiselectのデフォルト値を管理する専用のセッションステート変数
     if "multiselect_default_value" not in st.session_state:
         st.session_state.multiselect_default_value = []
-    
+    # 💡 修正: multiselectのキーを動的に変更するためのカウンター
+    if "multiselect_key_counter" not in st.session_state:
+        st.session_state.multiselect_key_counter = 0
+
     # --- Event Selection Section ---
     st.header("1. イベントを選択")
     
@@ -238,6 +241,7 @@ def main():
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = [] # 💡 修正: multiselectのデフォルト値もリセット
+        st.session_state.multiselect_key_counter = 0 # 💡 修正: キーをリセット
         if 'select_top_15_checkbox' in st.session_state:
             st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
         st.rerun()
@@ -265,20 +269,21 @@ def main():
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # 💡 修正: key="multiselect_key" を削除し、デフォルト値をセッションステートで制御する
+        # 💡 修正: keyを動的に変更
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
             default=st.session_state.multiselect_default_value,
+            key=f"multiselect_{st.session_state.multiselect_key_counter}"
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # 💡 修正: フォーム送信時のロジック。multiselect_default_valueを更新して、再描画時に反映させる
-        if select_top_15:
+        if st.session_state.select_top_15_checkbox:
             st.session_state.selected_room_names = top_15_rooms
             st.session_state.multiselect_default_value = top_15_rooms
+            st.session_state.multiselect_key_counter += 1 # 💡 修正: キーをインクリメントして再描画
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
