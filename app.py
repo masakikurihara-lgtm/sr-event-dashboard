@@ -406,9 +406,10 @@ def main():
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                height: 4.5rem; 
+                max-height: 4.5rem; 
                 overflow-y: auto; 
                 white-space: normal;
+                border: 1px solid red; /* Debugging border */
             }
             .gift-list-container {
                 flex-grow: 1;
@@ -445,19 +446,6 @@ def main():
             
             live_rooms_data = []
             if st.session_state.selected_room_names and st.session_state.room_map_data:
-                for room_name in st.session_state.selected_room_names:
-                    if room_name in st.session_state.room_map_data:
-                        room_id = st.session_state.room_map_data[room_name]['room_id']
-                        if int(room_id) in onlives_rooms:
-                            live_rooms_data.append({
-                                "room_name": room_name,
-                                "room_id": room_id,
-                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
-                            })
-                live_rooms_data.sort(key=lambda x: x['rank'])
-            
-            room_html_list = []
-            if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
