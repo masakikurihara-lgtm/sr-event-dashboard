@@ -403,13 +403,14 @@ def main():
             }
             .room-title {
                 text-align: center;
-                font-size: 1.1rem;
+                font-size: 1rem; /* 修正: フォントサイズを調整 */
                 font-weight: bold;
                 margin-bottom: 10px;
                 display: block;
                 overflow: hidden; 
                 white-space: nowrap; 
                 text-overflow: ellipsis; 
+                padding: 5px; /* 追加: パディングを追加 */
             }
             .gift-list-container {
                 flex-grow: 1;
