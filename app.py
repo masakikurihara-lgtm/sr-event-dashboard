@@ -460,14 +460,13 @@ def main():
                             })
                 live_rooms_data.sort(key=lambda x: x['rank'])
             
-            col_count = len(live_rooms_data)
-            if col_count > 0:
-                html_container_content = '<div class="container-wrapper">'
+            room_html_list = []
+            if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
                     rank = room_data.get('rank', 'N/A')
-                    
+
                     if int(room_id) in onlives_rooms:
                         gift_log = get_gift_log(room_id)
                         
@@ -497,10 +496,11 @@ def main():
                             html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
                         
                         html_content += '</div>'
-                        html_container_content += html_content
+                        room_html_list.append(html_content)
                     else:
-                        html_container_content += f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>'
-                html_container_content += '</div>'
+                        room_html_list.append(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
+                
+                html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 st.markdown(html_container_content, unsafe_allow_html=True)
             else:
                 st.info("選択されたルームに現在ライブ配信中のルームはありません。")
