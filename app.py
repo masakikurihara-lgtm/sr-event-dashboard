@@ -177,6 +177,14 @@ def get_onlives_rooms():
 
 # --- Main Application Logic ---
 
+# 💡 追加: multiselectが変更されたときにチェックボックスをリセットするコールバック関数
+def reset_top15_checkbox():
+    if "select_top_15_checkbox" in st.session_state and st.session_state["select_top_15_checkbox"]:
+        st.session_state["select_top_15_checkbox"] = False
+        st.session_state["manual_change"] = True
+    else:
+        st.session_state["manual_change"] = True
+
 def main():
     st.title("🎤 SHOWROOMイベント可視化ツール")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
@@ -187,6 +195,9 @@ def main():
         st.session_state.selected_event_name = None
     if "selected_room_names" not in st.session_state:
         st.session_state.selected_room_names = []
+    # 💡 追加: ユーザーが手動で multiselect を変更したかどうかのフラグ
+    if "manual_change" not in st.session_state:
+        st.session_state["manual_change"] = False
     
     st.header("1. イベントを選択")
     
@@ -247,40 +258,51 @@ def main():
         room_options = [room[0] for room in sorted_rooms]
         top_15_rooms = room_options[:15]
 
-        # 現在の選択状態が「上位15」と一致するかどうかを判定
-        is_currently_top_15 = set(st.session_state.selected_room_names) == set(top_15_rooms)
+        # 💡 修正: multiselectのdefaultを調整
+        # チェックボックスがONの場合は上位15、OFFの場合は前回の選択を保持
+        current_multiselect_default = st.session_state.selected_room_names
 
-        # チェックボックスを描画。デフォルト値は前のランの状態から決定する。
-        select_top_15 = st.checkbox(
-            "上位15ルームまでを選択",
-            value=is_currently_top_15, # `value` を使って表示状態を制御
-            key="select_top_15_checkbox"
-        )
-
-        # ルーム選択リストを描画
+        # 💡 修正: multiselectのon_changeイベントを追加
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", 
             options=room_options,
-            default=st.session_state.selected_room_names,
-            key="multiselect_key"
+            default=current_multiselect_default,
+            key="multiselect_key",
+            on_change=reset_top15_checkbox # 💡 追加
+        )
+
+        # 💡 修正: multiselectの変更を即座に反映
+        st.session_state.selected_room_names = selected_room_names_temp
+        
+        # 💡 修正: チェックボックスの値をセッションステートで管理し、表示に反映
+        select_top_15 = st.checkbox(
+            "上位15ルームまでを選択",
+            value=st.session_state.get("select_top_15_checkbox", False),
+            key="select_top_15_checkbox_value"
         )
         
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # フォーム送信時のロジック
-        # ユーザーが手動で multiselect を変更したかどうかを判定
-        user_made_manual_change = set(selected_room_names_temp) != set(st.session_state.selected_room_names)
+        # 💡 修正: チェックボックスの状態をセッションステートに保存
+        st.session_state.select_top_15_checkbox = st.session_state.select_top_15_checkbox_value
 
-        # 1. チェックボックスがONにされた場合（手動変更なし）
-        if select_top_15 and not user_made_manual_change:
+        # 💡 修正: 優先順位ロジックを簡素化
+        if st.session_state.select_top_15_checkbox:
             st.session_state.selected_room_names = top_15_rooms
-        # 2. それ以外の場合（手動変更があった、またはチェックボックスがOFFにされた）
+            st.session_state["manual_change"] = False
         else:
-            st.session_state.selected_room_names = selected_room_names_temp
-        
-        # rerunして画面を再描画
+            st.session_state.selected_room_names = st.session_state.multiselect_key
+            st.session_state["manual_change"] = True # 手動変更フラグを立てる
+
         st.rerun()
+
+    # 💡 修正: チェックボックスがONのときにmultiselectの選択内容を自動更新
+    if st.session_state.get("select_top_15_checkbox_value", False) and not st.session_state.get("manual_change", False):
+        st.session_state.selected_room_names = top_15_rooms
+    elif not st.session_state.get("select_top_15_checkbox_value", False) and st.session_state.get("manual_change", False):
+        st.session_state.selected_room_names = st.session_state.multiselect_key
+        
     # ===== ▲▲▲ ここまでロジックを修正 ▲▲▲ =====
 
     if not st.session_state.selected_room_names:
