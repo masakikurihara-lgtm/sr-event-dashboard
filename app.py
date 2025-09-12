@@ -251,7 +251,7 @@ def main():
     with st.form("room_selection_form"):
         # ===== 修正点①: 「上位15ルームまでを選択」機能に変更 =====
         select_top_15 = st.checkbox(
-            "上位15ルームまでを選択", 
+            "上位15ルームまでを選択（※チェックされている場合はこちらが優先されます）", 
             key="select_top_15_checkbox" # keyを明示的に指定
         )
         
