@@ -495,24 +495,14 @@ def main():
             }
             .gift-item {
                 display: flex;
-                flex-direction: column;
-                padding: 8px 0;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 0;
                 border-bottom: 1px solid #eee;
-                gap: 4px;
+                flex-wrap: wrap;
             }
             .gift-item:last-child {
                 border-bottom: none;
-            }
-            .gift-header {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .gift-info-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                flex-wrap: wrap;
             }
             .gift-image {
                 width: 30px;
@@ -520,10 +510,15 @@ def main():
                 border-radius: 5px;
                 object-fit: contain;
             }
+            .gift-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap; /* 💡修正: 折り返しを有効にする */
+            }
             .gift-name {
-                flex-grow: 1;
-                word-break: break-all;
-                white-space: normal;
+                flex-grow: 1; /* 💡修正: 残りのスペースを埋める */
+                word-break: break-all; /* 💡修正: 単語の途中で改行 */
             }
             </style>
         """, unsafe_allow_html=True)
@@ -573,10 +568,8 @@ def main():
                                 
                                 st.markdown(f"""
                                     <div class="gift-item">
-                                        <div class="gift-header">
-                                            <small>{gift_time}</small>
-                                        </div>
-                                        <div class="gift-info-row">
+                                        <small>{gift_time}</small>
+                                        <div class="gift-info">
                                             <img src="{gift_image}" class="gift-image" />
                                             <span>×{gift_count}</span>
                                             <small class="gift-name">{gift_name}</small>
