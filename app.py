@@ -579,7 +579,7 @@ def main():
                                             <span>×{gift_count}</span>
                                         </div>
                                     </div>
-                                """, unsafe_allow_html=True)
+                                """
                             gift_list_html += '</div>'
                             st.markdown(gift_list_html, unsafe_allow_html=True)
                         else:
