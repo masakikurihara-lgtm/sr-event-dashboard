@@ -392,8 +392,7 @@ def main():
                 gap: 15px;
             }
             .room-container {
-                min-width: 180px; 
-                flex-grow: 1; 
+                width: 180px;
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
@@ -408,7 +407,9 @@ def main():
                 font-weight: bold;
                 margin-bottom: 10px;
                 display: block;
-                overflow-wrap: break-word; /* 修正: ルーム名が長すぎても折り返す */
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
             }
             .gift-list-container {
                 flex-grow: 1;
@@ -489,7 +490,7 @@ def main():
                                 )
                             html_content += '</div>'
                         else:
-                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p>'
+                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
