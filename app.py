@@ -151,10 +151,16 @@ def get_gift_list(room_id):
                 # 変換に失敗した場合は0とする
                 point_value = 0
             
+            # 💡修正：画像URLのドメインを統一
+            image_url = gift.get('image', '').replace(
+                'https://static.showroom-live.com/image/gift',
+                'https://image.showroom-live.com/image/gift'
+            )
+
             gift_list_map[gift['gift_id']] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
-                'image': gift.get('image', '')
+                'image': image_url
             }
         return gift_list_map
     except requests.exceptions.RequestException as e:
@@ -507,6 +513,7 @@ def main():
                 gap: 8px;
                 padding: 4px 0;
                 border-bottom: 1px solid #eee;
+                flex-wrap: wrap; /* 💡修正：要素を折り返す */
             }
             .gift-item:last-child {
                 border-bottom: none;
@@ -543,8 +550,9 @@ def main():
                 with columns[i]:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
+                    rank = room_data.get('rank', 'N/A')
                     
-                    st.markdown(f"<h4 style='text-align: center;'>{room_name}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='text-align: center;'>{rank}位：{room_name}</h4>", unsafe_allow_html=True)
                     
                     if int(room_id) in onlives_rooms:
                         gift_list_map = get_gift_list(room_id)
