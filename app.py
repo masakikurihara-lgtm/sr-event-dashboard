@@ -218,51 +218,71 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     
     st.info(f"選択されたイベント: **{selected_event_name}**")
-    st.markdown(f"**▶ [イベントページへ移動する]({event_url})**", unsafe_allow_html=True)
 
-    if st.session_state.selected_event_name != selected_event_name:
-        st.session_state.selected_event_name = selected_event_name
-        st.session_state.room_map_data = None
-        st.session_state.selected_room_names = []
-        st.rerun()
-
-    if not selected_event_data:
-        st.error(f"選択されたイベント '{selected_event_name}' の詳細情報が見つかりませんでした。別のイベントを選択してください。")
-        return
-
-    selected_event_key = selected_event_data.get('event_url_key', '')
-    selected_event_id = selected_event_data.get('event_id')
-    
     # --- Room Selection Section ---
     st.header("2. 比較したいルームを選択")
     
-    if st.session_state.room_map_data is None:
+    selected_event_key = selected_event_data.get('event_url_key', '')
+    selected_event_id = selected_event_data.get('event_id')
+
+    # イベントが変更されたか、またはルームデータがまだない場合に取得
+    if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+        
+        # ===== 修正点②: イベント変更時に各種Stateを初期化 =====
+        st.session_state.selected_event_name = selected_event_name
+        st.session_state.selected_room_names = []
+        if 'select_top_15_checkbox' in st.session_state:
+            st.session_state.select_top_15_checkbox = False # チェックボックスをオフに
+        st.rerun()
+
+    # ===== 修正点③: 参加ルーム数を表示 =====
+    room_count_text = ""
+    if st.session_state.room_map_data:
+        room_count = len(st.session_state.room_map_data)
+        room_count_text = f" （現在{room_count}ルーム参加）"
+    st.markdown(f"**▶ [イベントページへ移動する]({event_url})**{room_count_text}", unsafe_allow_html=True)
 
     if not st.session_state.room_map_data:
         st.warning("このイベントの参加者情報を取得できませんでした。")
         return
     
     with st.form("room_selection_form"):
-        select_all = st.checkbox("全てのルームを選択", key="select_all_checkbox")
+        # ===== 修正点①: 「上位15ルームまでを選択」機能に変更 =====
+        select_top_15 = st.checkbox(
+            "上位15ルームまでを選択", 
+            key="select_top_15_checkbox" # keyを明示的に指定
+        )
         
-        room_options = list(st.session_state.room_map_data.keys())
+        # ルーム一覧をポイントで降順ソート
+        room_map = st.session_state.room_map_data
+        sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
+        room_options = [room[0] for room in sorted_rooms]
+
+        # チェックボックスの状態に応じて、multiselectのデフォルト選択を変更
+        default_selection = st.session_state.selected_room_names
+        if select_top_15:
+            default_selection = room_options[:15]
+
+        # multiselectの選択状態を一時的に保持
+        selected_room_names_temp = st.multiselect(
+            "比較したいルームを選択 (複数選択可):", 
+            options=room_options,
+            default=default_selection,
+            key="multiselect_key"
+        )
         
-        if select_all:
-            st.session_state.selected_room_names_temp = room_options
-        else:
-            st.session_state.selected_room_names_temp = st.multiselect(
-                "比較したいルームを選択 (複数選択可):", 
-                options=room_options,
-                default=st.session_state.selected_room_names,
-                key="multiselect_key"
-            )
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        st.session_state.selected_room_names = st.session_state.selected_room_names_temp
+        # チェックボックスがONの場合は、multiselectの結果ではなく上位15件を優先する
+        if select_top_15:
+            st.session_state.selected_room_names = room_options[:15]
+        else:
+            st.session_state.selected_room_names = selected_room_names_temp
         st.rerun()
+
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
@@ -369,21 +389,16 @@ def main():
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
-                    # ===== 変更点: ここから =====
                     def highlight_rows(row):
                         """
                         ライブ中のルームの行をハイライトし、それ以外の行を縞模様にする関数
                         """
-                        # ライブ中の場合、背景色を薄い緑色に設定
                         if row['ライブ中'] == '🔴':
                             return ['background-color: #e6fff2'] * len(row)
-                        # ライブ中でない奇数行の場合、背景色を薄い灰色に設定 (縞模様)
                         elif row.name % 2 == 1:
                             return ['background-color: #fafafa'] * len(row)
-                        # それ以外 (ライブ中でない偶数行) はスタイルなし
                         else:
                             return [''] * len(row)
-                    # ===== 変更点: ここまで =====
 
                     styled_df = df.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'}
