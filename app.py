@@ -549,155 +549,91 @@ def main():
     payload_escaped = html.escape(payload_json)
 
     # components 用 HTML + JS
-    # JS は window.__prevGiftState に以前の状態を保持し、差分を検出して DOM を操作します。
-    # 各 room の要素 id は "sr-room-{room_id}"
-    components_html = f"""
+    # f-string の `${...}` が Python に誤認されないよう、${ を $\{ に置換
+    components_html = """
     <div id="sr-gift-root">
       <div class="container-wrapper" id="sr-container"></div>
     </div>
     <script>
-    (function() {{
-      // decode payload
-      const payload = JSON.parse(`{payload_escaped}`);
+    (function() {
+      const payload = JSON.parse(`%s`);
       const container = document.getElementById('sr-container');
 
-      // helper: build inner HTML for a room (only the .room-container content)
-      function buildRoomHTML(room) {{
-        // build gift items HTML
-        const giftListMap = room.gift_list || {{}};
-        const giftLog = room.gift_log || [];
+      function buildRoomHTML(room) {
         let inner = '';
-        inner += `<div class="room-container" data-room-id="${room.room_id}" id="sr-room-${room.room_id}">`;
-        inner += `<div class="ranking-label" style="background-color: ${room.rank_color};">${room.rank}位</div>`;
-        inner += `<div class="room-title">${escapeHtml(room.room_name)}</div>`;
-        inner += `<div class="gift-list-container">`;
-        if (!giftLog || giftLog.length === 0) {{
+        inner += '<div class="room-container" data-room-id="' + room.room_id + '" id="sr-room-' + room.room_id + '">';
+        inner += '<div class="ranking-label" style="background-color: ' + room.rank_color + ';">' + room.rank + '位</div>';
+        inner += '<div class="room-title">' + escapeHtml(room.room_name) + '</div>';
+        inner += '<div class="gift-list-container">';
+        if (!room.gift_log || room.gift_log.length === 0) {
           inner += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p>';
-        }} else {{
-          // sort descending by created_at (server already sorts but be safe)
-          giftLog.sort((a,b) => (b.created_at||0) - (a.created_at||0));
-          for (const log of giftLog) {{
+        } else {
+          room.gift_log.sort((a,b) => (b.created_at||0) - (a.created_at||0));
+          for (const log of room.gift_log) {
             const gid = String(log.gift_id);
-            const ginfo = giftListMap[gid] || {{point:0, image: log.image || ''}};
+            const ginfo = (room.gift_list||{})[gid] || {point:0, image: log.image||''};
             const gift_point = ginfo.point || 0;
             const gift_count = log.num || 0;
             const total_point = gift_point * gift_count;
             let highlight_class = '';
-            if (gift_point >= 500) {{
+            if (gift_point >= 500) {
               if (total_point >= 300000) highlight_class = 'highlight-300000';
               else if (total_point >= 100000) highlight_class = 'highlight-100000';
               else if (total_point >= 60000) highlight_class = 'highlight-60000';
               else if (total_point >= 30000) highlight_class = 'highlight-30000';
               else if (total_point >= 10000) highlight_class = 'highlight-10000';
-            }}
-            const img = log.image || (ginfo.image || '');
-            const ts = (log.created_at ? new Date((log.created_at)*1000) : null);
-            const tsStr = ts ? ts.toLocaleTimeString('ja-JP', {{hour12:false}}) : '';
-            inner += `<div class="gift-item ${highlight_class}">` +
-                     `<div class="gift-header"><small>${tsStr}</small></div>` +
-                     `<div class="gift-info-row"><img src="${escapeAttr(img)}" class="gift-image" /><span>×${gift_count}</span></div>` +
-                     `<div>${gift_point}pt</div></div>`;
-          }}
-        }}
+            }
+            const img = log.image || ginfo.image || '';
+            const ts = log.created_at ? new Date(log.created_at*1000).toLocaleTimeString('ja-JP',{hour12:false}) : '';
+            inner += '<div class="gift-item ' + highlight_class + '">' +
+                     '<div class="gift-header"><small>' + ts + '</small></div>' +
+                     '<div class="gift-info-row"><img src="' + escapeAttr(img) + '" class="gift-image" /><span>×' + gift_count + '</span></div>' +
+                     '<div>' + gift_point + 'pt</div></div>';
+          }
+        }
         inner += '</div></div>';
         return inner;
-      }}
+      }
 
-      // small escape helpers
-      function escapeHtml(str) {{
-        if (str === null || str === undefined) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-      }}
-      function escapeAttr(str) {{
-        if (str === null || str === undefined) return '';
-        return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/&/g,'&amp;');
-      }}
+      function escapeHtml(str){return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+      function escapeAttr(str){return (str||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/&/g,'&amp;');}
 
-      // previous state stored in window
-      if (!window.__prevGiftState) {{
-        window.__prevGiftState = {{}};
-      }}
+      if(!window.__prevGiftState) window.__prevGiftState = {};
       const prev = window.__prevGiftState;
+      const incomingMap = {};
+      for(const r of payload){incomingMap[r.room_id]=r;}
 
-      // build map for incoming
-      const incomingMap = {{}};
-      for (const r of payload) {{
-        incomingMap[r.room_id] = r;
-      }}
-
-      // 1) Remove rooms that existed previously but not now
-      for (const prevId of Object.keys(prev)) {{
-        if (!(prevId in incomingMap)) {{
-          // remove DOM if exists
-          const el = document.getElementById('sr-room-' + prevId);
-          if (el && el.parentNode) {{
-            el.parentNode.removeChild(el);
-          }}
+      for(const prevId of Object.keys(prev)){
+        if(!(prevId in incomingMap)){
+          const el=document.getElementById('sr-room-'+prevId);
+          if(el&&el.parentNode){el.parentNode.removeChild(el);}
           delete prev[prevId];
-        }}
-      }}
+        }
+      }
 
-      // 2) For each incoming room: add if new, or update only if gift_log/gift_list changed
-      // We'll place elements in the order of payload array — to preserve ordering, move DOM nodes as needed
-      for (const room of payload) {{
-        const rid = room.room_id;
-        const prevJson = prev[rid] ? JSON.stringify(prev[rid].gift_log || []) + '||' + JSON.stringify(prev[rid].gift_list || {{}}) : null;
-        const currJson = JSON.stringify(room.gift_log || []) + '||' + JSON.stringify(room.gift_list || {{}});
-
-        const existing = document.getElementById('sr-room-' + rid);
-        if (!existing) {{
-          // create new DOM node and append in order
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = buildRoomHTML(room);
-          const newNode = wrapper.firstChild;
-          // insert at correct position according to payload order:
-          // find next existing sibling in container that corresponds to a later payload item
-          let inserted = false;
-          // find index of this room in payload (we have it via loop order), try to insert before the first DOM node that corresponds to a later payload room
-          // naive approach: iterate children and compare data-room-id
-          const children = Array.from(container.children);
-          let placed = false;
-          for (let i = 0; i < children.length; i++) {{
-            const c = children[i];
-            const cRoomId = c.getAttribute('data-room-id');
-            // find index of cRoomId in payload order
-            const idxC = payload.findIndex(p => p.room_id === cRoomId);
-            const idxR = payload.findIndex(p => p.room_id === rid);
-            if (idxC !== -1 && idxR !== -1 && idxR < idxC) {{
-              container.insertBefore(newNode, c);
-              placed = true;
-              break;
-            }}
-          }}
-          if (!placed) {{
-            container.appendChild(newNode);
-          }}
-          // save prev state
-          prev[rid] = {{
-            gift_log: room.gift_log,
-            gift_list: room.gift_list
-          }};
-        }} else {{
-          // existing: update only when payload changed
-          if (prevJson !== currJson) {{
-            // replace inner HTML of existing node (while keeping the same parent and position)
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = buildRoomHTML(room);
-            const newNode = wrapper.firstChild;
-            existing.parentNode.replaceChild(newNode, existing);
-            prev[rid] = {{
-              gift_log: room.gift_log,
-              gift_list: room.gift_list
-            }};
-          }}
-          // else: no change — leave DOM as is (no flicker)
-        }}
-      }}
-
-      // finished
-    }})();  
+      for(const room of payload){
+        const rid=room.room_id;
+        const prevJson=prev[rid]?JSON.stringify(prev[rid].gift_log||[])+ '||'+JSON.stringify(prev[rid].gift_list||{}):null;
+        const currJson=JSON.stringify(room.gift_log||[])+ '||'+JSON.stringify(room.gift_list||{});
+        const existing=document.getElementById('sr-room-'+rid);
+        if(!existing){
+          const wrapper=document.createElement('div');
+          wrapper.innerHTML=buildRoomHTML(room);
+          const newNode=wrapper.firstChild;
+          container.appendChild(newNode);
+          prev[rid]={gift_log:room.gift_log,gift_list:room.gift_list};
+        } else if(prevJson!==currJson){
+          const wrapper=document.createElement('div');
+          wrapper.innerHTML=buildRoomHTML(room);
+          const newNode=wrapper.firstChild;
+          existing.parentNode.replaceChild(newNode,existing);
+          prev[rid]={gift_log:room.gift_log,gift_list:room.gift_list};
+        }
+      }
+    })();
     </script>
-    """
+    """ % payload_escaped
+
 
     # render the components HTML. Height large enough to show grid.
     components.html(components_html, height=520, scrolling=True)
