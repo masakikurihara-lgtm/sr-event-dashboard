@@ -246,7 +246,7 @@ def main():
     
     # 修正箇所: ここに注意書きを追加
     st.markdown(
-        "<p style='font-size:12px; color:#4b5563;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
+        "<p style='font-size:12px; padding: 0px 0px 16px 0px; color:#4b5563;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
         unsafe_allow_html=True
     )
 
