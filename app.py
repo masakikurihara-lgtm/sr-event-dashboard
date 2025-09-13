@@ -415,7 +415,7 @@ def main():
             }
             .gift-list-container {
                 flex-grow: 1;
-                height: 200px;
+                height: 400px;
                 overflow-y: scroll;
                 /* -ms-overflow-style: none;*/
                 scrollbar-width: auto;
