@@ -417,7 +417,7 @@ def main():
                 flex-grow: 1;
                 height: 400px;
                 overflow-y: scroll;
-                -ms-overflow-style: none;
+                -ms-overflow-style: auto;
                 scrollbar-width: auto;
             }
             .gift-list-container::-webkit-scrollbar {
