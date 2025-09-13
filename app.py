@@ -578,7 +578,7 @@ def main():
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
-                        else:
+                    else:
                             room_html_list.append(
                                 f'<div class="room-container">'
                                 f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
@@ -596,8 +596,8 @@ def main():
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
             time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-        else:
-            time_placeholder.info("残り時間情報を取得できませんでした。")
+            else:
+                time_placeholder.info("残り時間情報を取得できませんでした。")
 
     time.sleep(5)
     st.rerun()
