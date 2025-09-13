@@ -406,10 +406,6 @@ def main():
     
     # --- スペシャルギフト履歴 ---
     st.subheader("🎁 スペシャルギフト履歴")
-    
-    # ここにplaceholderを定義する
-    gift_history_placeholder = st.empty()
-
     st.markdown("""
         <style>
         .container-wrapper {
@@ -586,12 +582,9 @@ def main():
                     f'</div>'
                 )
         html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        
-        # placeholderにコンテンツを書き込む
-        gift_history_placeholder.markdown(html_container_content, unsafe_allow_html=True)
-
+        st.markdown(html_container_content, unsafe_allow_html=True)
     else:
-        gift_history_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
