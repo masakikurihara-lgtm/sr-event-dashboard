@@ -415,7 +415,7 @@ def main():
             }
             .room-container {
                 position: relative;
-                width: 180px; 
+                width: 175px; 
                 flex-shrink: 0;
                 border: 1px solid #ddd;
                 border-radius: 5px;
