@@ -414,7 +414,7 @@ def main():
             # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
             # ★ 修正箇所: ここでCSSを追加してマージンを設定
-            st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
             
             # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
