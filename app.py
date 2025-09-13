@@ -404,8 +404,9 @@ def main():
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
 
-            # --- スペシャルギフト履歴 ---
-            st.subheader("🎁 スペシャルギフト履歴")
+        # --- スペシャルギフト履歴 ---
+        st.subheader("🎁 スペシャルギフト履歴")
+        gift_placeholder = st.empty()
             st.markdown("""
             <style>
             .container-wrapper {
@@ -496,6 +497,7 @@ def main():
             </style>
             """, unsafe_allow_html=True)
             
+        while True:
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
                 for index, row in df.iterrows():
@@ -576,14 +578,20 @@ def main():
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
-                    else:
-                        room_html_list.append(f'<div class="room-container"><div class="ranking-label" style="background-color: {rank_color};">{rank}位</div><div class="room-title">{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
-                
-                html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-                st.markdown(html_container_content, unsafe_allow_html=True)
-            else:
-                st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                        else
+                            room_html_list.append(
+                                f'<div class="room-container">'
+                                f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
+                                f'<div class="room-title">{room_name}</div>'
+                                f'<p style="text-align: center;">ライブ配信していません。</p>'
+                                f'</div>'
+                            )
 
+                        html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
+                        gift_placeholder.markdown(html_container_content, unsafe_allow_html=True)
+
+                        else:
+                            gift_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
