@@ -418,7 +418,7 @@ def main():
                 height: 400px;
                 overflow-y: scroll;
                 -ms-overflow-style: none;
-                scrollbar-width: none;
+                scrollbar-width: auto;
             }
             .gift-list-container::-webkit-scrollbar {
                    display: none;
