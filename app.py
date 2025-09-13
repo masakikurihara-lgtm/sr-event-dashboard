@@ -420,7 +420,6 @@ def main():
                 scrollbar-width: auto;
             }
             .gift-list-container::-webkit-scrollbar {
-                   width: 12px;
             }
             .gift-item {
                 display: flex;
