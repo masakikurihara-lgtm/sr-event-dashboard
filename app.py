@@ -373,31 +373,43 @@ def main():
                     st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True)
-
+            
+            # --- ここからが修正箇所 ---
             st.subheader("📈 ポイントと順位の比較")
+            
+            # 修正①: ルーム名と順位に基づいた色のマッピングを作成
+            color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
+
             if '現在のポイント' in df.columns:
+                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
                                     title="各ルームの現在のポイント", color="ルーム名",
+                                    color_discrete_map=color_map,
                                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_points, use_container_width=True)
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
                                        title="上位とのポイント差", color="ルーム名",
+                                       color_discrete_map=color_map,
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_upper_gap, use_container_width=True)
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
                                        title="下位とのポイント差", color="ルーム名",
+                                       color_discrete_map=color_map,
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
-            
+            # --- ここまでが修正箇所 ---
+
             # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
             st.markdown("""
