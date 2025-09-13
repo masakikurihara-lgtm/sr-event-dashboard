@@ -544,7 +544,7 @@ def main():
 
                                 highlight_class = ""
                                 if total_point >= 100:
-                                    highlight_class = "highlight-30000"
+                                    highlight_class = "highlight-60000"
 #                                if gift_point >= 500:
 #                                    if total_point >= 300000:
 #                                        highlight_class = "highlight-300000"
