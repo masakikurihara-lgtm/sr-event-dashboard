@@ -432,8 +432,9 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
     
     # --- スペシャルギフト履歴 ---
-    # ★ 修正箇所: ここでコンテナを作成し、その中に全てのHTMLをレンダリングする
     st.subheader("🎁 スペシャルギフト履歴")
+    # ★ 修正箇所: ここでCSSを追加してマージンを設定
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
     gift_container = st.container()
     
     # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
