@@ -405,7 +405,6 @@ def main():
 
             # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
-            # --- ここからが修正箇所 ---
             st.markdown("""
             <style>
             .container-wrapper {
@@ -464,10 +463,9 @@ def main():
             .gift-item {
                 display: flex;
                 flex-direction: column;
-                padding: 8px 5px;
+                padding: 8px 0;
                 border-bottom: 1px solid #eee;
                 gap: 4px;
-                border-radius: 4px; /* ハイライト用に角を丸める */
             }
             .gift-item:last-child {border-bottom: none;}
             .gift-header {font-weight: bold;}
@@ -483,17 +481,13 @@ def main():
                 border-radius: 5px;
                 object-fit: contain;
             }
-            /* ハイライト用のCSSクラスを追加 */
-            .highlight-1 { background-color: #fff3cd; }
-            .highlight-2 { background-color: #ffe699; }
-            .highlight-3 { background-color: #ffd966; }
-            .highlight-4 { background-color: #ffc000; }
-            .highlight-5 { background-color: #ff9900; }
             </style>
             """, unsafe_allow_html=True)
             
+            # --- ここからが修正箇所 ---
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
+                # 修正①: 最新のDFから順位を取得するように変更
                 for index, row in df.iterrows():
                     room_name = row['ルーム名']
                     if room_name in st.session_state.room_map_data:
@@ -502,8 +496,11 @@ def main():
                             live_rooms_data.append({
                                 "room_name": room_name,
                                 "room_id": room_id,
-                                "rank": row['現在の順位']
+                                "rank": row['現在の順位'] # 古いデータではなく、最新のDFから順位を取得
                             })
+                # 修正②: dfが既にソート済みのため、ここでのソートは不要
+                # live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
+            # --- ここまでが修正箇所 ---
 
             room_html_list = []
             if len(live_rooms_data) > 0:
@@ -514,8 +511,6 @@ def main():
                     rank_color = get_rank_color(rank)
 
                     if int(room_id) in onlives_rooms:
-                        # ギフトリストとギフトログを取得
-                        gift_list_map = get_gift_list(room_id)
                         gift_log = get_gift_log(room_id)
                         
                         html_content = f"""
@@ -531,38 +526,15 @@ def main():
                         if gift_log:
                             gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                             for log in gift_log:
-                                gift_id = log.get('gift_id')
-                                point = gift_list_map.get(gift_id, {}).get('point', 0)
-                                gift_count = log.get('num', 0)
-
-                                # ハイライト判定ロジック
-                                highlight_class = ""
-                                if point >= 500:
-                                    total_contribution = point * 3 * gift_count
-                                    if total_contribution >= 300000:
-                                        highlight_class = "highlight-5"
-                                    elif total_contribution >= 100000:
-                                        highlight_class = "highlight-4"
-                                    elif total_contribution >= 60000:
-                                        highlight_class = "highlight-3"
-                                    elif total_contribution >= 30000:
-                                        highlight_class = "highlight-2"
-                                    elif total_contribution >= 10000:
-                                        highlight_class = "highlight-1"
-
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
                                 gift_image = log.get('image', '')
-                                
-                                # HTML生成部分を修正
+                                gift_count = log.get('num', 0)
                                 html_content += (
-                                    f'<div class="gift-item {highlight_class}">'
+                                    f'<div class="gift-item">'
                                     f'<div class="gift-header"><small>{gift_time}</small></div>'
                                     f'<div class="gift-info-row">'
                                     f'<img src="{gift_image}" class="gift-image" />'
-                                    f'<div>'
-                                    f'<span>×{gift_count}</span><br>'
-                                    f'<small>{point:,}pt</small>' # ポイント表示を追加
-                                    f'</div>'
+                                    f'<span>×{gift_count}</span>'
                                     f'</div></div>'
                                 )
                             html_content += '</div>'
@@ -578,7 +550,7 @@ def main():
                 st.markdown(html_container_content, unsafe_allow_html=True)
             else:
                 st.info("選択されたルームに現在ライブ配信中のルームはありません。")
-            # --- ここまでが修正箇所 ---
+
 
         if final_remain_time is not None:
             remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
