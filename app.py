@@ -127,43 +127,16 @@ def get_gift_list(room_id):
         st.error(f"ルームID {room_id} のギフトリスト取得中にエラーが発生しました: {e}")
         return {}
 
-# 差分更新のためのキャッシュをセッション状態に保存する
-if "gift_log_cache" not in st.session_state:
-    st.session_state.gift_log_cache = {}
-
-# 更新されたギフトログのみを取得・マージする関数
-def get_and_update_gift_log(room_id):
+@st.cache_data(ttl=5)
+def get_gift_log(room_id):
     url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
     try:
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
-        new_gift_log = response.json().get('gift_log', [])
-        
-        # セッション状態から既存のログを取得
-        if room_id not in st.session_state.gift_log_cache:
-            st.session_state.gift_log_cache[room_id] = []
-        
-        existing_log = st.session_state.gift_log_cache[room_id]
-        
-        # 新しいログを既存のログにマージ
-        if new_gift_log:
-            # 重複を避けるために既存のログをセットに変換
-            existing_log_set = {(log.get('gift_id'), log.get('created_at'), log.get('num')) for log in existing_log}
-            
-            for log in new_gift_log:
-                # ユニークなキーを作成して重複をチェック
-                log_key = (log.get('gift_id'), log.get('created_at'), log.get('num'))
-                if log_key not in existing_log_set:
-                    existing_log.append(log)
-        
-        # ログをタイムスタンプでソート
-        st.session_state.gift_log_cache[room_id].sort(key=lambda x: x.get('created_at', 0), reverse=True)
-        
-        return st.session_state.gift_log_cache[room_id]
-        
+        return response.json().get('gift_log', [])
     except requests.exceptions.RequestException as e:
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。ライブ配信中か確認してください: {e}")
-        return st.session_state.gift_log_cache.get(room_id, [])
+        return []
 
 def get_onlives_rooms():
     onlives = set()
@@ -432,12 +405,8 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
     
     # --- スペシャルギフト履歴 ---
-    # ★ 修正箇所: ここでコンテナを作成し、その中に全てのHTMLをレンダリングする
     st.subheader("🎁 スペシャルギフト履歴")
-    gift_container = st.container()
-    
-    # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
-    css_style = """
+    st.markdown("""
         <style>
         .container-wrapper {
             display: flex;
@@ -522,19 +491,10 @@ def main():
         .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
         
         </style>
-    """
-    
+        """, unsafe_allow_html=True)
+            
     live_rooms_data = []
     if not df.empty and st.session_state.room_map_data:
-        # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
-        # これにより、配信終了したルームのコンテナが残るのを防ぐ
-        selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
-        
-        # ライブ配信が終了したルームのキャッシュを削除する
-        rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
-        for room_id in rooms_to_delete:
-            del st.session_state.gift_log_cache[room_id]
-        
         for index, row in df.iterrows():
             room_name = row['ルーム名']
             if room_name in st.session_state.room_map_data:
@@ -555,7 +515,7 @@ def main():
             rank_color = get_rank_color(rank)
 
             if int(room_id) in onlives_rooms:
-                gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
+                gift_log = get_gift_log(room_id)
                 gift_list_map = get_gift_list(room_id) # gift_listも取得
                 
                 html_content = f"""
@@ -572,6 +532,7 @@ def main():
                     html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
 
                 if gift_log:
+                    gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                     for log in gift_log:
                         gift_id = log.get('gift_id')
                         # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
@@ -621,11 +582,9 @@ def main():
                     f'</div>'
                 )
         html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
-        gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
+        st.markdown(html_container_content, unsafe_allow_html=True)
     else:
-        # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
-        gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
