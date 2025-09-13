@@ -220,7 +220,7 @@ def get_rank_color(rank):
 
 def main():
     st.title("🎤 SHOWROOM Event Dashboard")
-    st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
+    st.write("イベント順位やポイント差、スペシャルギフトの履歴などをリアルタイムで可視化するツールです。")
 
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
