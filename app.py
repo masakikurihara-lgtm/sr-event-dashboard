@@ -406,10 +406,7 @@ def main():
     
     # --- スペシャルギフト履歴 ---
     st.subheader("🎁 スペシャルギフト履歴")
-    # ✅ 修正箇所: ここでプレースホルダーを作成する
-    gift_history_placeholder = st.empty()
-    
-    css_style = """
+    st.markdown("""
         <style>
         .container-wrapper {
             display: flex;
@@ -494,7 +491,7 @@ def main():
         .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
         
         </style>
-    """
+        """, unsafe_allow_html=True)
             
     live_rooms_data = []
     if not df.empty and st.session_state.room_map_data:
@@ -584,11 +581,10 @@ def main():
                     f'<p style="text-align: center;">ライブ配信していません。</p>'
                     f'</div>'
                 )
-        html_container_content = css_style + '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        # ✅ 修正箇所: プレースホルダーにHTMLを渡す
-        gift_history_placeholder.markdown(html_container_content, unsafe_allow_html=True)
+        html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
+        st.markdown(html_container_content, unsafe_allow_html=True)
     else:
-        gift_history_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
