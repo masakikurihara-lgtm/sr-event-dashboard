@@ -406,6 +406,7 @@ def main():
     
     # --- スペシャルギフト履歴 ---
     st.subheader("🎁 スペシャルギフト履歴")
+    # ※ CSS/レイアウトは**元のまま**（変更していません）
     st.markdown("""
         <style>
         .container-wrapper {
@@ -494,7 +495,7 @@ def main():
         """, unsafe_allow_html=True)
             
     live_rooms_data = []
-    if not df.empty and st.session_state.room_map_data:
+    if 'df' in locals() and not df.empty and st.session_state.room_map_data:
         for index, row in df.iterrows():
             room_name = row['ルーム名']
             if room_name in st.session_state.room_map_data:
@@ -506,6 +507,9 @@ def main():
                         "rank": row['現在の順位']
                     })
     
+    # --- ここで single placeholder に全体 HTML を出力（これで「残骸」が積み重なる問題を防ぐ） ---
+    gift_container_placeholder = st.empty()
+
     room_html_list = []
     if len(live_rooms_data) > 0:
         for room_data in live_rooms_data:
@@ -582,9 +586,11 @@ def main():
                     f'</div>'
                 )
         html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        st.markdown(html_container_content, unsafe_allow_html=True)
+        # single placeholder にまとまった HTML を出力（元の見た目・横並びを壊しません）
+        gift_container_placeholder.markdown(html_container_content, unsafe_allow_html=True)
     else:
-        st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        # ライブ配信中のルームが無い場合は placeholder に info を表示（これも placeholder 上書きなので残骸は出ません）
+        gift_container_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
