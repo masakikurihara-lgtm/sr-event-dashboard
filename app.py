@@ -529,7 +529,7 @@ def main():
                                 )
                             html_content += '</div>'
                         else:
-                            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div>'
+                            html_content += '<p style="text-align: center; padding: 8px 0;">ギフト履歴がありません。</p></div>'
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
