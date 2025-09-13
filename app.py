@@ -417,12 +417,12 @@ def main():
                 flex-grow: 1;
                 height: 400px;
                 overflow-y: scroll;
-                -ms-overflow-style: none;
-                scrollbar-width: none;
+//*                -ms-overflow-style: none;
+//*                scrollbar-width: none;
             }
-            .gift-list-container::-webkit-scrollbar {
-                display: none;
-            }
+//*            .gift-list-container::-webkit-scrollbar {
+//*                display: none;
+//*            }
             .gift-item {
                 display: flex;
                 flex-direction: column;
