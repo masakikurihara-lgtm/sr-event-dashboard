@@ -407,7 +407,7 @@ def main():
         # --- スペシャルギフト履歴 ---
         st.subheader("🎁 スペシャルギフト履歴")
         gift_placeholder = st.empty()
-            st.markdown("""
+        st.markdown("""
             <style>
             .container-wrapper {
                 display: flex;
@@ -578,7 +578,7 @@ def main():
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
-                        else
+                        else:
                             room_html_list.append(
                                 f'<div class="room-container">'
                                 f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
