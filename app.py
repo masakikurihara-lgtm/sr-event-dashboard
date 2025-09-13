@@ -219,7 +219,7 @@ def get_rank_color(rank):
         return "#A9A9A9"
 
 def main():
-    st.title("🎤 SHOWROOM Event Dashboard")
+    st.markdown("<h1 style='font-size:24px;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
 
     if "room_map_data" not in st.session_state:
@@ -233,7 +233,7 @@ def main():
     if "multiselect_key_counter" not in st.session_state:
         st.session_state.multiselect_key_counter = 0
 
-    st.header("1. イベントを選択")
+    st.markdown("<h2 style='font-size:20px;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     events = get_events()
     if not events:
         st.warning("現在開催中のイベントが見つかりませんでした。")
@@ -261,7 +261,7 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
-    st.header("2. 比較したいルームを選択")
+    st.markdown("<h2 style='font-size:20px;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
@@ -314,7 +314,7 @@ def main():
         st.warning("最低1つのルームを選択してください。")
         return
 
-    st.header("3. リアルタイムダッシュボード")
+    st.markdown("<h2 style='font-size:20px;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("5秒ごとに自動更新されます。")
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
