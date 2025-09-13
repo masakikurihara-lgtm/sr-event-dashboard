@@ -489,7 +489,7 @@ def main():
             .highlight-60000 { background-color: #ff9999; } /* もっと濃い赤 */
             .highlight-100000 { background-color: #ff6666; } /* 非常に濃い赤 */
             .highlight-300000 { background-color: #ff3333; } /* 最も濃い赤 */
-
+            
             </style>
             """, unsafe_allow_html=True)
             
@@ -516,7 +516,7 @@ def main():
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_gift_log(room_id)
-                        gift_list_map = get_gift_list(room_id)
+                        gift_list_map = get_gift_list(room_id) # gift_listも取得
                         
                         html_content = f"""
                         <div class="room-container">
@@ -554,7 +554,7 @@ def main():
                                         highlight_class = "highlight-30000"
                                     elif total_point >= 10000:
                                         highlight_class = "highlight-10000"
-
+                                
                                 gift_image = log.get('image', gift_info.get('image', ''))
 
                                 html_content += (
@@ -564,7 +564,7 @@ def main():
                                     f'<img src="{gift_image}" class="gift-image" />'
                                     f'<span>×{gift_count}</span>'
                                     f'</div>'
-                                    f'<div>{gift_point}pt</div>'
+                                    f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
                                     f'</div>'
                                 )
                             html_content += '</div>'
