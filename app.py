@@ -212,7 +212,7 @@ def main():
 
     event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
-        "イベント名を選択してください:", 
+        "イベント名を選択してください:",
         options=list(event_options.keys()), key="event_selector")
     if not selected_event_name:
         st.warning("イベントを選択してください。")
@@ -252,7 +252,7 @@ def main():
 
     with st.form("room_selection_form"):
         select_top_15 = st.checkbox(
-            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
+            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）",
             key="select_top_15_checkbox")
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
@@ -374,7 +374,7 @@ def main():
                     st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True)
-            
+
             st.subheader("📈 ポイントと順位の比較")
             color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
 
@@ -403,19 +403,20 @@ def main():
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
-    
+
     # --- スペシャルギフト履歴 ---
     st.subheader("🎁 スペシャルギフト履歴")
+    # ✅ 修正箇所: ここでCSSを適用するためのHTMLヘッダーを一度だけ表示
     st.markdown("""
         <style>
         .container-wrapper {
             display: flex;
-            flex-wrap: wrap; 
+            flex-wrap: wrap;
             gap: 15px;
         }
         .room-container {
             position: relative;
-            width: 175px; 
+            width: 175px;
             flex-shrink: 0;
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -447,7 +448,7 @@ def main():
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
-            overflow: hidden; 
+            overflow: hidden;
             white-space: normal;
             line-height: 1.4em;
             min-height: calc(1.4em * 3);
@@ -482,17 +483,21 @@ def main():
             border-radius: 5px;
             object-fit: contain;
         }
-        
+
         /* 追加したハイライトスタイル */
         .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
         .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
         .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
         .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
         .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
-        
+
         </style>
-        """, unsafe_allow_html=True)
-            
+    """, unsafe_allow_html=True)
+
+    # ✅ 修正箇所: ここでプレースホルダーを定義
+    if 'room_placeholders' not in st.session_state:
+        st.session_state.room_placeholders = {}
+
     live_rooms_data = []
     if not df.empty and st.session_state.room_map_data:
         for index, row in df.iterrows():
@@ -505,39 +510,53 @@ def main():
                         "room_id": room_id,
                         "rank": row['現在の順位']
                     })
-    
-    room_html_list = []
+
+    # ✅ 修正箇所: ライブ中のルームとプレースホルダーのリストを比較して、古いものを削除
+    current_room_ids = {str(d['room_id']) for d in live_rooms_data}
+    session_room_ids = set(st.session_state.room_placeholders.keys())
+
+    rooms_to_remove = session_room_ids - current_room_ids
+    for room_id in rooms_to_remove:
+        if room_id in st.session_state.room_placeholders:
+            st.session_state.room_placeholders[room_id].empty()
+            del st.session_state.room_placeholders[room_id]
+
+    st.markdown('<div class="container-wrapper">', unsafe_allow_html=True)
+
     if len(live_rooms_data) > 0:
         for room_data in live_rooms_data:
             room_name = room_data['room_name']
-            room_id = room_data['room_id']
+            room_id = str(room_data['room_id'])
             rank = room_data.get('rank', 'N/A')
             rank_color = get_rank_color(rank)
 
-            if int(room_id) in onlives_rooms:
-                gift_log = get_gift_log(room_id)
-                gift_list_map = get_gift_list(room_id) # gift_listも取得
-                
+            if room_id not in st.session_state.room_placeholders:
+                st.session_state.room_placeholders[room_id] = st.container()
+
+            with st.session_state.room_placeholders[room_id]:
                 html_content = f"""
-                <div class="room-container">
-                    <div class="ranking-label" style="background-color: {rank_color};">
-                        {rank}位
-                    </div>
-                    <div class="room-title">
-                        {room_name}
-                    </div>
-                    <div class="gift-list-container">
+                    <div class="room-container">
+                        <div class="ranking-label" style="background-color: {rank_color};">
+                            {rank}位
+                        </div>
+                        <div class="room-title">
+                            {room_name}
+                        </div>
+                        <div class="gift-list-container">
                 """
+
+                gift_list_map = get_gift_list(room_id)
                 if not gift_list_map:
                     html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
 
+                gift_log = get_gift_log(room_id)
                 if gift_log:
                     gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                     for log in gift_log:
                         gift_id = log.get('gift_id')
                         # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
                         gift_info = gift_list_map.get(str(gift_id), {})
-                        
+
                         gift_point = gift_info.get('point', 0)
                         gift_count = log.get('num', 0)
                         total_point = gift_point * gift_count
@@ -554,7 +573,7 @@ def main():
                                 highlight_class = "highlight-30000"
                             elif total_point >= 10000:
                                 highlight_class = "highlight-10000"
-                        
+
                         gift_image = log.get('image', gift_info.get('image', ''))
 
                         html_content += (
@@ -570,21 +589,17 @@ def main():
                     html_content += '</div>'
                 else:
                     html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
-                
+
                 html_content += '</div>'
-                room_html_list.append(html_content)
-            else:
-                room_html_list.append(
-                    f'<div class="room-container">'
-                    f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
-                    f'<div class="room-title">{room_name}</div>'
-                    f'<p style="text-align: center;">ライブ配信していません。</p>'
-                    f'</div>'
-                )
-        html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        st.markdown(html_container_content, unsafe_allow_html=True)
+                st.markdown(html_content, unsafe_allow_html=True)
     else:
+        # ✅ 修正箇所: ライブ中のルームがない場合、すべてのプレースホルダーをクリアする
+        for room_id in st.session_state.room_placeholders.keys():
+            st.session_state.room_placeholders[room_id].empty()
+        st.session_state.room_placeholders = {}
         st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+
+    st.markdown('</div>', unsafe_allow_html=True) # container-wrapperを閉じる
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
