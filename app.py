@@ -467,7 +467,7 @@ def main():
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
                 gap: 4px;
-                align-items: center;
+                /*align-items: center;*/
                 /*text-align: center;*/
             }
             .gift-item:last-child {border-bottom: none;}
