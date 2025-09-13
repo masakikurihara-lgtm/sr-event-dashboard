@@ -492,7 +492,10 @@ def main():
         
         </style>
         """, unsafe_allow_html=True)
-            
+    
+    # ★ 修正箇所: プレースホルダーの作成
+    gift_placeholder = st.empty()
+
     live_rooms_data = []
     if not df.empty and st.session_state.room_map_data:
         for index, row in df.iterrows():
@@ -582,9 +585,11 @@ def main():
                     f'</div>'
                 )
         html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        st.markdown(html_container_content, unsafe_allow_html=True)
+        # ★ 修正箇所: プレースホルダーにHTMLを書き込む
+        gift_placeholder.markdown(html_container_content, unsafe_allow_html=True)
     else:
-        st.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        # ★ 修正箇所: プレースホルダーをクリアし、情報メッセージを表示
+        gift_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
