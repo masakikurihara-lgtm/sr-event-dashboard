@@ -131,7 +131,7 @@ def get_gift_log(room_id):
     url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
     try:
         response = requests.get(url, headers=HEADERS, timeout=5)
-        response.raise_status()
+        response.raise_for_status()
         return response.json().get('gift_log', [])
     except requests.exceptions.RequestException as e:
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。ライブ配信中か確認してください: {e}")
@@ -492,8 +492,10 @@ def main():
             </style>
             """, unsafe_allow_html=True)
             
+            # --- ここからが修正箇所 ---
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
+                # 修正①: 最新のDFから順位を取得するように変更
                 for index, row in df.iterrows():
                     room_name = row['ルーム名']
                     if room_name in st.session_state.room_map_data:
@@ -502,9 +504,12 @@ def main():
                             live_rooms_data.append({
                                 "room_name": room_name,
                                 "room_id": room_id,
-                                "rank": row['現在の順位']
+                                "rank": row['現在の順位'] # 古いデータではなく、最新のDFから順位を取得
                             })
-            
+                # 修正②: dfが既にソート済みのため、ここでのソートは不要
+                # live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
+            # --- ここまでが修正箇所 ---
+
             room_html_list = []
             if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
@@ -515,7 +520,7 @@ def main():
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_gift_log(room_id)
-                        gift_list_map = get_gift_list(room_id)
+                        gift_list_map = get_gift_list(room_id) # ★ 追加：ギフトポイント情報を取得
                         
                         html_content = f"""
                         <div class="room-container">
@@ -527,21 +532,18 @@ def main():
                             </div>
                             <div class="gift-list-container">
                         """
-                        if not gift_list_map:
-                            html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
-
                         if gift_log:
                             gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
                                 gift_info = gift_list_map.get(gift_id, {})
-                                
-                                # ポイントと個数を正確に取得
-                                gift_point = gift_info.get('point', 0)
+                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                gift_image = log.get('image', '')
                                 gift_count = log.get('num', 0)
-                                total_point = gift_point * gift_count
+                                gift_point = gift_info.get('point', 0)
+                                total_point = gift_point * gift_count # ★ 追加：合計ポイントを計算
 
-                                # ハイライト条件を判定
+                                # ★ 追加：ハイライト条件を判定
                                 highlight_class = ""
                                 if gift_point >= 500:
                                     if total_point >= 300000:
@@ -555,16 +557,14 @@ def main():
                                     elif total_point >= 10000:
                                         highlight_class = "highlight-10000"
 
-                                gift_image = log.get('image', gift_info.get('image', ''))
-
                                 html_content += (
-                                    f'<div class="gift-item {highlight_class}">'
-                                    f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
+                                    f'<div class="gift-item {highlight_class}">' # ★ 変更：ハイライトクラスを追加
+                                    f'<div class="gift-header"><small>{gift_time}</small></div>'
                                     f'<div class="gift-info-row">'
                                     f'<img src="{gift_image}" class="gift-image" />'
                                     f'<span>×{gift_count}</span>'
                                     f'</div>'
-                                    f'<div>{gift_point}pt</div>'
+                                    f'<div>{gift_point}pt</div>' # ★ 追加：ポイントを表示
                                     f'</div>'
                                 )
                             html_content += '</div>'
