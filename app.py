@@ -15,6 +15,7 @@ st.set_page_config(
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
+RANKING_COLORS = px.colors.qualitative.Plotly
 
 @st.cache_data(ttl=3600)
 def get_events():
@@ -177,14 +178,13 @@ def get_rank_color(rank):
     ランキングに応じたカラーコードを返す
     Plotlyのデフォルトカラーを参考に設定
     """
-    colors = px.colors.qualitative.Plotly
     if rank is None:
         return "#A9A9A9"  # DarkGray
     try:
         rank_int = int(rank)
         if rank_int <= 0:
-            return colors[0]
-        return colors[(rank_int - 1) % len(colors)]
+            return RANKING_COLORS[0]
+        return RANKING_COLORS[(rank_int - 1) % len(RANKING_COLORS)]
     except (ValueError, TypeError):
         return "#A9A9A9"
 
@@ -375,27 +375,33 @@ def main():
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
             st.subheader("📈 ポイントと順位の比較")
-            if '現在のポイント' in df.columns:
+            if '現在のポイント' in df.columns and '現在の順位' in df.columns:
+                df['カラー'] = df['現在の順位'].apply(get_rank_color)
                 fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
                                     title="各ルームの現在のポイント", color="ルーム名",
                                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+                fig_points.update_traces(marker_color=df['カラー'].tolist())
                 st.plotly_chart(fig_points, use_container_width=True)
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                df['カラー'] = df['現在の順位'].apply(get_rank_color)
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
                                        title="上位とのポイント差", color="ルーム名",
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                fig_upper_gap.update_traces(marker_color=df['カラー'].tolist())
                 st.plotly_chart(fig_upper_gap, use_container_width=True)
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+                df['カラー'] = df['現在の順位'].apply(get_rank_color)
                 fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
                                        title="下位とのポイント差", color="ルーム名",
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                fig_lower_gap.update_traces(marker_color=df['カラー'].tolist())
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
             
             # --- スペシャルギフト履歴 ---
