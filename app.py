@@ -35,7 +35,7 @@ def get_events():
             elif isinstance(data, list):
                 page_events = data
             if not page_events:
-                    break
+                break
             events.extend(page_events)
             page += 1
         except requests.exceptions.RequestException as e:
@@ -116,7 +116,6 @@ def get_gift_list(room_id):
                 point_value = int(gift.get('point', 0))
             except (ValueError, TypeError):
                 point_value = 0
-            # ★ 修正箇所: gift_idを文字列に変換してキーとして保存する
             gift_list_map[str(gift['gift_id'])] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
@@ -174,13 +173,9 @@ def get_onlives_rooms():
     return onlives
 
 def get_rank_color(rank):
-    """
-    ランキングに応じたカラーコードを返す
-    Plotlyのデフォルトカラーを参考に設定
-    """
     colors = px.colors.qualitative.Plotly
     if rank is None:
-        return "#A9A9A9"  # DarkGray
+        return "#A9A9A9"
     try:
         rank_int = int(rank)
         if rank_int <= 0:
@@ -203,6 +198,8 @@ def main():
         st.session_state.multiselect_default_value = []
     if "multiselect_key_counter" not in st.session_state:
         st.session_state.multiselect_key_counter = 0
+    if "gift_html_map" not in st.session_state:
+        st.session_state.gift_html_map = {}
 
     st.header("1. イベントを選択")
     events = get_events()
@@ -404,95 +401,8 @@ def main():
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
     
-    # --- スペシャルギフト履歴 ---
     st.subheader("🎁 スペシャルギフト履歴")
-    st.markdown("""
-        <style>
-        .container-wrapper {
-            display: flex;
-            flex-wrap: wrap; 
-            gap: 15px;
-        }
-        .room-container {
-            position: relative;
-            width: 175px; 
-            flex-shrink: 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 10px;
-            height: 500px;
-            display: flex;
-            flex-direction: column;
-            padding-top: 30px; /* ランクラベルのスペースを確保 */
-        }
-        .ranking-label {
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 2px 8px;
-            border-radius: 12px;
-            color: white;
-            font-weight: bold;
-            font-size: 0.9rem;
-            z-index: 10;
-            white-space: nowrap;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .room-title {
-            text-align: center;
-            font-size: 1rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden; 
-            white-space: normal;
-            line-height: 1.4em;
-            min-height: calc(1.4em * 3);
-        }
-        .gift-list-container {
-            flex-grow: 1;
-            height: 400px;
-            overflow-y: scroll;
-            scrollbar-width: auto;
-        }
-        .gift-list-container::-webkit-scrollbar {
-            /* display: none;*/
-        }
-        .gift-item {
-            display: flex;
-            flex-direction: column;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            gap: 4px;
-        }
-        .gift-item:last-child {border-bottom: none;}
-        .gift-header {font-weight: bold;}
-        .gift-info-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .gift-image {
-            width: 30px;
-            height: 30px;
-            border-radius: 5px;
-            object-fit: contain;
-        }
-        
-        /* 追加したハイライトスタイル */
-        .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
-        .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
-        .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
-        .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
-        .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
-        
-        </style>
-        """, unsafe_allow_html=True)
-            
+
     live_rooms_data = []
     if not df.empty and st.session_state.room_map_data:
         for index, row in df.iterrows():
@@ -505,84 +415,70 @@ def main():
                         "room_id": room_id,
                         "rank": row['現在の順位']
                     })
-    
-    room_html_list = []
-    if len(live_rooms_data) > 0:
-        for room_data in live_rooms_data:
-            room_name = room_data['room_name']
-            room_id = room_data['room_id']
-            rank = room_data.get('rank', 'N/A')
-            rank_color = get_rank_color(rank)
 
-            if int(room_id) in onlives_rooms:
-                gift_log = get_gift_log(room_id)
-                gift_list_map = get_gift_list(room_id) # gift_listも取得
-                
-                html_content = f"""
-                <div class="room-container">
-                    <div class="ranking-label" style="background-color: {rank_color};">
-                        {rank}位
-                    </div>
-                    <div class="room-title">
-                        {room_name}
-                    </div>
-                    <div class="gift-list-container">
-                """
-                if not gift_list_map:
-                    html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
-
-                if gift_log:
-                    gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                    for log in gift_log:
-                        gift_id = log.get('gift_id')
-                        # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
-                        gift_info = gift_list_map.get(str(gift_id), {})
-                        
-                        gift_point = gift_info.get('point', 0)
-                        gift_count = log.get('num', 0)
-                        total_point = gift_point * gift_count
-
-                        highlight_class = ""
-                        if gift_point >= 500:
-                            if total_point >= 300000:
-                                highlight_class = "highlight-300000"
-                            elif total_point >= 100000:
-                                highlight_class = "highlight-100000"
-                            elif total_point >= 60000:
-                                highlight_class = "highlight-60000"
-                            elif total_point >= 30000:
-                                highlight_class = "highlight-30000"
-                            elif total_point >= 10000:
-                                highlight_class = "highlight-10000"
-                        
-                        gift_image = log.get('image', gift_info.get('image', ''))
-
-                        html_content += (
-                            f'<div class="gift-item {highlight_class}">'
-                            f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
-                            f'<div class="gift-info-row">'
-                            f'<img src="{gift_image}" class="gift-image" />'
-                            f'<span>×{gift_count}</span>'
-                            f'</div>'
-                            f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
-                            f'</div>'
-                        )
-                    html_content += '</div>'
-                else:
-                    html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
-                
-                html_content += '</div>'
-                room_html_list.append(html_content)
-            else:
-                room_html_list.append(
-                    f'<div class="room-container">'
-                    f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
-                    f'<div class="room-title">{room_name}</div>'
-                    f'<p style="text-align: center;">ライブ配信していません。</p>'
+    updated_html_map = {}
+    for room_data in live_rooms_data:
+        room_name = room_data['room_name']
+        room_id = room_data['room_id']
+        rank = room_data.get('rank', 'N/A')
+        rank_color = get_rank_color(rank)
+        gift_log = get_gift_log(room_id)
+        gift_list_map = get_gift_list(room_id)
+        html_content = f"""
+        <div class="room-container">
+            <div class="ranking-label" style="background-color: {rank_color};">
+                {rank}位
+            </div>
+            <div class="room-title">{room_name}</div>
+            <div class="gift-list-container">
+        """
+        if gift_log:
+            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+            for log in gift_log:
+                gift_id = log.get('gift_id')
+                gift_info = gift_list_map.get(str(gift_id), {})
+                gift_point = gift_info.get('point', 0)
+                gift_count = log.get('num', 0)
+                total_point = gift_point * gift_count
+                highlight_class = ""
+                if gift_point >= 500:
+                    if total_point >= 300000:
+                        highlight_class = "highlight-300000"
+                    elif total_point >= 100000:
+                        highlight_class = "highlight-100000"
+                    elif total_point >= 60000:
+                        highlight_class = "highlight-60000"
+                    elif total_point >= 30000:
+                        highlight_class = "highlight-30000"
+                    elif total_point >= 10000:
+                        highlight_class = "highlight-10000"
+                gift_image = log.get('image', gift_info.get('image', ''))
+                html_content += (
+                    f'<div class="gift-item {highlight_class}">'
+                    f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
+                    f'<div class="gift-info-row">'
+                    f'<img src="{gift_image}" class="gift-image" />'
+                    f'<span>×{gift_count}</span>'
+                    f'</div>'
+                    f'<div>{gift_point}pt</div>'
                     f'</div>'
                 )
-        html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-        st.markdown(html_container_content, unsafe_allow_html=True)
+            html_content += "</div></div>"
+        else:
+            html_content += '<p style="text-align: center;">ギフト履歴がありません。</p></div></div>'
+        updated_html_map[room_id] = html_content
+
+    # 差分比較
+    for room_id in list(st.session_state.gift_html_map.keys()):
+        if room_id not in updated_html_map:
+            del st.session_state.gift_html_map[room_id]
+    for room_id, html_content in updated_html_map.items():
+        if room_id not in st.session_state.gift_html_map or st.session_state.gift_html_map[room_id] != html_content:
+            st.session_state.gift_html_map[room_id] = html_content
+
+    if st.session_state.gift_html_map:
+        combined_html = '<div class="container-wrapper">' + ''.join(st.session_state.gift_html_map.values()) + '</div>'
+        st.markdown(combined_html, unsafe_allow_html=True)
     else:
         st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
