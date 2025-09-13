@@ -484,11 +484,11 @@ def main():
             }
             
             /* 追加したハイライトスタイル */
-            .highlight-10000 { background-color: #ffe6e6; } /* 薄い赤 */
+            .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
             .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
-            .highlight-60000 { background-color: #ff9999; } /* もっと濃い赤 */
-            .highlight-100000 { background-color: #ff6666; } /* 非常に濃い赤 */
-            .highlight-300000 { background-color: #ff3333; } /* 最も濃い赤 */
+            .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
+            .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
+            .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
             
             </style>
             """, unsafe_allow_html=True)
