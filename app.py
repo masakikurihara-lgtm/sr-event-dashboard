@@ -467,12 +467,15 @@ def main():
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
                 gap: 4px;
+                align-items: center;
+                text-align: center;
             }
             .gift-item:last-child {border-bottom: none;}
             .gift-header {font-weight: bold;}
             .gift-info-row {
                 display: flex;
                 align-items: center;
+                justify-content: center;
                 gap: 8px;
                 flex-wrap: wrap;
             }
