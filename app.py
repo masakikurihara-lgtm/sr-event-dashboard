@@ -579,13 +579,13 @@ def main():
                         html_content += '</div>'
                         room_html_list.append(html_content)
                     else:
-                            room_html_list.append(
-                                f'<div class="room-container">'
-                                f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
-                                f'<div class="room-title">{room_name}</div>'
-                                f'<p style="text-align: center;">ライブ配信していません。</p>'
-                                f'</div>'
-                            )
+                        room_html_list.append(
+                            f'<div class="room-container">'
+                            f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
+                            f'<div class="room-title">{room_name}</div>'
+                            f'<p style="text-align: center;">ライブ配信していません。</p>'
+                            f'</div>'
+                        )
 
                         html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                         gift_placeholder.markdown(html_container_content, unsafe_allow_html=True)
