@@ -375,271 +375,270 @@ def main():
                 st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                 continue
 
-        if data_to_display:
-            df = pd.DataFrame(data_to_display)
-            df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-            df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-            df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
-            live_status = df['ライブ中']
-            df = df.drop(columns=['ライブ中'])
-            df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            if not df.empty:
-                df.at[0, '上位とのポイント差'] = 0
-            df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            df.insert(0, 'ライブ中', live_status)
+    if data_to_display:
+        df = pd.DataFrame(data_to_display)
+        df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+        df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+        df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+        live_status = df['ライブ中']
+        df = df.drop(columns=['ライブ中'])
+        df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
+        if not df.empty:
+            df.at[0, '上位とのポイント差'] = 0
+        df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+        df.insert(0, 'ライブ中', live_status)
 
-            st.subheader("📊 比較対象ルームのステータス")
-            required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
-            if all(col in df.columns for col in required_cols):
-                try:
-                    def highlight_rows(row):
-                        if row['ライブ中'] == '🔴':
-                            return ['background-color: #e6fff2'] * len(row)
-                        elif row.name % 2 == 1:
-                            return ['background-color: #fafafa'] * len(row)
-                        else:
-                            return [''] * len(row)
-                    df_to_format = df.copy()
-                    for col in required_cols:
-                        df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
-                    styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
-                        {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
-                    st.dataframe(styled_df, use_container_width=True, hide_index=True)
-                except Exception as e:
-                    st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-            else:
-                st.dataframe(df, use_container_width=True, hide_index=True)
-
-            # --- スペシャルギフト履歴 ---
-            st.markdown("### 🎁 スペシャルギフト履歴（配信中のルームのみ）", unsafe_allow_html=True)
-            #st.markdown("<p style='font-size: 14px; margin-top: -16px;'>（配信中のルームのみ表示）</p>", unsafe_allow_html=True)
-            # ★ 修正箇所: ここでCSSを追加してマージンを設定
-            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
-            gift_container = st.container()
-            
-            # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
-            css_style = """
-                <style>
-                .container-wrapper {
-                    display: flex;
-                    flex-wrap: wrap; 
-                    gap: 15px;
-                }
-                .room-container {
-                    position: relative;
-                    width: 175px; 
-                    flex-shrink: 0;
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                    padding: 10px;
-                    height: 500px;
-                    display: flex;
-                    flex-direction: column;
-                    padding-top: 30px; /* ランクラベルのスペースを確保 */
-                }
-                .ranking-label {
-                    position: absolute;
-                    top: -12px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 0.9rem;
-                    z-index: 10;
-                    white-space: nowrap;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                }
-                .room-title {
-                    text-align: center;
-                    font-size: 1rem;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden; 
-                    white-space: normal;
-                    line-height: 1.4em;
-                    min-height: calc(1.4em * 3);
-                }
-                .gift-list-container {
-                    flex-grow: 1;
-                    height: 400px;
-                    overflow-y: scroll;
-                    scrollbar-width: auto;
-                }
-                .gift-list-container::-webkit-scrollbar {
-                    /* display: none;*/
-                }
-                .gift-item {
-                    display: flex;
-                    flex-direction: column;
-                    padding: 8px 0;
-                    border-bottom: 1px solid #eee;
-                    gap: 4px;
-                }
-                .gift-item:last-child {border-bottom: none;}
-                .gift-header {font-weight: bold;}
-                .gift-info-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-                .gift-image {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 5px;
-                    object-fit: contain;
-                }
-                
-                /* 追加したハイライトスタイル */
-                .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
-                .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
-                .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
-                .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
-                .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
-                
-                </style>
-            """
-            
-            live_rooms_data = []
-            if not df.empty and st.session_state.room_map_data:
-                # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
-                # これにより、配信終了したルームのコンテナが残るのを防ぐ
-                selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
-                
-                # ライブ配信が終了したルームのキャッシュを削除する
-                rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
-                for room_id in rooms_to_delete:
-                    del st.session_state.gift_log_cache[room_id]
-                
-                for index, row in df.iterrows():
-                    room_name = row['ルーム名']
-                    if room_name in st.session_state.room_map_data:
-                        room_id = st.session_state.room_map_data[room_name]['room_id']
-                        if int(room_id) in onlives_rooms:
-                            live_rooms_data.append({
-                                "room_name": room_name,
-                                "room_id": room_id,
-                                "rank": row['現在の順位']
-                            })
-            
-            room_html_list = []
-            if len(live_rooms_data) > 0:
-                for room_data in live_rooms_data:
-                    room_name = room_data['room_name']
-                    room_id = room_data['room_id']
-                    rank = room_data.get('rank', 'N/A')
-                    rank_color = get_rank_color(rank)
-
-                    if int(room_id) in onlives_rooms:
-                        gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
-                        gift_list_map = get_gift_list(room_id) # gift_listも取得
-                        
-                        html_content = f"""
-                        <div class="room-container">
-                            <div class="ranking-label" style="background-color: {rank_color};">
-                                {rank}位
-                            </div>
-                            <div class="room-title">
-                                {room_name}
-                            </div>
-                            <div class="gift-list-container">
-                        """
-                        if not gift_list_map:
-                            html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
-
-                        if gift_log:
-                            for log in gift_log:
-                                gift_id = log.get('gift_id')
-                                # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
-                                gift_info = gift_list_map.get(str(gift_id), {})
-                                
-                                gift_point = gift_info.get('point', 0)
-                                gift_count = log.get('num', 0)
-                                total_point = gift_point * gift_count
-
-                                highlight_class = ""
-                                if gift_point >= 500:
-                                    if total_point >= 300000:
-                                        highlight_class = "highlight-300000"
-                                    elif total_point >= 100000:
-                                        highlight_class = "highlight-100000"
-                                    elif total_point >= 60000:
-                                        highlight_class = "highlight-60000"
-                                    elif total_point >= 30000:
-                                        highlight_class = "highlight-30000"
-                                    elif total_point >= 10000:
-                                        highlight_class = "highlight-10000"
-                                
-                                gift_image = log.get('image', gift_info.get('image', ''))
-
-                                html_content += (
-                                    f'<div class="gift-item {highlight_class}">'
-                                    f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
-                                    f'<div class="gift-info-row">'
-                                    f'<img src="{gift_image}" class="gift-image" />'
-                                    f'<span>×{gift_count}</span>'
-                                    f'</div>'
-                                    f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
-                                    f'</div>'
-                                )
-                            html_content += '</div>'
-                        else:
-                            html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
-                        
-                        html_content += '</div>'
-                        room_html_list.append(html_content)
+        st.subheader("📊 比較対象ルームのステータス")
+        required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
+        if all(col in df.columns for col in required_cols):
+            try:
+                def highlight_rows(row):
+                    if row['ライブ中'] == '🔴':
+                        return ['background-color: #e6fff2'] * len(row)
+                    elif row.name % 2 == 1:
+                        return ['background-color: #fafafa'] * len(row)
                     else:
-                        room_html_list.append(
-                            f'<div class="room-container">'
-                            f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
-                            f'<div class="room-title">{room_name}</div>'
-                            f'<p style="text-align: center;">ライブ配信していません。</p>'
-                            f'</div>'
-                        )
-                html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-                # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
-                gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
-            else:
-                # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
-                gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                        return [''] * len(row)
+                df_to_format = df.copy()
+                for col in required_cols:
+                    df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
+                styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
+                    {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
+                st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # --- スペシャルギフト履歴 ---
+        st.markdown("### 🎁 スペシャルギフト履歴 <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+        gift_container = st.container()
+        
+        # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
+        css_style = """
+            <style>
+            .container-wrapper {
+                display: flex;
+                flex-wrap: wrap; 
+                gap: 15px;
+            }
+            .room-container {
+                position: relative;
+                width: 175px; 
+                flex-shrink: 0;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+                height: 500px;
+                display: flex;
+                flex-direction: column;
+                padding-top: 30px; /* ランクラベルのスペースを確保 */
+            }
+            .ranking-label {
+                position: absolute;
+                top: -12px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 2px 8px;
+                border-radius: 12px;
+                color: white;
+                font-weight: bold;
+                font-size: 0.9rem;
+                z-index: 10;
+                white-space: nowrap;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+            .room-title {
+                text-align: center;
+                font-size: 1rem;
+                font-weight: bold;
+                margin-bottom: 10px;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden; 
+                white-space: normal;
+                line-height: 1.4em;
+                min-height: calc(1.4em * 3);
+            }
+            .gift-list-container {
+                flex-grow: 1;
+                height: 400px;
+                overflow-y: scroll;
+                scrollbar-width: auto;
+            }
+            .gift-list-container::-webkit-scrollbar {
+                /* display: none;*/
+            }
+            .gift-item {
+                display: flex;
+                flex-direction: column;
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                gap: 4px;
+            }
+            .gift-item:last-child {border-bottom: none;}
+            .gift-header {font-weight: bold;}
+            .gift-info-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .gift-image {
+                width: 30px;
+                height: 30px;
+                border-radius: 5px;
+                object-fit: contain;
+            }
             
-            # ★ 修正箇所: ここに余白を追加
-            st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+            /* 追加したハイライトスタイル */
+            .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
+            .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
+            .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
+            .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
+            .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
             
-            st.subheader("📈 ポイントと順位の比較")
-            color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
+            </style>
+        """
+        
+        live_rooms_data = []
+        if not df.empty and st.session_state.room_map_data:
+            # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
+            # これにより、配信終了したルームのコンテナが残るのを防ぐ
+            selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
+            
+            # ライブ配信が終了したルームのキャッシュを削除する
+            rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
+            for room_id in rooms_to_delete:
+                del st.session_state.gift_log_cache[room_id]
+            
+            for index, row in df.iterrows():
+                room_name = row['ルーム名']
+                if room_name in st.session_state.room_map_data:
+                    room_id = st.session_state.room_map_data[room_name]['room_id']
+                    if int(room_id) in onlives_rooms:
+                        live_rooms_data.append({
+                            "room_name": room_name,
+                            "room_id": room_id,
+                            "rank": row['現在の順位']
+                        })
+        
+        room_html_list = []
+        if len(live_rooms_data) > 0:
+            for room_data in live_rooms_data:
+                room_name = room_data['room_name']
+                room_id = room_data['room_id']
+                rank = room_data.get('rank', 'N/A')
+                rank_color = get_rank_color(rank)
 
-            if '現在のポイント' in df.columns:
-                fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
-                                    title="各ルームの現在のポイント", color="ルーム名",
-                                    color_discrete_map=color_map,
-                                    hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
-                                    labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_points, use_container_width=True)
+                if int(room_id) in onlives_rooms:
+                    gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
+                    gift_list_map = get_gift_list(room_id) # gift_listも取得
+                    
+                    html_content = f"""
+                    <div class="room-container">
+                        <div class="ranking-label" style="background-color: {rank_color};">
+                            {rank}位
+                        </div>
+                        <div class="room-title">
+                            {room_name}
+                        </div>
+                        <div class="gift-list-container">
+                    """
+                    if not gift_list_map:
+                        html_content += '<p style="text-align: center; padding: 12px 0; color: orange;">ギフト情報取得失敗</p>'
 
-            if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
-                df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
-                                       title="上位とのポイント差", color="ルーム名",
-                                       color_discrete_map=color_map,
-                                       hover_data=["現在の順位", "現在のポイント"],
-                                       labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_upper_gap, use_container_width=True)
+                    if gift_log:
+                        for log in gift_log:
+                            gift_id = log.get('gift_id')
+                            # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
+                            gift_info = gift_list_map.get(str(gift_id), {})
+                            
+                            gift_point = gift_info.get('point', 0)
+                            gift_count = log.get('num', 0)
+                            total_point = gift_point * gift_count
 
-            if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
-                df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
-                                       title="下位とのポイント差", color="ルーム名",
-                                       color_discrete_map=color_map,
-                                       hover_data=["現在の順位", "現在のポイント"],
-                                       labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-                st.plotly_chart(fig_lower_gap, use_container_width=True)
+                            highlight_class = ""
+                            if gift_point >= 500:
+                                if total_point >= 300000:
+                                    highlight_class = "highlight-300000"
+                                elif total_point >= 100000:
+                                    highlight_class = "highlight-100000"
+                                elif total_point >= 60000:
+                                    highlight_class = "highlight-60000"
+                                elif total_point >= 30000:
+                                    highlight_class = "highlight-30000"
+                                elif total_point >= 10000:
+                                    highlight_class = "highlight-10000"
+                            
+                            gift_image = log.get('image', gift_info.get('image', ''))
+
+                            html_content += (
+                                f'<div class="gift-item {highlight_class}">'
+                                f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
+                                f'<div class="gift-info-row">'
+                                f'<img src="{gift_image}" class="gift-image" />'
+                                f'<span>×{gift_count}</span>'
+                                f'</div>'
+                                f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
+                                f'</div>'
+                            )
+                        html_content += '</div>'
+                    else:
+                        html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
+                    
+                    html_content += '</div>'
+                    room_html_list.append(html_content)
+                else:
+                    room_html_list.append(
+                        f'<div class="room-container">'
+                        f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
+                        f'<div class="room-title">{room_name}</div>'
+                        f'<p style="text-align: center;">ライブ配信していません。</p>'
+                        f'</div>'
+                    )
+            html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
+            # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
+            gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
+        else:
+            # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
+            gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
+        
+        # ★ 修正箇所: ここに余白を追加
+        st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+        
+        st.subheader("📈 ポイントと順位の比較")
+        color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
+
+        if '現在のポイント' in df.columns:
+            fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
+                                title="各ルームの現在のポイント", color="ルーム名",
+                                color_discrete_map=color_map,
+                                hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
+                                labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+            st.plotly_chart(fig_points, use_container_width=True)
+
+        if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
+            df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+            fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
+                                   title="上位とのポイント差", color="ルーム名",
+                                   color_discrete_map=color_map,
+                                   hover_data=["現在の順位", "現在のポイント"],
+                                   labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+            st.plotly_chart(fig_upper_gap, use_container_width=True)
+
+        # 修正箇所: ここで重複していた「下位とのポイント差」のグラフを削除
+        if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
+            df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+            fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
+                                   title="下位とのポイント差", color="ルーム名",
+                                   color_discrete_map=color_map,
+                                   hover_data=["現在の順位", "現在のポイント"],
+                                   labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+            st.plotly_chart(fig_lower_gap, use_container_width=True)
     
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
