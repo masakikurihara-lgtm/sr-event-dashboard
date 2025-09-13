@@ -609,7 +609,7 @@ def main():
                 gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
             
             # ★ 修正箇所: ここに余白を追加
-            st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
