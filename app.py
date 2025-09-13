@@ -413,29 +413,15 @@ def main():
                 white-space: normal; /* 修正: normal に変更 */
                 text-overflow: ellipsis; /* 修正: ellipsis は不要なため削除 */
             }
-.gift-list-container {
-    flex-grow: 1;
-    height: 400px;
-    overflow-y: scroll;
-    -ms-overflow-style: scrollbar; /* IE/古いEdgeで表示させる */
-    scrollbar-width: auto;         /* Firefox: auto / thin / none */
-    scrollbar-gutter: stable;      /* ギャター（余白）を確保してレイアウト崩れを防ぐ */
-}
-
-/* WebKit（Chrome / Safari）用に幅とサム（つまみ）をスタイル */
-.gift-list-container::-webkit-scrollbar {
-    width: 12px;
-}
-.gift-list-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-.gift-list-container::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.25);
-    border-radius: 6px;
-    border: 3px solid transparent; /* 見た目の余白調整 */
-    background-clip: padding-box;
-}
-
+            .gift-list-container {
+                flex-grow: 1;
+                height: 400px;
+                overflow-y: scroll;
+                scrollbar-width: auto;
+            }
+            .gift-list-container::-webkit-scrollbar {
+                   display: none;
+            }
             .gift-item {
                 display: flex;
                 flex-direction: column;
