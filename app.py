@@ -412,8 +412,8 @@ def main():
                 overflow: hidden; 
                 white-space: normal; /* 修正: normal に変更 */
                 text-overflow: ellipsis; /* 修正: ellipsis は不要なため削除 */
-                line-height: 1.4em;
-                min-height: calc(1.4em * 3);
+                line-height: 1.2em;
+                min-height: calc(1.2em * 3);
             }
             .gift-list-container {
                 flex-grow: 1;
