@@ -374,14 +374,10 @@ def main():
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True)
             
-            # --- ここからが修正箇所 ---
             st.subheader("📈 ポイントと順位の比較")
-            
-            # 修正①: ルーム名と順位に基づいた色のマッピングを作成
             color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
 
             if '現在のポイント' in df.columns:
-                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
                                     title="各ルームの現在のポイント", color="ルーム名",
                                     color_discrete_map=color_map,
@@ -391,7 +387,6 @@ def main():
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
                                        title="上位とのポイント差", color="ルーム名",
                                        color_discrete_map=color_map,
@@ -401,14 +396,12 @@ def main():
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                # 修正②: color_discrete_map引数を追加して色を指定
                 fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
                                        title="下位とのポイント差", color="ルーム名",
                                        color_discrete_map=color_map,
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
-            # --- ここまでが修正箇所 ---
 
             # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
@@ -491,19 +484,24 @@ def main():
             </style>
             """, unsafe_allow_html=True)
             
+            # --- ここからが修正箇所 ---
             live_rooms_data = []
-            if st.session_state.selected_room_names and st.session_state.room_map_data:
-                for room_name in st.session_state.selected_room_names:
+            if not df.empty and st.session_state.room_map_data:
+                # 修正①: 最新のDFから順位を取得するように変更
+                for index, row in df.iterrows():
+                    room_name = row['ルーム名']
                     if room_name in st.session_state.room_map_data:
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         if int(room_id) in onlives_rooms:
                             live_rooms_data.append({
                                 "room_name": room_name,
                                 "room_id": room_id,
-                                "rank": st.session_state.room_map_data[room_name].get('rank', 'N/A')
+                                "rank": row['現在の順位'] # 古いデータではなく、最新のDFから順位を取得
                             })
-                live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
-            
+                # 修正②: dfが既にソート済みのため、ここでのソートは不要
+                # live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
+            # --- ここまでが修正箇所 ---
+
             room_html_list = []
             if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
