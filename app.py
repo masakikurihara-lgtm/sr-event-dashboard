@@ -243,6 +243,10 @@ def main():
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
         options=list(event_options.keys()), key="event_selector")
+    
+    # 修正箇所: ここに注意書きを追加
+    st.write("※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。")
+
     if not selected_event_name:
         st.warning("イベントを選択してください。")
         return
