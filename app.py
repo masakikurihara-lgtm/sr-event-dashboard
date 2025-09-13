@@ -36,8 +36,8 @@ def get_events():
                 page_events = data
             if not page_events:
                     break
-            # 修正箇所: show_rankingがfalseではないイベントのみを追加
-            filtered_page_events = [event for event in page_events if event.get("show_ranking") is not False]
+            # 修正箇所: show_rankingがfalseではないイベントとis_event_blockがtrueではないイベントのみを追加
+            filtered_page_events = [event for event in page_events if event.get("show_ranking") is not False and event.get("is_event_block") is not True]
             events.extend(filtered_page_events)
             page += 1
         except requests.exceptions.RequestException as e:
