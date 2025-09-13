@@ -375,15 +375,9 @@ def main():
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
             st.subheader("📈 ポイントと順位の比較")
-            
-            # --- 修正点①：グラフとラベルの色を統一 ---
-            # 順位に基づいてルーム名と色のマッピングを作成
-            color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
-            
             if '現在のポイント' in df.columns:
                 fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
                                     title="各ルームの現在のポイント", color="ルーム名",
-                                    color_discrete_map=color_map, # 色のマッピングを指定
                                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_points, use_container_width=True)
@@ -392,7 +386,6 @@ def main():
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
                 fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
                                        title="上位とのポイント差", color="ルーム名",
-                                       color_discrete_map=color_map, # 色のマッピングを指定
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_upper_gap, use_container_width=True)
@@ -401,17 +394,13 @@ def main():
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
                 fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
                                        title="下位とのポイント差", color="ルーム名",
-                                       color_discrete_map=color_map, # 色のマッピングを指定
                                        hover_data=["現在の順位", "現在のポイント"],
                                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
                 st.plotly_chart(fig_lower_gap, use_container_width=True)
             
-            # --- 修正点②：表示残像問題の解消 ---
+            # --- スペシャルギフト履歴 ---
             st.subheader("🎁 スペシャルギフト履歴")
-            gift_history_placeholder = st.empty() # 描画エリアのプレースホルダーを作成
-
-            # CSSスタイルを文字列として保持
-            style_html = """
+            st.markdown("""
             <style>
             .container-wrapper {
                 display: flex;
@@ -488,7 +477,7 @@ def main():
                 object-fit: contain;
             }
             </style>
-            """
+            """, unsafe_allow_html=True)
             
             live_rooms_data = []
             if st.session_state.selected_room_names and st.session_state.room_map_data:
@@ -496,64 +485,61 @@ def main():
                     if room_name in st.session_state.room_map_data:
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         if int(room_id) in onlives_rooms:
-                            # 現在のデータフレームから最新の順位情報を取得
-                            current_rank_series = df.loc[df['ルーム名'] == room_name, '現在の順位']
-                            current_rank = current_rank_series.iloc[0] if not current_rank_series.empty else 'N/A'
                             live_rooms_data.append({
                                 "room_name": room_name,
                                 "room_id": room_id,
-                                "rank": current_rank
+                                "rank": st.session_state.room_map_data[room_name].get('rank', 'N/A')
                             })
                 live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
             
+            room_html_list = []
             if len(live_rooms_data) > 0:
-                room_html_list = []
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
                     rank = room_data.get('rank', 'N/A')
                     rank_color = get_rank_color(rank)
 
-                    gift_log = get_gift_log(room_id)
-                    
-                    html_content = f"""
-                    <div class="room-container">
-                        <div class="ranking-label" style="background-color: {rank_color};">
-                            {rank}位
-                        </div>
-                        <div class="room-title">
-                            {room_name}
-                        </div>
-                        <div class="gift-list-container">
-                    """
-                    if gift_log:
-                        gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-                        for log in gift_log:
-                            gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
-                            gift_image = log.get('image', '')
-                            gift_count = log.get('num', 0)
-                            html_content += (
-                                f'<div class="gift-item">'
-                                f'<div class="gift-header"><small>{gift_time}</small></div>'
-                                f'<div class="gift-info-row">'
-                                f'<img src="{gift_image}" class="gift-image" />'
-                                f'<span>×{gift_count}</span>'
-                                f'</div></div>'
-                            )
+                    if int(room_id) in onlives_rooms:
+                        gift_log = get_gift_log(room_id)
+                        
+                        html_content = f"""
+                        <div class="room-container">
+                            <div class="ranking-label" style="background-color: {rank_color};">
+                                {rank}位
+                            </div>
+                            <div class="room-title">
+                                {room_name}
+                            </div>
+                            <div class="gift-list-container">
+                        """
+                        if gift_log:
+                            gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+                            for log in gift_log:
+                                gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
+                                gift_image = log.get('image', '')
+                                gift_count = log.get('num', 0)
+                                html_content += (
+                                    f'<div class="gift-item">'
+                                    f'<div class="gift-header"><small>{gift_time}</small></div>'
+                                    f'<div class="gift-info-row">'
+                                    f'<img src="{gift_image}" class="gift-image" />'
+                                    f'<span>×{gift_count}</span>'
+                                    f'</div></div>'
+                                )
+                            html_content += '</div>'
+                        else:
+                            html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
+                        
                         html_content += '</div>'
+                        room_html_list.append(html_content)
                     else:
-                        html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
-                    
-                    html_content += '</div>'
-                    room_html_list.append(html_content)
+                        room_html_list.append(f'<div class="room-container"><div class="ranking-label" style="background-color: {rank_color};">{rank}位</div><div class="room-title">{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
                 
-                # CSSと生成したHTMLを結合してプレースホルダーに描画
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-                final_html = style_html + html_container_content
-                gift_history_placeholder.markdown(final_html, unsafe_allow_html=True)
+                st.markdown(html_container_content, unsafe_allow_html=True)
             else:
-                # ライブ中のルームがない場合は、プレースホルダーにメッセージを表示
-                gift_history_placeholder.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                st.info("選択されたルームに現在ライブ配信中のルームはありません。")
 
 
         if final_remain_time is not None:
