@@ -417,9 +417,11 @@ def main():
                 flex-grow: 1;
                 height: 400px;
                 overflow-y: scroll;
+                /* -ms-overflow-style: none;
                 scrollbar-width: auto;
             }
             .gift-list-container::-webkit-scrollbar {
+                /* display: none;
             }
             .gift-item {
                 display: flex;
