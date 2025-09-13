@@ -172,6 +172,22 @@ def get_onlives_rooms():
         st.warning("ライブ配信情報のJSONデコードまたは解析に失敗しました。")
     return onlives
 
+def get_rank_color(rank):
+    """
+    ランキングに応じたカラーコードを返す
+    Plotlyのデフォルトカラーを参考に設定
+    """
+    colors = px.colors.qualitative.Plotly
+    if rank is None:
+        return "#A9A9A9"  # DarkGray
+    try:
+        rank_int = int(rank)
+        if rank_int <= 0:
+            return colors[0]
+        return colors[(rank_int - 1) % len(colors)]
+    except (ValueError, TypeError):
+        return "#A9A9A9"
+
 def main():
     st.title("🎤 SHOWROOM Event Dashboard")
     st.write("ライバーとリスナーのための、イベント順位とポイント差をリアルタイムで可視化するツールです。")
@@ -392,6 +408,7 @@ def main():
                 gap: 15px;
             }
             .room-container {
+                position: relative;
                 width: 180px; 
                 flex-shrink: 0;
                 border: 1px solid #ddd;
@@ -400,18 +417,32 @@ def main():
                 height: 500px;
                 display: flex;
                 flex-direction: column;
+                padding-top: 30px; /* ランクラベルのスペースを確保 */
+            }
+            .ranking-label {
+                position: absolute;
+                top: -12px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 2px 8px;
+                border-radius: 12px;
+                color: white;
+                font-weight: bold;
+                font-size: 0.9rem;
+                z-index: 10;
+                white-space: nowrap;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             }
             .room-title {
                 text-align: center;
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 10px;
-                display: -webkit-box; /* 修正: 複数行表示のために追加 */
-                -webkit-line-clamp: 3; /* 修正: 3行で省略するように設定 */
-                -webkit-box-orient: vertical; /* 修正: 複数行表示のために追加 */
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
                 overflow: hidden; 
-                white-space: normal; /* 修正: normal に変更 */
-                text-overflow: ellipsis; /* 修正: ellipsis は不要なため削除 */
+                white-space: normal;
                 line-height: 1.4em;
                 min-height: calc(1.4em * 3);
             }
@@ -419,7 +450,6 @@ def main():
                 flex-grow: 1;
                 height: 400px;
                 overflow-y: scroll;
-                /* -ms-overflow-style: none;*/
                 scrollbar-width: auto;
             }
             .gift-list-container::-webkit-scrollbar {
@@ -458,9 +488,9 @@ def main():
                             live_rooms_data.append({
                                 "room_name": room_name,
                                 "room_id": room_id,
-                                "rank": st.session_state.room_map_data[room_name].get('rank', float('inf'))
+                                "rank": st.session_state.room_map_data[room_name].get('rank', 'N/A')
                             })
-                live_rooms_data.sort(key=lambda x: x['rank'])
+                live_rooms_data.sort(key=lambda x: int(x['rank']) if str(x['rank']).isdigit() else float('inf'))
             
             room_html_list = []
             if len(live_rooms_data) > 0:
@@ -468,14 +498,18 @@ def main():
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
                     rank = room_data.get('rank', 'N/A')
+                    rank_color = get_rank_color(rank)
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_gift_log(room_id)
                         
                         html_content = f"""
                         <div class="room-container">
+                            <div class="ranking-label" style="background-color: {rank_color};">
+                                {rank}位
+                            </div>
                             <div class="room-title">
-                                {rank}位：{room_name}
+                                {room_name}
                             </div>
                             <div class="gift-list-container">
                         """
@@ -500,7 +534,7 @@ def main():
                         html_content += '</div>'
                         room_html_list.append(html_content)
                     else:
-                        room_html_list.append(f'<div class="room-container"><div class="room-title">{rank}位：{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
+                        room_html_list.append(f'<div class="room-container"><div class="ranking-label" style="background-color: {rank_color};">{rank}位</div><div class="room-title">{room_name}</div><p style="text-align: center;">ライブ配信していません。</p></div>')
                 
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 st.markdown(html_container_content, unsafe_allow_html=True)
