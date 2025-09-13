@@ -481,6 +481,14 @@ def main():
                 border-radius: 5px;
                 object-fit: contain;
             }
+            
+            /* 追加したハイライトスタイル */
+            .highlight-10000 { background-color: #ffe6e6; } /* 薄い赤 */
+            .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
+            .highlight-60000 { background-color: #ff9999; } /* もっと濃い赤 */
+            .highlight-100000 { background-color: #ff6666; } /* 非常に濃い赤 */
+            .highlight-300000 { background-color: #ff3333; } /* 最も濃い赤 */
+
             </style>
             """, unsafe_allow_html=True)
             
@@ -512,6 +520,7 @@ def main():
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_gift_log(room_id)
+                        gift_list_map = get_gift_list(room_id) # ★ 追加：ギフトポイント情報を取得
                         
                         html_content = f"""
                         <div class="room-container">
@@ -526,16 +535,37 @@ def main():
                         if gift_log:
                             gift_log.sort(key=lambda x: x.get('created_at', 0), reverse=True)
                             for log in gift_log:
+                                gift_id = log.get('gift_id')
+                                gift_info = gift_list_map.get(gift_id, {})
                                 gift_time = datetime.datetime.fromtimestamp(log.get('created_at', 0), JST).strftime("%H:%M:%S")
                                 gift_image = log.get('image', '')
                                 gift_count = log.get('num', 0)
+                                gift_point = gift_info.get('point', 0)
+                                total_point = gift_point * gift_count # ★ 追加：合計ポイントを計算
+
+                                # ★ 追加：ハイライト条件を判定
+                                highlight_class = ""
+                                if gift_point >= 500:
+                                    if total_point >= 300000:
+                                        highlight_class = "highlight-300000"
+                                    elif total_point >= 100000:
+                                        highlight_class = "highlight-100000"
+                                    elif total_point >= 60000:
+                                        highlight_class = "highlight-60000"
+                                    elif total_point >= 30000:
+                                        highlight_class = "highlight-30000"
+                                    elif total_point >= 10000:
+                                        highlight_class = "highlight-10000"
+
                                 html_content += (
-                                    f'<div class="gift-item">'
+                                    f'<div class="gift-item {highlight_class}">' # ★ 変更：ハイライトクラスを追加
                                     f'<div class="gift-header"><small>{gift_time}</small></div>'
                                     f'<div class="gift-info-row">'
                                     f'<img src="{gift_image}" class="gift-image" />'
                                     f'<span>×{gift_count}</span>'
-                                    f'</div></div>'
+                                    f'</div>'
+                                    f'<div>{gift_point}pt</div>' # ★ 追加：ポイントを表示
+                                    f'</div>'
                                 )
                             html_content += '</div>'
                         else:
