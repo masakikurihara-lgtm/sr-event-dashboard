@@ -397,7 +397,7 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 600px;
+                height: 500px;
                 display: flex;
                 flex-direction: column;
             }
@@ -415,7 +415,7 @@ def main():
             }
             .gift-list-container {
                 flex-grow: 1;
-                height: 400px;
+                height: 200px;
                 overflow-y: scroll;
                 /* -ms-overflow-style: none;*/
                 scrollbar-width: auto;
