@@ -397,7 +397,7 @@ def main():
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 padding: 10px;
-                height: 500px;
+                height: 600px;
                 display: flex;
                 flex-direction: column;
             }
