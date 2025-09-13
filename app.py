@@ -412,7 +412,7 @@ def main():
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
             # --- スペシャルギフト履歴 ---
-            st.subheader("🎁 スペシャルギフト履歴")
+            st.subheader("🎁 スペシャルギフト履歴<div style='margin-bottom: 14px;'>（配信中のルームのみ表示）</div>")
             # ★ 修正箇所: ここでCSSを追加してマージンを設定
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
