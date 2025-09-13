@@ -536,7 +536,7 @@ def main():
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
                                 # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
-                                gift_info = gift_list_map.get(str(gift_id), {})
+                                gift_info = gift_list_map.get(int(gift_id), {})
                                 
                                 gift_point = gift_info.get('point', 0)
                                 gift_count = log.get('num', 0)
