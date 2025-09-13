@@ -543,17 +543,19 @@ def main():
                                 total_point = gift_point * gift_count
 
                                 highlight_class = ""
-                                if gift_point >= 500:
-                                    if total_point >= 300000:
-                                        highlight_class = "highlight-300000"
-                                    elif total_point >= 100000:
-                                        highlight_class = "highlight-100000"
-                                    elif total_point >= 60000:
-                                        highlight_class = "highlight-60000"
-                                    elif total_point >= 30000:
-                                        highlight_class = "highlight-30000"
-                                    elif total_point >= 10000:
-                                        highlight_class = "highlight-10000"
+                                if total_point >= 1:
+                                    highlight_class = "highlight-10000"
+#                                if gift_point >= 500:
+#                                    if total_point >= 300000:
+#                                        highlight_class = "highlight-300000"
+#                                    elif total_point >= 100000:
+#                                        highlight_class = "highlight-100000"
+#                                    elif total_point >= 60000:
+#                                        highlight_class = "highlight-60000"
+#                                    elif total_point >= 30000:
+#                                        highlight_class = "highlight-30000"
+#                                    elif total_point >= 10000:
+#                                        highlight_class = "highlight-10000"
                                 
                                 gift_image = log.get('image', gift_info.get('image', ''))
 
