@@ -245,7 +245,10 @@ def main():
         options=list(event_options.keys()), key="event_selector")
     
     # 修正箇所: ここに注意書きを追加
-    st.write("※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。")
+    st.markdown(
+        "<p style='font-size:16px; color:#4b5563;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
+        unsafe_allow_html=True
+    )
 
     if not selected_event_name:
         st.warning("イベントを選択してください。")
