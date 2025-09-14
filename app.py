@@ -36,6 +36,7 @@ def get_events():
                 page_events = data
             if not page_events:
                     break
+            # 修正箇所: show_rankingがfalseではないイベントとis_event_blockがtrueではないイベントのみを追加
             filtered_page_events = [event for event in page_events if event.get("show_ranking") is not False and event.get("is_event_block") is not True]
             events.extend(filtered_page_events)
             page += 1
@@ -117,6 +118,7 @@ def get_gift_list(room_id):
                 point_value = int(gift.get('point', 0))
             except (ValueError, TypeError):
                 point_value = 0
+            # ★ 修正箇所: gift_idを文字列に変換してキーとして保存する
             gift_list_map[str(gift['gift_id'])] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
@@ -127,9 +129,11 @@ def get_gift_list(room_id):
         st.error(f"ルームID {room_id} のギフトリスト取得中にエラーが発生しました: {e}")
         return {}
 
+# 差分更新のためのキャッシュをセッション状態に保存する
 if "gift_log_cache" not in st.session_state:
     st.session_state.gift_log_cache = {}
 
+# 更新されたギフトログのみを取得・マージする関数
 def get_and_update_gift_log(room_id):
     url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
     try:
@@ -137,19 +141,24 @@ def get_and_update_gift_log(room_id):
         response.raise_for_status()
         new_gift_log = response.json().get('gift_log', [])
         
+        # セッション状態から既存のログを取得
         if room_id not in st.session_state.gift_log_cache:
             st.session_state.gift_log_cache[room_id] = []
         
         existing_log = st.session_state.gift_log_cache[room_id]
         
+        # 新しいログを既存のログにマージ
         if new_gift_log:
+            # 重複を避けるために既存のログをセットに変換
             existing_log_set = {(log.get('gift_id'), log.get('created_at'), log.get('num')) for log in existing_log}
             
             for log in new_gift_log:
+                # ユニークなキーを作成して重複をチェック
                 log_key = (log.get('gift_id'), log.get('created_at'), log.get('num'))
                 if log_key not in existing_log_set:
                     existing_log.append(log)
         
+        # ログをタイムスタンプでソート
         st.session_state.gift_log_cache[room_id].sort(key=lambda x: x.get('created_at', 0), reverse=True)
         
         return st.session_state.gift_log_cache[room_id]
@@ -221,6 +230,8 @@ def main():
         st.session_state.selected_room_names = []
     if "multiselect_default_value" not in st.session_state:
         st.session_state.multiselect_default_value = []
+    if "multiselect_key_counter" not in st.session_state:
+        st.session_state.multiselect_key_counter = 0
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     events = get_events()
@@ -233,6 +244,7 @@ def main():
         "イベント名を選択してください:", 
         options=list(event_options.keys()), key="event_selector")
     
+    # 修正箇所: ここに注意書きを追加
     st.markdown(
         "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
         unsafe_allow_html=True
@@ -259,6 +271,7 @@ def main():
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
+        st.session_state.multiselect_key_counter = 0
         if 'select_top_15_checkbox' in st.session_state:
             st.session_state.select_top_15_checkbox = False
         st.rerun()
@@ -283,20 +296,19 @@ def main():
         top_15_rooms = room_options[:15]
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", options=room_options,
-            default=st.session_state.get('multiselect_default_value', []),
-            key="room_multiselect")
+            default=st.session_state.multiselect_default_value,
+            key=f"multiselect_{st.session_state.multiselect_key_counter}")
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        # チェックボックスが有効なら上位15を優先して選択する
-        if st.session_state.get('select_top_15_checkbox', False):
+        if st.session_state.select_top_15_checkbox:
             st.session_state.selected_room_names = top_15_rooms
             st.session_state.multiselect_default_value = top_15_rooms
-            #st.session_state['room_multiselect'] = top_15_rooms
+            st.session_state.multiselect_key_counter += 1
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
-        # フォーム送信後はそのまま描画を続ける（st.rerunは使用しない）
+        st.rerun()
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
@@ -304,14 +316,14 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("5秒ごとに自動更新されます。")
-    with st.container():
+    with st.container(border=True):
         col1, col2 = st.columns([1, 1])
         with col1:
             st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            time_container = st.container()
+            time_placeholder = st.empty()
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -404,6 +416,7 @@ def main():
         st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
         gift_container = st.container()
         
+        # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
         css_style = """
             <style>
             .container-wrapper {
@@ -493,8 +506,11 @@ def main():
         
         live_rooms_data = []
         if not df.empty and st.session_state.room_map_data:
+            # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
+            # これにより、配信終了したルームのコンテナが残るのを防ぐ
             selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
             
+            # ライブ配信が終了したルームのキャッシュを削除する
             rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
             for room_id in rooms_to_delete:
                 del st.session_state.gift_log_cache[room_id]
@@ -519,8 +535,8 @@ def main():
                 rank_color = get_rank_color(rank)
 
                 if int(room_id) in onlives_rooms:
-                    gift_log = get_and_update_gift_log(room_id)
-                    gift_list_map = get_gift_list(room_id)
+                    gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
+                    gift_list_map = get_gift_list(room_id) # gift_listも取得
                     
                     html_content = f"""
                     <div class="room-container">
@@ -538,6 +554,7 @@ def main():
                     if gift_log:
                         for log in gift_log:
                             gift_id = log.get('gift_id')
+                            # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
                             gift_info = gift_list_map.get(str(gift_id), {})
                             
                             gift_point = gift_info.get('point', 0)
@@ -566,7 +583,7 @@ def main():
                                 f'<img src="{gift_image}" class="gift-image" />'
                                 f'<span>×{gift_count}</span>'
                                 f'</div>'
-                                f'<div>{gift_point}pt</div>'
+                                f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
                                 f'</div>'
                             )
                         html_content += '</div>'
@@ -584,19 +601,17 @@ def main():
                         f'</div>'
                     )
             html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
+            # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
             gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
         else:
+            # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
             gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
         
+        # ★ 修正箇所: ここに余白を追加
         st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
         
         st.subheader("📈 ポイントと順位の比較")
         color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
-
-        # 固定のコンテナを使用して必ず同じDOM位置に上書き描画する（重複表示防止）
-        points_chart_container = st.container()
-        upper_gap_chart_container = st.container()
-        lower_gap_chart_container = st.container()
 
         if '現在のポイント' in df.columns:
             fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
@@ -604,7 +619,7 @@ def main():
                                 color_discrete_map=color_map,
                                 hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                 labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-            points_chart_container.plotly_chart(fig_points, use_container_width=True, key="points_chart")
+            st.plotly_chart(fig_points, use_container_width=True)
 
         if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
             df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
@@ -613,8 +628,9 @@ def main():
                                    color_discrete_map=color_map,
                                    hover_data=["現在の順位", "現在のポイント"],
                                    labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            upper_gap_chart_container.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
+            st.plotly_chart(fig_upper_gap, use_container_width=True)
 
+        # 修正箇所: ここで重複していた「下位とのポイント差」のグラフを削除
         if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
             df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
             fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
@@ -622,13 +638,13 @@ def main():
                                    color_discrete_map=color_map,
                                    hover_data=["現在の順位", "現在のポイント"],
                                    labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            lower_gap_chart_container.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
-
+            st.plotly_chart(fig_lower_gap, use_container_width=True) 
+    
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-        time_container.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
+        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
     else:
-        time_container.info("残り時間情報を取得できませんでした。")
+        time_placeholder.info("残り時間情報を取得できませんでした。")
 
     time.sleep(5)
     st.rerun()
