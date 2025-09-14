@@ -273,9 +273,6 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
-    # Render the badge (small HTML component). This does not cause server reruns.
-    st.components.v1.html(badge_html, height=0, scrolling=False)
-
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
@@ -354,10 +351,20 @@ def main():
         </script>
         """, height=0)
 
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stNotification"] {
+            margin-bottom: 0px !important;  /* st.info の下マージンを詰める */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
-    # 10秒ごとに自動更新（データの再取得・グラフ更新）
-    # st_autorefresh はページ全体を再実行しますが、残り時間はクライアント側で毎秒更新されるため影響は小さいです。
+    st.markdown('<div style="margin-top:-12px;"></div>', unsafe_allow_html=True)  # st_autorefreshの前の余白を詰める
     st_autorefresh(interval=10000, key="data_refresh")
 
     with st.container(border=True):
