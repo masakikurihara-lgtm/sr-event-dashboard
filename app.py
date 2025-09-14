@@ -39,7 +39,6 @@ def get_events():
                 page_events = data
             if not page_events:
                     break
-            # 修正箇所: show_rankingがfalseではないイベントとis_event_blockがtrueではないイベントのみを追加
             filtered_page_events = [event for event in page_events if event.get("show_ranking") is not False and event.get("is_event_block") is not True]
             events.extend(filtered_page_events)
             page += 1
@@ -121,7 +120,6 @@ def get_gift_list(room_id):
                 point_value = int(gift.get('point', 0))
             except (ValueError, TypeError):
                 point_value = 0
-            # ★ 修正箇所: gift_idを文字列に変換してキーとして保存する
             gift_list_map[str(gift['gift_id'])] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
@@ -132,11 +130,9 @@ def get_gift_list(room_id):
         st.error(f"ルームID {room_id} のギフトリスト取得中にエラーが発生しました: {e}")
         return {}
 
-# 差分更新のためのキャッシュをセッション状態に保存する
 if "gift_log_cache" not in st.session_state:
     st.session_state.gift_log_cache = {}
 
-# 更新されたギフトログのみを取得・マージする関数
 def get_and_update_gift_log(room_id):
     url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
     try:
@@ -144,24 +140,19 @@ def get_and_update_gift_log(room_id):
         response.raise_for_status()
         new_gift_log = response.json().get('gift_log', [])
         
-        # セッション状態から既存のログを取得
         if room_id not in st.session_state.gift_log_cache:
             st.session_state.gift_log_cache[room_id] = []
         
         existing_log = st.session_state.gift_log_cache[room_id]
         
-        # 新しいログを既存のログにマージ
         if new_gift_log:
-            # 重複を避けるために既存のログをセットに変換
             existing_log_set = {(log.get('gift_id'), log.get('created_at'), log.get('num')) for log in existing_log}
             
             for log in new_gift_log:
-                # ユニークなキーを作成して重複をチェック
                 log_key = (log.get('gift_id'), log.get('created_at'), log.get('num'))
                 if log_key not in existing_log_set:
                     existing_log.append(log)
         
-        # ログをタイムスタンプでソート
         st.session_state.gift_log_cache[room_id].sort(key=lambda x: x.get('created_at', 0), reverse=True)
         
         return st.session_state.gift_log_cache[room_id]
@@ -220,7 +211,7 @@ def get_rank_color(rank):
         return colors[(rank_int - 1) % len(colors)]
     except (ValueError, TypeError):
         return "#A9A9A9"
-    
+
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
@@ -237,19 +228,18 @@ def main():
         st.session_state.multiselect_key_counter = 0
     if "show_dashboard" not in st.session_state:
         st.session_state.show_dashboard = False
-
-    st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
+    
     events = get_events()
     if not events:
         st.warning("現在開催中のイベントが見つかりませんでした。")
         return
 
+    st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
         options=list(event_options.keys()), key="event_selector")
     
-    # 修正箇所: ここに注意書きを追加
     st.markdown(
         "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
         unsafe_allow_html=True
@@ -266,6 +256,87 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
     
+    # ----------------------------------------------------
+    # ★ 修正箇所: タイマーの表示ロジックをここに移動しました
+    # ----------------------------------------------------
+    end_timestamp_ms = ended_at_dt.timestamp() * 1000
+
+    components.html(
+        f"""
+        <div id="countdown-container"></div>
+        <style>
+            .fixed-countdown {{
+                position: fixed;
+                top: 100px;
+                right: 15px;
+                z-index: 1000;
+                background-color: #4CAF50;
+                color: white;
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                transition: background-color 0.5s ease;
+            }}
+            .countdown-label {{
+                font-size: 0.8rem;
+                opacity: 0.8;
+                display: block;
+            }}
+        </style>
+        <script>
+            const endTime = {end_timestamp_ms};
+            const container = document.getElementById('countdown-container');
+
+            function formatTime(seconds) {{
+                const d = Math.floor(seconds / (3600 * 24));
+                const h = Math.floor((seconds % (3600 * 24)) / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = Math.floor(seconds % 60);
+                return d + 'd ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
+            }}
+
+            function updateCountdown() {{
+                const now = new Date().getTime();
+                const distance = endTime - now;
+                let html;
+
+                if (distance > 0) {{
+                    const secondsRemaining = Math.floor(distance / 1000);
+                    let bgColor = "#4CAF50";
+                    if (secondsRemaining <= 3600) {{
+                        bgColor = "#ff4b4b";
+                    }} else if (secondsRemaining <= 10800) {{
+                        bgColor = "#ffa500";
+                    }}
+                    const formattedTime = formatTime(secondsRemaining);
+                    html = `<div class="fixed-countdown" style="background-color: ${{bgColor}}; ">
+                                <span class="countdown-label">残り時間</span>
+                                <span>${{formattedTime}}</span>
+                            </div>`;
+                }} else {{
+                    html = `<div class="fixed-countdown" style="background-color: #808080;">
+                                <span class="countdown-label">残り時間</span>
+                                <span>イベント終了</span>
+                            </div>`;
+                }}
+                container.innerHTML = html;
+            }}
+
+            updateCountdown();
+            if (endTime > new Date().getTime()) {{
+                setInterval(updateCountdown, 1000);
+            }}
+        </script>
+        """,
+        height=50,
+    )
+    # ----------------------------------------------------
+    # ★ ここまでタイマー表示ロジック
+    # ----------------------------------------------------
+
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
@@ -315,92 +386,7 @@ def main():
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
         st.session_state.show_dashboard = True
-        st.rerun()
-    
-    # ----------------------------------------------------
-    # ★ 修正箇所: タイマーの表示ロジックをここに移動しました
-    # 選択イベントが確定した後に実行することで、タイマーの終了時刻を正しく設定できます。
-    # ----------------------------------------------------
-    if selected_event_data:
-        ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
-        end_timestamp_ms = ended_at_dt.timestamp() * 1000
-
-        components.html(
-            f"""
-            <div id="countdown-container"></div>
-            <style>
-                .fixed-countdown {{
-                    position: fixed;
-                    top: 100px;
-                    right: 15px;
-                    z-index: 1000;
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 8px 15px;
-                    border-radius: 20px;
-                    font-size: 1.2rem;
-                    font-weight: bold;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    transition: background-color 0.5s ease;
-                }}
-                .countdown-label {{
-                    font-size: 0.8rem;
-                    opacity: 0.8;
-                    display: block;
-                }}
-            </style>
-            <script>
-                const endTime = {end_timestamp_ms};
-                const container = document.getElementById('countdown-container');
-
-                function formatTime(seconds) {{
-                    const d = Math.floor(seconds / (3600 * 24));
-                    const h = Math.floor((seconds % (3600 * 24)) / 3600);
-                    const m = Math.floor((seconds % 3600) / 60);
-                    const s = Math.floor(seconds % 60);
-                    return d + 'd ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
-                }}
-
-                function updateCountdown() {{
-                    const now = new Date().getTime();
-                    const distance = endTime - now;
-                    let html;
-
-                    if (distance > 0) {{
-                        const secondsRemaining = Math.floor(distance / 1000);
-                        let bgColor = "#4CAF50";
-                        if (secondsRemaining <= 3600) {{
-                            bgColor = "#ff4b4b";
-                        }} else if (secondsRemaining <= 10800) {{
-                            bgColor = "#ffa500";
-                        }}
-                        const formattedTime = formatTime(secondsRemaining);
-                        html = `<div class="fixed-countdown" style="background-color: ${{bgColor}}; ">
-                                    <span class="countdown-label">残り時間</span>
-                                    <span>${{formattedTime}}</span>
-                                </div>`;
-                    }} else {{
-                        html = `<div class="fixed-countdown" style="background-color: #808080;">
-                                    <span class="countdown-label">残り時間</span>
-                                    <span>イベント終了</span>
-                                </div>`;
-                    }}
-                    container.innerHTML = html;
-                }}
-
-                updateCountdown();
-                if (endTime > new Date().getTime()) {{
-                    setInterval(updateCountdown, 1000);
-                }}
-            </script>
-            """,
-            height=50,
-        )
-    # ----------------------------------------------------
-    # ★ ここまでタイマー表示ロジック
-    # ----------------------------------------------------
-
+        
     if st.session_state.show_dashboard:
         if not st.session_state.selected_room_names:
             st.warning("最低1つのルームを選択してください。")
@@ -408,7 +394,6 @@ def main():
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("データは10秒ごとに自動更新されます。")
-        # ★ 修正箇所: Streamlitのデータ更新は`st_autorefresh`で制御
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
         with st.container(border=True):
@@ -509,12 +494,10 @@ def main():
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
-            # --- スペシャルギフト履歴 ---
             st.markdown("### 🎁 スペシャルギフト履歴 <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>", unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
             
-            # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
             css_style = """
                 <style>
                 .container-wrapper {
@@ -532,7 +515,7 @@ def main():
                     height: 500px;
                     display: flex;
                     flex-direction: column;
-                    padding-top: 30px; /* ランクラベルのスペースを確保 */
+                    padding-top: 30px;
                 }
                 .ranking-label {
                     position: absolute;
@@ -568,7 +551,6 @@ def main():
                     scrollbar-width: auto;
                 }
                 .gift-list-container::-webkit-scrollbar {
-                    /* display: none;*/
                 }
                 .gift-item {
                     display: flex;
@@ -592,23 +574,18 @@ def main():
                     object-fit: contain;
                 }
                 
-                /* 追加したハイライトスタイル */
-                .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
-                .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
-                .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
-                .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
-                .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
+                .highlight-10000 { background-color: #ffe5e5; }
+                .highlight-30000 { background-color: #ffcccc; }
+                .highlight-60000 { background-color: #ffb2b2; }
+                .highlight-100000 { background-color: #ff9999; }
+                .highlight-300000 { background-color: #ff7f7f; }
                 
                 </style>
             """
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
-                # これにより、配信終了したルームのコンテナが残るのを防ぐ
                 selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
-                
-                # ライブ配信が終了したルームのキャッシュを削除する
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
                 for room_id in rooms_to_delete:
                     del st.session_state.gift_log_cache[room_id]
@@ -633,8 +610,8 @@ def main():
                     rank_color = get_rank_color(rank)
 
                     if int(room_id) in onlives_rooms:
-                        gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
-                        gift_list_map = get_gift_list(room_id) # gift_listも取得
+                        gift_log = get_and_update_gift_log(room_id)
+                        gift_list_map = get_gift_list(room_id)
                         
                         html_content = f"""
                         <div class="room-container">
@@ -652,7 +629,6 @@ def main():
                         if gift_log:
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
-                                # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
                                 gift_info = gift_list_map.get(str(gift_id), {})
                                 
                                 gift_point = gift_info.get('point', 0)
@@ -681,7 +657,7 @@ def main():
                                     f'<img src="{gift_image}" class="gift-image" />'
                                     f'<span>×{gift_count}</span>'
                                     f'</div>'
-                                    f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
+                                    f'<div>{gift_point}pt</div>'
                                     f'</div>'
                                 )
                             html_content += '</div>'
@@ -699,19 +675,15 @@ def main():
                             f'</div>'
                         )
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-                # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
-                # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
                 gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
             
-            # ★ 修正箇所: ここに余白を追加
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
 
-            # 1回だけコンテナを作成して再利用
             points_container = st.container()
 
             with points_container:
