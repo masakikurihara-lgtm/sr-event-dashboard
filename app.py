@@ -265,6 +265,86 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
     
+    # バッジの表示を制御する
+    if st.session_state.show_dashboard and selected_event_data: # ★ 修正箇所
+        # JavaScriptでカウントダウンを行うためのHTMLとJavaScriptを埋め込む
+        st.markdown(f"""
+            <style>
+            .fixed-countdown {{
+                position: fixed;
+                top: 100px;
+                right: 15px;
+                z-index: 1000;
+                background-color: #4CAF50;
+                color: white;
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                transition: background-color 0.5s ease;
+            }}
+            .countdown-label {{
+                font-size: 0.8rem;
+                opacity: 0.8;
+                display: block;
+            }}
+            </style>
+            <div id="countdown-badge" class="fixed-countdown">
+                <span class="countdown-label">残り時間</span>
+                <span id="countdown-timer">計算中...</span>
+            </div>
+            <script>
+                // ★ 修正箇所: setTimeoutを使ってDOM要素が描画されるのを待つ
+                setTimeout(function() {{
+                    // タイマーが既に存在する場合はクリア
+                    if (window.myCountdownTimer) {{
+                        clearInterval(window.myCountdownTimer);
+                    }}
+
+                    const timerElement = document.getElementById('countdown-timer');
+                    const badgeElement = document.getElementById('countdown-badge');
+                    
+                    if (timerElement && badgeElement) {{
+                        const endedAtTimestamp = {selected_event_data.get('ended_at')} * 1000;
+                        
+                        function updateCountdown() {{
+                            const now = new Date().getTime();
+                            const distance = endedAtTimestamp - now;
+                            
+                            if (distance < 0) {{
+                                timerElement.innerHTML = 'イベント終了';
+                                badgeElement.style.backgroundColor = '#808080'; // Grey
+                                clearInterval(window.myCountdownTimer);
+                                return;
+                            }}
+                            
+                            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                            
+                            const formattedTime = `${{days}}d ${{String(hours).padStart(2, '0')}}:${{String(minutes).padStart(2, '0')}}:${{String(seconds).padStart(2, '0')}}`;
+                            timerElement.innerHTML = formattedTime;
+                            
+                            const totalSeconds = distance / 1000;
+                            if (totalSeconds <= 3600) {{ // 1時間未満
+                                badgeElement.style.backgroundColor = '#ff4b4b'; // Red
+                            }} else if (totalSeconds <= 10800) {{ // 3時間未満
+                                badgeElement.style.backgroundColor = '#ffa500'; // Orange
+                            }} else {{
+                                badgeElement.style.backgroundColor = '#4CAF50'; // Green
+                            }}
+                        }}
+                        
+                        updateCountdown();
+                        window.myCountdownTimer = setInterval(updateCountdown, 1000);
+                    }}
+                }}, 100);
+            </script>
+        """, unsafe_allow_html=True)
+
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
@@ -326,71 +406,6 @@ def main():
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
-        # --- ここからタイマー表示の修正 ---
-        # タイマー表示用のプレースホルダーを作成
-        st.markdown("""
-            <style>
-            .fixed-countdown {
-                position: fixed;
-                top: 100px;
-                right: 15px;
-                z-index: 1000;
-                background-color: #4CAF50;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                transition: background-color 0.5s ease;
-            }
-            .countdown-label {
-                font-size: 0.8rem;
-                opacity: 0.8;
-                display: block;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        # タイマー表示用のプレースホルダーを空で作成
-        timer_placeholder = st.empty()
-        
-        # プレースホルダーに表示する内容を更新
-        now = datetime.datetime.now(JST)
-        remaining_seconds = (ended_at_dt - now).total_seconds()
-        
-        if remaining_seconds > 0:
-            days = int(remaining_seconds // 86400)
-            hours = int((remaining_seconds % 86400) // 3600)
-            minutes = int((remaining_seconds % 3600) // 60)
-            seconds = int(remaining_seconds % 60)
-            
-            formatted_time = f"{days}d {hours:02}:{minutes:02}:{seconds:02}"
-            
-            # バッジの色を残り時間に応じて変更
-            background_color = "#4CAF50"
-            if remaining_seconds <= 3600:
-                background_color = "#ff4b4b"
-            elif remaining_seconds <= 10800:
-                background_color = "#ffa500"
-            
-            timer_html = f"""
-                <div class="fixed-countdown" style="background-color: {background_color};">
-                    <span class="countdown-label">残り時間</span>
-                    <span id="countdown-timer">{formatted_time}</span>
-                </div>
-            """
-            timer_placeholder.markdown(timer_html, unsafe_allow_html=True)
-        else:
-            timer_html = f"""
-                <div class="fixed-countdown" style="background-color: #808080;">
-                    <span class="countdown-label">残り時間</span>
-                    <span id="countdown-timer">イベント終了</span>
-                </div>
-            """
-            timer_placeholder.markdown(timer_html, unsafe_allow_html=True)
-        # --- ここまでタイマー表示の修正 ---
-        
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
             with col1:
@@ -398,6 +413,7 @@ def main():
                 st.write(f"**{event_period_str}**")
             with col2:
                 st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
+                # ここで再度、Streamlitの自動更新に合わせた残り時間表示を復活させる
                 now = datetime.datetime.now(JST)
                 remaining_seconds = (ended_at_dt - now).total_seconds()
                 if remaining_seconds > 0:
@@ -405,7 +421,6 @@ def main():
                     st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
-
 
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
