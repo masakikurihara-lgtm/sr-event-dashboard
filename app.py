@@ -654,11 +654,7 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
     
     if final_remain_time is not None:
-        now = datetime.datetime.now(JST)
-        remain_time_sec = int((ended_at_dt - now).total_seconds())
-        if remain_time_sec < 0:
-            remain_time_sec = 0
-        remain_time_readable = str(datetime.timedelta(seconds=remain_time_sec))
+        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
         time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
