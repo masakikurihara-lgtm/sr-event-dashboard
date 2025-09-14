@@ -312,9 +312,9 @@ def main():
                         }}
                         
                         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        const hours = Math.floor((distance %% (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((distance %% (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((distance %% (1000 * 60)) / 1000);
+                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                         
                         const formattedTime = `${{days}}d ${{String(hours).padStart(2, '0')}}:${{String(minutes).padStart(2, '0')}}:${{String(seconds).padStart(2, '0')}}`;
                         timerElement.innerHTML = formattedTime;
@@ -403,15 +403,20 @@ def main():
                 st.write(f"**{event_period_str}**")
             with col2:
                 st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-                # JavaScriptでカウントダウンするため、placeholderは空のままにしておく
-                st.empty() 
+                # ここで再度、Streamlitの自動更新に合わせた残り時間表示を復活させる
+                now = datetime.datetime.now(JST)
+                remaining_seconds = (ended_at_dt - now).total_seconds()
+                if remaining_seconds > 0:
+                    remaining_readable = str(timedelta(seconds=int(remaining_seconds)))
+                    st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
 
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
         onlives_rooms = get_onlives_rooms()
 
         data_to_display = []
-        final_remain_time = None
         if st.session_state.selected_room_names:
             for room_name in st.session_state.selected_room_names:
                 try:
@@ -438,7 +443,7 @@ def main():
                         if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                             rank_info = event_data['ranking']
                             remain_time_sec = event_data.get('remain_time')
-                    if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                    if rank_info and 'point' in rank_info:
                         is_live = int(room_id) in onlives_rooms
                         data_to_display.append({
                             "ライブ中": "🔴" if is_live else "",
@@ -448,8 +453,6 @@ def main():
                             "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
                             "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
                         })
-                        if final_remain_time is None:
-                            final_remain_time = remain_time_sec
                     else:
                         st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                 except Exception as e:
