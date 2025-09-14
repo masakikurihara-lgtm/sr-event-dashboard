@@ -330,7 +330,8 @@ def main():
     # ルーム選択後のみ描画
     if st.session_state.get("event_end_ts"):
         st.components.v1.html(f"""
-        <div style="position:fixed;top:20px;right:20px;z-index:9999;
+        <div style="position:-webkit-sticky;position:sticky;top:10px;
+                    float:right;margin-right:5%;z-index:9999;
                     background:rgba(255,255,255,0.95);
                     padding:6px 12px;border-radius:8px;
                     border:1px solid #ccc;
@@ -341,21 +342,27 @@ def main():
         <script>
         const END={st.session_state.event_end_ts};
         function fmt(ms){{if(ms<0)ms=0;
-          let s=Math.floor(ms/1000);let d=Math.floor(s/86400);
-          s%=86400;let h=Math.floor(s/3600);
-          let m=Math.floor((s%3600)/60);let sec=s%60;
+          let s=Math.floor(ms/1000),d=Math.floor(s/86400);
+          s%=86400;let h=Math.floor(s/3600),
+              m=Math.floor((s%3600)/60),
+              sec=s%60;
           return d>0?`${{d}}d ${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`
-                     :`${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`}}
+                     :`${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`;}}
         function upd(){{document.getElementById("remain_timer").textContent=fmt(END-Date.now());}}
         upd();setInterval(upd,1000);
         </script>
-        """, height=0)
+        """, height=50)
 
+    # 余白調整用CSSを一度だけ定義
     st.markdown(
         """
         <style>
         div[data-testid="stNotification"] {
-            margin-bottom: 0px !important;  /* st.info の下マージンを詰める */
+            margin-bottom: 2px !important;  /* st.info 下の余白を詰める */
+            margin-top: 0px !important;
+        }
+        section.main > div.block-container {
+            padding-top: 1rem !important;  /* ページ上部のパディングを少し詰める */
         }
         </style>
         """,
@@ -364,7 +371,6 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
-    st.markdown('<div style="margin-top:-12px;"></div>', unsafe_allow_html=True)  # st_autorefreshの前の余白を詰める
     st_autorefresh(interval=10000, key="data_refresh")
 
     with st.container(border=True):
