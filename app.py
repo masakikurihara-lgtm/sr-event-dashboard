@@ -317,8 +317,7 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
-    # 10秒ごとに自動更新
-    #st_autorefresh(interval=10000, limit=None, key="data_refresh")
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -327,14 +326,50 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            time_placeholder = st.empty()
+            # 修正箇所: ここからJavaScriptによるカウントダウン表示
+            st.markdown(
+                f"""
+                <div id="countdown-timer" style='color: red; font-weight: bold; font-size: 1.5rem;'></div>
+                <script>
+                    const endTime = {ended_at_dt.timestamp() * 1000};
+                    const countdownEl = document.getElementById('countdown-timer');
+                    
+                    if (countdownEl) {{
+                        function updateCountdown() {{
+                            const now = new Date().getTime();
+                            const distance = endTime - now;
+
+                            if (distance < 0) {{
+                                countdownEl.innerHTML = "イベント終了";
+                                return;
+                            }}
+
+                            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                            countdownEl.innerHTML = 
+                                (days > 0 ? days + '日 ' : '') + 
+                                String(hours).padStart(2, '0') + ':' + 
+                                String(minutes).padStart(2, '0') + ':' + 
+                                String(seconds).padStart(2, '0');
+                        }}
+                        // 1秒ごとに更新
+                        setInterval(updateCountdown, 1000);
+                        updateCountdown(); // 初期表示
+                    }}
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
+            # 修正箇所ここまで
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
-    final_remain_time = None
     if st.session_state.selected_room_names:
         for room_name in st.session_state.selected_room_names:
             try:
@@ -371,8 +406,6 @@ def main():
                         "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
                         "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
                     })
-                    if final_remain_time is None:
-                        final_remain_time = remain_time_sec
                 else:
                     st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
             except Exception as e:
@@ -655,17 +688,6 @@ def main():
                 )
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                 fig_lower_gap.update_layout(uirevision="const")
-    
-    if final_remain_time is not None:
-        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-    else:
-        time_placeholder.info("残り時間情報を取得できませんでした。")
-    
-    st_autorefresh(interval=10000, limit=None, key="data_refresh")
-
-#    time.sleep(5)
-#    st.rerun()
 
 if __name__ == "__main__":
     main()
