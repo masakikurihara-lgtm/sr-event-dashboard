@@ -317,17 +317,12 @@ def main():
         st.session_state.show_dashboard = True
         st.rerun()
     
-    if st.session_state.show_dashboard:
-        if not st.session_state.selected_room_names:
-            st.warning("最低1つのルームを選択してください。")
-            return
-
-        st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-        st.info("データは10秒、タイマーは1秒ごとに自動更新されます。")
-        # ★ 修正箇所: メインの自動更新を10秒に設定
-        st_autorefresh(interval=10000, limit=None, key="data_refresh")
-
-        # --- ここからJavaScriptによる1秒タイマーの実装 ---
+    # ----------------------------------------------------
+    # ★ 修正箇所: タイマーの表示ロジックをここに移動しました
+    # 選択イベントが確定した後に実行することで、タイマーの終了時刻を正しく設定できます。
+    # ----------------------------------------------------
+    if selected_event_data:
+        ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
         end_timestamp_ms = ended_at_dt.timestamp() * 1000
 
         components.html(
@@ -402,8 +397,20 @@ def main():
             """,
             height=50,
         )
-        # --- ここまでJavaScriptによる1秒タイマーの実装 ---
-        
+    # ----------------------------------------------------
+    # ★ ここまでタイマー表示ロジック
+    # ----------------------------------------------------
+
+    if st.session_state.show_dashboard:
+        if not st.session_state.selected_room_names:
+            st.warning("最低1つのルームを選択してください。")
+            return
+
+        st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
+        st.info("データは10秒ごとに自動更新されます。")
+        # ★ 修正箇所: Streamlitのデータ更新は`st_autorefresh`で制御
+        st_autorefresh(interval=10000, limit=None, key="data_refresh")
+
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
             with col1:
