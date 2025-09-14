@@ -381,9 +381,9 @@ def main():
                             bgColor = "#ffa500";
                         }}
                         const formattedTime = formatTime(secondsRemaining);
-                        html = `<div class="fixed-countdown" style="background-color: ${bgColor};">
+                        html = `<div class="fixed-countdown" style="background-color: ${{bgColor}}; ">
                                     <span class="countdown-label">残り時間</span>
-                                    <span>${formattedTime}</span>
+                                    <span>${{formattedTime}}</span>
                                 </div>`;
                     }} else {{
                         html = `<div class="fixed-countdown" style="background-color: #808080;">
