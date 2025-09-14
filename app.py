@@ -610,17 +610,7 @@ def main():
         # ★ 修正箇所: ここに余白を追加
         st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
         
-        # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-        # 修正箇所: グラフの重複表示バグを解消するため、
-        # 各グラフの描画エリアをst.empty()で個別に確保し、
-        # 更新ごとに各エリアの内容を上書きする方式に変更します。
-        
         st.subheader("📈 ポイントと順位の比較")
-        
-        point_chart_placeholder = st.empty()
-        upper_gap_chart_placeholder = st.empty()
-        lower_gap_chart_placeholder = st.empty()
-
         color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
 
         if '現在のポイント' in df.columns:
@@ -629,7 +619,7 @@ def main():
                                 color_discrete_map=color_map,
                                 hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                                 labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-            point_chart_placeholder.plotly_chart(fig_points, use_container_width=True)
+            st.plotly_chart(fig_points, use_container_width=True)
 
         if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
             df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
@@ -638,10 +628,9 @@ def main():
                                    color_discrete_map=color_map,
                                    hover_data=["現在の順位", "現在のポイント"],
                                    labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            upper_gap_chart_placeholder.plotly_chart(fig_upper_gap, use_container_width=True)
-        else:
-            upper_gap_chart_placeholder.empty()
+            st.plotly_chart(fig_upper_gap, use_container_width=True)
 
+        # 修正箇所: ここで重複していた「下位とのポイント差」のグラフを削除
         if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
             df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
             fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
@@ -649,10 +638,7 @@ def main():
                                    color_discrete_map=color_map,
                                    hover_data=["現在の順位", "現在のポイント"],
                                    labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            lower_gap_chart_placeholder.plotly_chart(fig_lower_gap, use_container_width=True)
-        else:
-            lower_gap_chart_placeholder.empty()
-        # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+            st.plotly_chart(fig_lower_gap, use_container_width=True) 
     
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
