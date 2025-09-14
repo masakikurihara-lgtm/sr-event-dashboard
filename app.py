@@ -16,115 +16,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# ----------------------------------------------------
-# ★ 修正箇所: タイマー表示ロジックをアプリの実行開始直後に移動
-# ----------------------------------------------------
-# ページの読み込み時に一度だけタイマーを生成
-# この位置に配置することで、アプリの再描画に影響されずに表示され続けます。
-events = []
-try:
-    url = f"https://www.showroom-live.com/api/event/search?page=1&include_ended=0"
-    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-    response.raise_for_status()
-    data = response.json()
-    if isinstance(data, dict) and 'events' in data:
-        events = data['events']
-    elif isinstance(data, dict) and 'event_list' in data:
-        events = data['event_list']
-    elif isinstance(data, list):
-        events = data
-except Exception as e:
-    # エラーが発生した場合も続行
-    pass
-
-selected_event_data = None
-if events:
-    event_options = {event['event_name']: event for event in events}
-    # 初期選択イベントを仮に設定
-    selected_event_name = list(event_options.keys())[0]
-    selected_event_data = event_options.get(selected_event_name)
-
-if selected_event_data:
-    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), pytz.timezone('Asia/Tokyo'))
-    end_timestamp_ms = ended_at_dt.timestamp() * 1000
-
-    components.html(
-        f"""
-        <div id="countdown-container"></div>
-        <style>
-            .fixed-countdown {{
-                position: fixed;
-                top: 100px;
-                right: 15px;
-                z-index: 1000;
-                background-color: #4CAF50;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                transition: background-color 0.5s ease;
-            }}
-            .countdown-label {{
-                font-size: 0.8rem;
-                opacity: 0.8;
-                display: block;
-            }}
-        </style>
-        <script>
-            const endTime = {end_timestamp_ms};
-            const container = document.getElementById('countdown-container');
-
-            function formatTime(seconds) {{
-                const d = Math.floor(seconds / (3600 * 24));
-                const h = Math.floor((seconds % (3600 * 24)) / 3600);
-                const m = Math.floor((seconds % 3600) / 60);
-                const s = Math.floor(seconds % 60);
-                return d + 'd ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
-            }}
-
-            function updateCountdown() {{
-                const now = new Date().getTime();
-                const distance = endTime - now;
-                let html;
-
-                if (distance > 0) {{
-                    const secondsRemaining = Math.floor(distance / 1000);
-                    let bgColor = "#4CAF50";
-                    if (secondsRemaining <= 3600) {{
-                        bgColor = "#ff4b4b";
-                    }} else if (secondsRemaining <= 10800) {{
-                        bgColor = "#ffa500";
-                    }}
-                    const formattedTime = formatTime(secondsRemaining);
-                    html = `<div class="fixed-countdown" style="background-color: ${{bgColor}}; ">
-                                <span class="countdown-label">残り時間</span>
-                                <span>${{formattedTime}}</span>
-                            </div>`;
-                }} else {{
-                    html = `<div class="fixed-countdown" style="background-color: #808080;">
-                                <span class="countdown-label">残り時間</span>
-                                <span>イベント終了</span>
-                            </div>`;
-                }}
-                container.innerHTML = html;
-            }}
-
-            updateCountdown();
-            if (endTime > new Date().getTime()) {{
-                setInterval(updateCountdown, 1000);
-            }}
-        </script>
-        """,
-        height=50,
-    )
-
-# ----------------------------------------------------
-# ★ ここまでタイマー表示ロジック
-# ----------------------------------------------------
-
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
 
@@ -375,6 +266,83 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
     
+    # ★ 修正箇所: Streamlitのコンポーネント機能を使ってタイマーを正しく動作させる
+    if st.session_state.show_dashboard and selected_event_data:
+        ended_at_timestamp_ms = ended_at_dt.timestamp() * 1000
+
+        components.html(
+            f"""
+            <div id="countdown-container"></div>
+            <style>
+                .fixed-countdown {{
+                    position: fixed;
+                    top: 100px;
+                    right: 15px;
+                    z-index: 1000;
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 8px 15px;
+                    border-radius: 20px;
+                    font-size: 1.2rem;
+                    font-weight: bold;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    transition: background-color 0.5s ease;
+                }}
+                .countdown-label {{
+                    font-size: 0.8rem;
+                    opacity: 0.8;
+                    display: block;
+                }}
+            </style>
+            <script>
+                const endTime = {ended_at_timestamp_ms};
+                const container = document.getElementById('countdown-container');
+
+                function formatTime(seconds) {{
+                    const d = Math.floor(seconds / (3600 * 24));
+                    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = Math.floor(seconds % 60);
+                    return d + 'd ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
+                }}
+
+                function updateCountdown() {{
+                    const now = new Date().getTime();
+                    const distance = endTime - now;
+                    let html;
+
+                    if (distance > 0) {{
+                        const secondsRemaining = Math.floor(distance / 1000);
+                        let bgColor = "#4CAF50";
+                        if (secondsRemaining <= 3600) {{
+                            bgColor = "#ff4b4b";
+                        }} else if (secondsRemaining <= 10800) {{
+                            bgColor = "#ffa500";
+                        }}
+                        const formattedTime = formatTime(secondsRemaining);
+                        html = `<div class="fixed-countdown" style="background-color: ${{bgColor}}; ">
+                                    <span class="countdown-label">残り時間</span>
+                                    <span>${{formattedTime}}</span>
+                                </div>`;
+                    }} else {{
+                        html = `<div class="fixed-countdown" style="background-color: #808080;">
+                                    <span class="countdown-label">残り時間</span>
+                                    <span>イベント終了</span>
+                                </div>`;
+                    }}
+                    container.innerHTML = html;
+                }}
+
+                updateCountdown();
+                if (endTime > new Date().getTime()) {{
+                    setInterval(updateCountdown, 1000);
+                }}
+            </script>
+            """,
+            height=50,
+        )
+
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
@@ -432,7 +400,7 @@ def main():
             return
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-        st.info("データは10秒ごとに自動更新されます。")
+        st.info("10秒ごとに自動更新されます。")
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
