@@ -292,7 +292,7 @@ def main():
         if st.session_state.get('select_top_15_checkbox', False):
             st.session_state.selected_room_names = top_15_rooms
             st.session_state.multiselect_default_value = top_15_rooms
-            st.session_state['room_multiselect'] = top_15_rooms
+            #st.session_state['room_multiselect'] = top_15_rooms
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
