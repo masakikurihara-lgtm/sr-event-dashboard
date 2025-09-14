@@ -297,45 +297,45 @@ def main():
             </div>
             <script>
                 // DOM が完全にロードされた後に実行
-                window.addEventListener('load', function () {
-                    if (window.myCountdownTimer) {
+                window.addEventListener('load', function () {{
+                    if (window.myCountdownTimer) {{
                         clearInterval(window.myCountdownTimer);
-                    }
+                    }}
                     const timerElement = document.getElementById('countdown-timer');
                     const badgeElement = document.getElementById('countdown-badge');
                     if (!timerElement || !badgeElement) return;
 
                     const endedAtTimestamp = {{selected_event_data.get('ended_at')}} * 1000;
 
-                    function updateCountdown() {
+                    function updateCountdown() {{
                         const now = Date.now();
                         const distance = endedAtTimestamp - now;
-                        if (distance <= 0) {
+                        if (distance <= 0) {{
                             timerElement.textContent = 'イベント終了';
                             badgeElement.style.backgroundColor = '#808080';
                             clearInterval(window.myCountdownTimer);
                             return;
-                        }
+                        }}
                         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                         timerElement.textContent =
-                            `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+                            `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
 
                         const totalSeconds = distance / 1000;
-                        if (totalSeconds <= 3600) {
+                        if (totalSeconds <= 3600) {{
                             badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
-                        } else if (totalSeconds <= 10800) {
+                        }} else if (totalSeconds <= 10800) {{
                             badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
-                        } else {
+                        }} else {{
                             badgeElement.style.backgroundColor = '#4CAF50';  // 緑
-                        }
-                    }
+                        }}
+                    }}
 
                     updateCountdown();
                     window.myCountdownTimer = setInterval(updateCountdown, 1000);
-                });
+                }});
             </script>
         """, unsafe_allow_html=True)
 
