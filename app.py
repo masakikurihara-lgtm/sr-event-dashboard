@@ -288,37 +288,38 @@ def main():
     ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
-
-    # 新しく追加された部分: 固定表示の残り時間バッジ
-    countdown_str, color = calculate_countdown(selected_event_data.get('ended_at'))
-    st.markdown(f"""
-        <style>
-        .fixed-countdown {{
-            position: fixed;
-            top: 100px;
-            right: 15px;
-            z-index: 1000;
-            background-color: {color};
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            transition: background-color 0.5s ease;
-        }}
-        .countdown-label {{
-            font-size: 0.8rem;
-            opacity: 0.8;
-            display: block;
-        }}
-        </style>
-        <div class="fixed-countdown">
-            <span class="countdown-label">残り時間</span>
-            {countdown_str}
-        </div>
-    """, unsafe_allow_html=True)
+    
+    # バッジの表示を制御する
+    if st.session_state.show_dashboard:
+        countdown_str, color = calculate_countdown(selected_event_data.get('ended_at'))
+        st.markdown(f"""
+            <style>
+            .fixed-countdown {{
+                position: fixed;
+                top: 100px;
+                right: 15px;
+                z-index: 1000;
+                background-color: {color};
+                color: white;
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                transition: background-color 0.5s ease;
+            }}
+            .countdown-label {{
+                font-size: 0.8rem;
+                opacity: 0.8;
+                display: block;
+            }}
+            </style>
+            <div class="fixed-countdown">
+                <span class="countdown-label">残り時間</span>
+                {countdown_str}
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
