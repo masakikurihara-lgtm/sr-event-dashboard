@@ -611,34 +611,38 @@ def main():
         st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
         
         st.subheader("📈 ポイントと順位の比較")
-        color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
+        
+        # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+        # 修正箇所：グラフ描画エリアをコンテナで管理し、再描画時の重複表示を防ぐ
+        with st.container():
+            color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
 
-        if '現在のポイント' in df.columns:
-            fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
-                                title="各ルームの現在のポイント", color="ルーム名",
-                                color_discrete_map=color_map,
-                                hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
-                                labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
-            st.plotly_chart(fig_points, use_container_width=True)
+            if '現在のポイント' in df.columns:
+                fig_points = px.bar(df, x="ルーム名", y="現在のポイント",
+                                    title="各ルームの現在のポイント", color="ルーム名",
+                                    color_discrete_map=color_map,
+                                    hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
+                                    labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_points, use_container_width=True)
 
-        if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
-            df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-            fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
-                                   title="上位とのポイント差", color="ルーム名",
-                                   color_discrete_map=color_map,
-                                   hover_data=["現在の順位", "現在のポイント"],
-                                   labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            st.plotly_chart(fig_upper_gap, use_container_width=True)
+            if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
+                df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                fig_upper_gap = px.bar(df, x="ルーム名", y="上位とのポイント差",
+                                       title="上位とのポイント差", color="ルーム名",
+                                       color_discrete_map=color_map,
+                                       hover_data=["現在の順位", "現在のポイント"],
+                                       labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_upper_gap, use_container_width=True)
 
-        # 修正箇所: ここで重複していた「下位とのポイント差」のグラフを削除
-        if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
-            df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-            fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
-                                   title="下位とのポイント差", color="ルーム名",
-                                   color_discrete_map=color_map,
-                                   hover_data=["現在の順位", "現在のポイント"],
-                                   labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
-            st.plotly_chart(fig_lower_gap, use_container_width=True)
+            if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
+                df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+                fig_lower_gap = px.bar(df, x="ルーム名", y="下位とのポイント差",
+                                       title="下位とのポイント差", color="ルーム名",
+                                       color_discrete_map=color_map,
+                                       hover_data=["現在の順位", "現在のポイント"],
+                                       labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
+                st.plotly_chart(fig_lower_gap, use_container_width=True)
+        # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
