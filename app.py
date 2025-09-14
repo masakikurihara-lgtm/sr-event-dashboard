@@ -316,9 +316,9 @@ def main():
         return
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-    st.info("5秒ごとに自動更新されます。")
-    # 5秒ごとに自動更新
-    st_autorefresh(interval=5000, limit=None, key="data_refresh")
+    st.info("10秒ごとに自動更新されます。")
+    # 10秒ごとに自動更新
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -642,6 +642,7 @@ def main():
                     labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
                 st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
+                fig_upper_gap.update_layout(uirevision="const")
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
@@ -653,6 +654,7 @@ def main():
                     labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
+                fig_lower_gap.update_layout(uirevision="const")
     
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
