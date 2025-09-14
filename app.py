@@ -322,9 +322,9 @@ def main():
             return
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-        st.info("1秒ごとに自動更新されます。")
-        # ★ 修正箇所: 自動更新間隔を1秒に設定
-        st_autorefresh(interval=1000, limit=None, key="data_refresh")
+        st.info("10秒ごとに自動更新されます。")
+        # 「表示する」ボタンが押された後のみ自動更新を稼働させる
+        st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
         # --- ここからタイマー表示の修正 ---
         # タイマー表示用のプレースホルダーを作成
@@ -405,6 +405,7 @@ def main():
                     st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
+
 
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
