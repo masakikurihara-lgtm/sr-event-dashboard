@@ -5,6 +5,7 @@ import time
 import datetime
 import plotly.express as px
 import pytz
+from streamlit_autorefresh import st_autorefresh
 
 # Set page configuration
 st.set_page_config(
@@ -316,6 +317,9 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("5秒ごとに自動更新されます。")
+    # 5秒ごとに自動更新
+    st_autorefresh(interval=5000, limit=None, key="data_refresh")
+
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -655,8 +659,8 @@ def main():
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
 
-    time.sleep(5)
-    st.rerun()
+#    time.sleep(5)
+#    st.rerun()
 
 if __name__ == "__main__":
     main()
