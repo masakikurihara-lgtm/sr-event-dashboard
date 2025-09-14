@@ -318,7 +318,7 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
     # 10秒ごとに自動更新
-    st_autorefresh(interval=10000, limit=None, key="data_refresh")
+    #st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -661,6 +661,8 @@ def main():
         time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
+    
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
 #    time.sleep(5)
 #    st.rerun()
