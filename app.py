@@ -327,10 +327,10 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            # ★ 修正箇所: ここからJavaScriptによるカウントダウンを埋め込む
+            # ★ 修正箇所: 不要な空白をなくし、JavaScriptをより堅牢な書き方に修正
             st.markdown(
                 f"""
-                <span id="countdown-timer" style='color: red;'></span>
+                <span id="countdown-timer" style='color: red; font-weight: bold;'></span>
                 <script>
                     var endTime = {ended_at_dt.timestamp() * 1000};
                     var timer = document.getElementById('countdown-timer');
@@ -344,12 +344,23 @@ def main():
                         if (distance < 0) {{
                             timer.innerHTML = "**イベント終了**";
                         }} else {{
-                            timer.innerHTML = `**${days}日 ${hours}時間 ${minutes}分 ${seconds}秒**`;
+                            timer.innerHTML = days + "日 " + hours + "時間 " + minutes + "分 " + seconds + "秒";
                         }}
                     }}
                     updateCountdown();
                     setInterval(updateCountdown, 1000);
                 </script>
+                <style>
+                    #countdown-timer {{
+                        font-size: 1.5rem; /* サイズ調整 */
+                        line-height: 1.5; /* 行の高さ調整 */
+                        margin-top: 0;
+                        margin-bottom: 0;
+                    }}
+                    [data-testid="stVerticalBlock"] {{
+                        gap: 0px !important; /* コンポーネント間の余白を削除 */
+                    }}
+                </style>
                 """,
                 unsafe_allow_html=True
             )
