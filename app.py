@@ -328,13 +328,20 @@ def main():
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
             time_placeholder = st.empty()
+    
+    # ★ 修正箇所: ここで残り時間を計算・表示
+    now = datetime.datetime.now(JST)
+    remain_time_sec = int((ended_at_dt - now).total_seconds())
+    if remain_time_sec < 0:
+        remain_time_sec = 0
+    remain_time_readable = str(datetime.timedelta(seconds=remain_time_sec))
+    time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
-    final_remain_time = None
     if st.session_state.selected_room_names:
         for room_name in st.session_state.selected_room_names:
             try:
@@ -347,21 +354,17 @@ def main():
                     st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                     continue
                 rank_info = None
-                remain_time_sec = None
                 if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                     rank_info = room_info['ranking']
-                    remain_time_sec = room_info.get('remain_time')
                 elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
                     event_info = room_info['event_and_support_info']
                     if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
                         rank_info = event_info['ranking']
-                        remain_time_sec = event_info.get('remain_time')
                 elif 'event' in room_info and isinstance(room_info['event'], dict):
                     event_data = room_info['event']
                     if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                         rank_info = event_data['ranking']
-                        remain_time_sec = event_data.get('remain_time')
-                if rank_info and 'point' in rank_info and remain_time_sec is not None:
+                if rank_info and 'point' in rank_info:
                     is_live = int(room_id) in onlives_rooms
                     data_to_display.append({
                         "ライブ中": "🔴" if is_live else "",
@@ -371,8 +374,6 @@ def main():
                         "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
                         "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
                     })
-                    if final_remain_time is None:
-                        final_remain_time = remain_time_sec
                 else:
                     st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
             except Exception as e:
@@ -656,11 +657,12 @@ def main():
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                 fig_lower_gap.update_layout(uirevision="const")
     
-    if final_remain_time is not None:
-        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-    else:
-        time_placeholder.info("残り時間情報を取得できませんでした。")
+    # ★ 修正箇所: このブロックはもう不要
+    # if final_remain_time is not None:
+    #     remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+    #     time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
+    # else:
+    #     time_placeholder.info("残り時間情報を取得できませんでした。")
 
 #    time.sleep(5)
 #    st.rerun()
