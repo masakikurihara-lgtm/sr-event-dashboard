@@ -330,28 +330,23 @@ def main():
             # ★ 修正箇所: ここからJavaScriptによるカウントダウンを埋め込む
             st.markdown(
                 f"""
-                <div id="countdown-timer"></div>
+                <span id="countdown-timer" style='color: red;'></span>
                 <script>
                     var endTime = {ended_at_dt.timestamp() * 1000};
                     var timer = document.getElementById('countdown-timer');
-
                     function updateCountdown() {{
                         var now = new Date().getTime();
                         var distance = endTime - now;
-
                         var days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        var hours = Math.floor((distance %% (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        var minutes = Math.floor((distance %% (1000 * 60 * 60)) / (1000 * 60));
-                        var seconds = Math.floor((distance %% (1000 * 60)) / 1000);
-
+                        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
                         if (distance < 0) {{
-                            timer.innerHTML = "<span style='color: red;'>**イベント終了**</span>";
+                            timer.innerHTML = "**イベント終了**";
                         }} else {{
-                            timer.innerHTML = "<span style='color: red;'>**" + days + "日 " + hours + "時間 " + minutes + "分 " + seconds + "秒**</span>";
+                            timer.innerHTML = `**${days}日 ${hours}時間 ${minutes}分 ${seconds}秒**`;
                         }}
                     }}
-
-                    // 初回実行と1秒ごとの更新
                     updateCountdown();
                     setInterval(updateCountdown, 1000);
                 </script>
