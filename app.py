@@ -657,14 +657,8 @@ def main():
                 fig_lower_gap.update_layout(uirevision="const")
     
     if final_remain_time is not None:
-        remain_time_sec = final_remain_time
-        countdown_placeholder = time_placeholder.empty()
-
-        # 秒単位でカウントダウン表示
-        for sec in range(remain_time_sec, -1, -1):
-            td = str(datetime.timedelta(seconds=sec))
-            countdown_placeholder.markdown(f"<span style='color: red;'>**{td}**</span>", unsafe_allow_html=True)
-            time.sleep(1)
+        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
     
