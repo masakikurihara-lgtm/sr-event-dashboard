@@ -337,7 +337,6 @@ def main():
                     window.myCountdownTimer = setInterval(updateCountdown, 1000);
                 });
             </script>
-
         """, unsafe_allow_html=True)
 
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
