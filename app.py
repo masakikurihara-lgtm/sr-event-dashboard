@@ -266,7 +266,7 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
     
-    # ★ 修正箇所: Streamlitのコンポーネント機能を使ってタイマーを正しく動作させる
+    # ★ 修正箇所: タイマーの描画ロジックを修正
     if st.session_state.show_dashboard and selected_event_data:
         ended_at_timestamp_ms = ended_at_dt.timestamp() * 1000
 
