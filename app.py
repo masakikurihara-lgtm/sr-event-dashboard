@@ -630,6 +630,7 @@ def main():
                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
                 )
                 st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
+                fig_points.update_layout(uirevision="const")
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
