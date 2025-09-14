@@ -375,17 +375,39 @@ def main():
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
+        st.session_state.event_end_ts = int(ended_at_dt.timestamp() * 1000)
         st.rerun()
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
         return
 
+    if st.session_state.get("event_end_ts"):
+        st.components.v1.html(f"""
+        <div style="position:fixed;top:10px;right:20px;z-index:1000;
+                    background:rgba(255,255,255,.95);padding:6px 12px;
+                    border-radius:8px;border:1px solid #ccc;
+                    font-family:inherit;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,0.15)">
+          残り時間: <span id="remain_timer">--:--:--</span>
+        </div>
+        <script>
+        const END={st.session_state.event_end_ts};
+        function fmt(ms){{if(ms<0)ms=0;
+          let s=Math.floor(ms/1000);let d=Math.floor(s/86400);
+          s%=86400;let h=Math.floor(s/3600);
+          let m=Math.floor((s%3600)/60);let sec=s%60;
+          return d>0?`${{d}}d ${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`
+                     :`${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`}}
+        function upd(){{document.getElementById("remain_timer").textContent=fmt(END-Date.now());}}
+        upd();setInterval(upd,1000);
+        </script>
+        """,height=0)
+
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
     # 10秒ごとに自動更新（データの再取得・グラフ更新）
     # st_autorefresh はページ全体を再実行しますが、残り時間はクライアント側で毎秒更新されるため影響は小さいです。
-    st_autorefresh(interval=10000, limit=None, key="data_refresh")
+    st_autorefresh(interval=10000, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
