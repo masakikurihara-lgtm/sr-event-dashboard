@@ -328,42 +328,47 @@ def main():
         return
 
     # ルーム選択後のみ描画
-    if st.session_state.get("event_end_ts"):
-        st.components.v1.html(f"""
-        <div style="position:-webkit-sticky;position:sticky;top:10px;
-                    float:right;margin-right:5%;z-index:9999;
-                    background:rgba(255,255,255,0.95);
-                    padding:6px 12px;border-radius:8px;
-                    border:1px solid #ccc;
-                    font-family:inherit;font-weight:600;
-                    box-shadow:0 2px 6px rgba(0,0,0,0.15)">
-          残り時間: <span id="remain_timer">--:--:--</span>
-        </div>
-        <script>
-        const END={st.session_state.event_end_ts};
-        function fmt(ms){{if(ms<0)ms=0;
-          let s=Math.floor(ms/1000),d=Math.floor(s/86400);
-          s%=86400;let h=Math.floor(s/3600),
-              m=Math.floor((s%3600)/60),
-              sec=s%60;
-          return d>0?`${{d}}d ${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`
-                     :`${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`;}}
-        function upd(){{document.getElementById("remain_timer").textContent=fmt(END-Date.now());}}
-        upd();setInterval(upd,1000);
-        </script>
-        """, height=50)
+    # リアルタイムダッシュボードの直前あたりで
+    badge_container = st.container()
+    with badge_container:
+        st.markdown(
+            """
+            <div style="
+                display:flex;
+                justify-content:flex-end;
+                position:sticky;
+                top:0;
+                z-index:9999;
+                background-color:rgba(255,255,255,0.9);
+                padding:4px 10px;
+                border:1px solid #ccc;
+                border-radius:8px;
+                font-weight:600;
+                font-family:inherit;
+                box-shadow:0 2px 5px rgba(0,0,0,0.2);
+            ">
+              残り時間: <span id="remain_timer">--:--:--</span>
+            </div>
+            <script>
+            const END={st.session_state.event_end_ts};
+            function fmt(ms){if(ms<0)ms=0;
+              let s=Math.floor(ms/1000),d=Math.floor(s/86400);
+              s%=86400;let h=Math.floor(s/3600);
+              let m=Math.floor((s%3600)/60),sec=s%60;
+              return d>0?`${d}d ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`
+                       :`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;}
+            function upd(){document.getElementById("remain_timer").textContent=fmt(END-Date.now());}
+            upd();setInterval(upd,1000);
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
 
-    # 余白調整用CSSを一度だけ定義
     st.markdown(
         """
         <style>
-        div[data-testid="stNotification"] {
-            margin-bottom: 2px !important;  /* st.info 下の余白を詰める */
-            margin-top: 0px !important;
-        }
-        section.main > div.block-container {
-            padding-top: 1rem !important;  /* ページ上部のパディングを少し詰める */
-        }
+        div[data-testid="stNotification"] { margin-bottom: 4px !important; margin-top:0 !important; }
+        section.main > div.block-container { padding-top: 0.5rem !important; }
         </style>
         """,
         unsafe_allow_html=True
