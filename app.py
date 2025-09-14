@@ -327,15 +327,37 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            time_placeholder = st.empty()
-    
-    # ★ 修正箇所: ここで残り時間を計算・表示
-    now = datetime.datetime.now(JST)
-    remain_time_sec = int((ended_at_dt - now).total_seconds())
-    if remain_time_sec < 0:
-        remain_time_sec = 0
-    remain_time_readable = str(datetime.timedelta(seconds=remain_time_sec))
-    time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
+            # ★ 修正箇所: ここからJavaScriptによるカウントダウンを埋め込む
+            st.markdown(
+                f"""
+                <div id="countdown-timer"></div>
+                <script>
+                    var endTime = {ended_at_dt.timestamp() * 1000};
+                    var timer = document.getElementById('countdown-timer');
+
+                    function updateCountdown() {{
+                        var now = new Date().getTime();
+                        var distance = endTime - now;
+
+                        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                        var hours = Math.floor((distance %% (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        var minutes = Math.floor((distance %% (1000 * 60 * 60)) / (1000 * 60));
+                        var seconds = Math.floor((distance %% (1000 * 60)) / 1000);
+
+                        if (distance < 0) {{
+                            timer.innerHTML = "<span style='color: red;'>**イベント終了**</span>";
+                        }} else {{
+                            timer.innerHTML = "<span style='color: red;'>**" + days + "日 " + hours + "時間 " + minutes + "分 " + seconds + "秒**</span>";
+                        }}
+                    }}
+
+                    // 初回実行と1秒ごとの更新
+                    updateCountdown();
+                    setInterval(updateCountdown, 1000);
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -656,16 +678,6 @@ def main():
                 )
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                 fig_lower_gap.update_layout(uirevision="const")
-    
-    # ★ 修正箇所: このブロックはもう不要
-    # if final_remain_time is not None:
-    #     remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-    #     time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-    # else:
-    #     time_placeholder.info("残り時間情報を取得できませんでした。")
-
-#    time.sleep(5)
-#    st.rerun()
 
 if __name__ == "__main__":
     main()
