@@ -5,7 +5,7 @@ import time
 import datetime
 import plotly.express as px
 import pytz
-# from streamlit_autorefresh import st_autorefresh # st_autorefreshは不要になるためコメントアウト
+from streamlit_autorefresh import st_autorefresh
 
 # Set page configuration
 st.set_page_config(
@@ -316,7 +316,9 @@ def main():
         return
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-    st.info("※ このセクションはリアルタイムで自動更新されます。")
+    st.info("10秒ごとに自動更新されます。")
+    # 10秒ごとに自動更新
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -325,41 +327,18 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            # ★ 修正箇所: ここにJavaScriptを埋め込む
-            st.markdown(f"""
-                <span id="countdown-timer" style='color: red;'></span>
-                <script>
-                    const endTime = {int(ended_at_dt.timestamp())} * 1000;
-                    const timer = document.getElementById('countdown-timer');
-
-                    function updateCountdown() {{
-                        const now = new Date().getTime();
-                        const distance = endTime - now;
-
-                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        const hours = Math.floor((distance %% (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((distance %% (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((distance %% (1000 * 60)) / 1000);
-
-                        if (distance < 0) {{
-                            timer.innerHTML = "**イベント終了**";
-                        }} else {{
-                            timer.innerHTML = `**${days}日 ${hours}時間 ${minutes}分 ${seconds}秒**`;
-                        }}
-                    }}
-
-                    // 初回実行と1秒ごとの更新
-                    updateCountdown();
-                    setInterval(updateCountdown, 1000);
-                </script>
-            """, unsafe_allow_html=True)
+            time_placeholder = st.empty()
+    
+    # ★ 修正箇所: ここで残り時間を計算・表示
+    now = datetime.datetime.now(JST)
+    remain_time_sec = int((ended_at_dt - now).total_seconds())
+    if remain_time_sec < 0:
+        remain_time_sec = 0
+    remain_time_readable = str(datetime.timedelta(seconds=remain_time_sec))
+    time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
-    
-    # 30秒ごとにページ全体を再読み込みして、APIデータを更新する（必要に応じて調整）
-    st_autorefresh(interval=30000, limit=None, key="data_refresh")
-
     onlives_rooms = get_onlives_rooms()
 
     data_to_display = []
