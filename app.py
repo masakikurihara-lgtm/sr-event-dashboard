@@ -657,26 +657,8 @@ def main():
                 fig_lower_gap.update_layout(uirevision="const")
     
     if final_remain_time is not None:
-        # 残り時間を秒単位でJSカウントダウン
-        js_code = f"""
-        <span id="remain-time" style="color:red; font-weight:bold;"></span>
-        <script>
-        var remaining = {final_remain_time};
-        var elem = document.getElementById("remain-time");
-        function updateTime() {{
-            var h = Math.floor(remaining / 3600);
-            var m = Math.floor((remaining % 3600) / 60);
-            var s = remaining % 60;
-            elem.innerHTML = h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
-            if(remaining > 0) {{
-                remaining -= 1;
-                setTimeout(updateTime, 1000);
-            }}
-        }}
-        updateTime();
-        </script>
-        """
-        time_placeholder.markdown(js_code, unsafe_allow_html=True)
+        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
     
