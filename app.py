@@ -7,6 +7,7 @@ import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
 from datetime import timedelta
+import streamlit.components.v1 as components
 
 # Set page configuration
 st.set_page_config(
@@ -322,74 +323,86 @@ def main():
             return
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-        st.info("10秒ごとに自動更新されます。")
-        # 「表示する」ボタンが押された後のみ自動更新を稼働させる
+        st.info("データは10秒、タイマーは1秒ごとに自動更新されます。")
+        # ★ 修正箇所: メインの自動更新を10秒に設定
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
-        # --- ここからタイマー表示の修正 ---
-        # タイマー表示用のプレースホルダーを作成
-        st.markdown("""
+        # --- ここからJavaScriptによる1秒タイマーの実装 ---
+        end_timestamp_ms = ended_at_dt.timestamp() * 1000
+
+        components.html(
+            f"""
+            <div id="countdown-container"></div>
             <style>
-            .fixed-countdown {
-                position: fixed;
-                top: 100px;
-                right: 15px;
-                z-index: 1000;
-                background-color: #4CAF50;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                transition: background-color 0.5s ease;
-            }
-            .countdown-label {
-                font-size: 0.8rem;
-                opacity: 0.8;
-                display: block;
-            }
+                .fixed-countdown {{
+                    position: fixed;
+                    top: 100px;
+                    right: 15px;
+                    z-index: 1000;
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 8px 15px;
+                    border-radius: 20px;
+                    font-size: 1.2rem;
+                    font-weight: bold;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    transition: background-color 0.5s ease;
+                }}
+                .countdown-label {{
+                    font-size: 0.8rem;
+                    opacity: 0.8;
+                    display: block;
+                }}
             </style>
-        """, unsafe_allow_html=True)
-        # タイマー表示用のプレースホルダーを空で作成
-        timer_placeholder = st.empty()
-        
-        # プレースホルダーに表示する内容を更新
-        now = datetime.datetime.now(JST)
-        remaining_seconds = (ended_at_dt - now).total_seconds()
-        
-        if remaining_seconds > 0:
-            days = int(remaining_seconds // 86400)
-            hours = int((remaining_seconds % 86400) // 3600)
-            minutes = int((remaining_seconds % 3600) // 60)
-            seconds = int(remaining_seconds % 60)
-            
-            formatted_time = f"{days}d {hours:02}:{minutes:02}:{seconds:02}"
-            
-            # バッジの色を残り時間に応じて変更
-            background_color = "#4CAF50"
-            if remaining_seconds <= 3600:
-                background_color = "#ff4b4b"
-            elif remaining_seconds <= 10800:
-                background_color = "#ffa500"
-            
-            timer_html = f"""
-                <div class="fixed-countdown" style="background-color: {background_color};">
-                    <span class="countdown-label">残り時間</span>
-                    <span id="countdown-timer">{formatted_time}</span>
-                </div>
-            """
-            timer_placeholder.markdown(timer_html, unsafe_allow_html=True)
-        else:
-            timer_html = f"""
-                <div class="fixed-countdown" style="background-color: #808080;">
-                    <span class="countdown-label">残り時間</span>
-                    <span id="countdown-timer">イベント終了</span>
-                </div>
-            """
-            timer_placeholder.markdown(timer_html, unsafe_allow_html=True)
-        # --- ここまでタイマー表示の修正 ---
+            <script>
+                const endTime = {end_timestamp_ms};
+                const container = document.getElementById('countdown-container');
+
+                function formatTime(seconds) {{
+                    const d = Math.floor(seconds / (3600 * 24));
+                    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = Math.floor(seconds % 60);
+                    return d + 'd ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2);
+                }}
+
+                function updateCountdown() {{
+                    const now = new Date().getTime();
+                    const distance = endTime - now;
+                    let html;
+
+                    if (distance > 0) {{
+                        const secondsRemaining = Math.floor(distance / 1000);
+                        let bgColor = "#4CAF50";
+                        if (secondsRemaining <= 3600) {{
+                            bgColor = "#ff4b4b";
+                        }} else if (secondsRemaining <= 10800) {{
+                            bgColor = "#ffa500";
+                        }}
+                        const formattedTime = formatTime(secondsRemaining);
+                        html = `<div class="fixed-countdown" style="background-color: ${bgColor};">
+                                    <span class="countdown-label">残り時間</span>
+                                    <span>${formattedTime}</span>
+                                </div>`;
+                    }} else {{
+                        html = `<div class="fixed-countdown" style="background-color: #808080;">
+                                    <span class="countdown-label">残り時間</span>
+                                    <span>イベント終了</span>
+                                </div>`;
+                    }}
+                    container.innerHTML = html;
+                }}
+
+                updateCountdown();
+                if (endTime > new Date().getTime()) {{
+                    setInterval(updateCountdown, 1000);
+                }}
+            </script>
+            """,
+            height=50,
+        )
+        # --- ここまでJavaScriptによる1秒タイマーの実装 ---
         
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
@@ -405,7 +418,6 @@ def main():
                     st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
-
 
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
