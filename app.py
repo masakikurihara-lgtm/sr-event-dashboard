@@ -219,17 +219,6 @@ def get_rank_color(rank):
     except (ValueError, TypeError):
         return "#A9A9A9"
 
-def format_timedelta_seconds(s):
-    # s: int seconds
-    if s < 0:
-        s = 0
-    days, rem = divmod(s, 86400)
-    hours, rem = divmod(rem, 3600)
-    minutes, seconds = divmod(rem, 60)
-    if days > 0:
-        return f"{days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
@@ -320,63 +309,16 @@ def main():
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
-        st.session_state.event_end_ts = int(ended_at_dt.timestamp() * 1000)
         st.rerun()
 
     if not st.session_state.selected_room_names:
         st.warning("最低1つのルームを選択してください。")
         return
 
-    # ルーム選択後のみ描画
-    # リアルタイムダッシュボードの直前あたりで
-    badge_container = st.container()
-    with badge_container:
-        st.markdown(
-            """
-            <div style="
-                display:flex;
-                justify-content:flex-end;
-                position:sticky;
-                top:0;
-                z-index:9999;
-                background-color:rgba(255,255,255,0.9);
-                padding:4px 10px;
-                border:1px solid #ccc;
-                border-radius:8px;
-                font-weight:600;
-                font-family:inherit;
-                box-shadow:0 2px 5px rgba(0,0,0,0.2);
-            ">
-              残り時間: <span id="remain_timer">--:--:--</span>
-            </div>
-            <script>
-            const END={st.session_state.event_end_ts};
-            function fmt(ms){if(ms<0)ms=0;
-              let s=Math.floor(ms/1000),d=Math.floor(s/86400);
-              s%=86400;let h=Math.floor(s/3600);
-              let m=Math.floor((s%3600)/60),sec=s%60;
-              return d>0?`${d}d ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`
-                       :`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;}
-            function upd(){document.getElementById("remain_timer").textContent=fmt(END-Date.now());}
-            upd();setInterval(upd,1000);
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stNotification"] { margin-bottom: 4px !important; margin-top:0 !important; }
-        section.main > div.block-container { padding-top: 0.5rem !important; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
-    st_autorefresh(interval=10000, key="data_refresh")
+    # 10秒ごとに自動更新
+    #st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -385,12 +327,7 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-            # 初回ロード用の表示（JSが動作しない環境向けのフォールバック）
-            now_local = datetime.datetime.now(JST)
-            remain_local_sec = int((ended_at_dt - now_local).total_seconds())
-            remain_time_readable = format_timedelta_seconds(remain_local_sec)
             time_placeholder = st.empty()
-            time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -692,9 +629,8 @@ def main():
                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
                 )
-                # uirevision を設定して不必要な完全リセットを防ぐ
-                fig_points.update_layout(uirevision="const")
                 st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
+                fig_points.update_layout(uirevision="const")
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
@@ -705,8 +641,8 @@ def main():
                     hover_data=["現在の順位", "現在のポイント"],
                     labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
-                fig_upper_gap.update_layout(uirevision="const")
                 st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
+                fig_upper_gap.update_layout(uirevision="const")
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
@@ -717,10 +653,19 @@ def main():
                     hover_data=["現在の順位", "現在のポイント"],
                     labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
-                fig_lower_gap.update_layout(uirevision="const")
                 st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
+                fig_lower_gap.update_layout(uirevision="const")
     
-    # note: 残り時間のクライアント側カウントダウンが動いているため、ここでは特に処理しない
+    if final_remain_time is not None:
+        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
+        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
+    else:
+        time_placeholder.info("残り時間情報を取得できませんでした。")
+    
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
+
+#    time.sleep(5)
+#    st.rerun()
 
 if __name__ == "__main__":
     main()
