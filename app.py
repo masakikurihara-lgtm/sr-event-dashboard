@@ -639,8 +639,6 @@ def main():
                                    hover_data=["現在の順位", "現在のポイント"],
                                    labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"})
             st.plotly_chart(fig_lower_gap, use_container_width=True) 
-
-
     
     if final_remain_time is not None:
         remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
