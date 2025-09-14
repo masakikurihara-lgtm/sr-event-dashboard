@@ -296,6 +296,11 @@ def main():
                 <span id="countdown-timer">計算中...</span>
             </div>
             <script>
+                // タイマーが既に存在する場合はクリア
+                if (window.myCountdownTimer) {{
+                    clearInterval(window.myCountdownTimer);
+                }}
+
                 const timerElement = document.getElementById('countdown-timer');
                 const badgeElement = document.getElementById('countdown-badge');
                 if (timerElement && badgeElement) {{
@@ -330,7 +335,7 @@ def main():
                     }}
                     
                     updateCountdown();
-                    setInterval(updateCountdown, 1000);
+                    window.myCountdownTimer = setInterval(updateCountdown, 1000);
                 }}
             </script>
         """, unsafe_allow_html=True)
