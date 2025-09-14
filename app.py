@@ -6,7 +6,6 @@ import datetime
 import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
-from datetime import timedelta
 
 # Set page configuration
 st.set_page_config(
@@ -220,30 +219,6 @@ def get_rank_color(rank):
     except (ValueError, TypeError):
         return "#A9A9A9"
 
-# 新しく追加された関数: カウントダウンを計算する
-def calculate_countdown(end_timestamp):
-    now = datetime.datetime.now(JST)
-    end_time = datetime.datetime.fromtimestamp(end_timestamp, JST)
-    
-    if now >= end_time:
-        return "イベント終了", "#808080" # Grey
-    
-    remaining = end_time - now
-    hours, remainder = divmod(remaining.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    
-    countdown_str = f"{int(remaining.days)}d {int(hours):02}:{int(minutes):02}:{int(seconds):02}"
-
-    # 色を残り時間に応じて変更
-    if remaining.total_seconds() <= 3600: # 1時間未満
-        color = "#ff4b4b"  # Red
-    elif remaining.total_seconds() <= 10800: # 3時間未満
-        color = "#ffa500"  # Orange
-    else:
-        color = "#4CAF50" # Green
-
-    return countdown_str, color
-
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
@@ -286,37 +261,6 @@ def main():
     ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
-
-    # 新しく追加された部分: 固定表示の残り時間バッジ
-    countdown_str, color = calculate_countdown(selected_event_data.get('ended_at'))
-    st.markdown(f"""
-        <style>
-        .fixed-countdown {{
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            background-color: {color};
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            transition: background-color 0.5s ease;
-        }}
-        .countdown-label {{
-            font-size: 0.8rem;
-            opacity: 0.8;
-            display: block;
-        }}
-        </style>
-        <div class="fixed-countdown">
-            <span class="countdown-label">残り時間</span>
-            {countdown_str}
-        </div>
-    """, unsafe_allow_html=True)
 
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
@@ -718,7 +662,7 @@ def main():
     else:
         time_placeholder.info("残り時間情報を取得できませんでした。")
     
-    st_autorefresh(interval=1000, limit=None, key="data_refresh")
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
 #    time.sleep(5)
 #    st.rerun()
