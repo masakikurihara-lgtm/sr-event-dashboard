@@ -219,6 +219,17 @@ def get_rank_color(rank):
     except (ValueError, TypeError):
         return "#A9A9A9"
 
+def format_timedelta_seconds(s):
+    # s: int seconds
+    if s < 0:
+        s = 0
+    days, rem = divmod(s, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if days > 0:
+        return f"{days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
@@ -261,6 +272,61 @@ def main():
     ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
+
+    # --- クライアント側で1秒カウントダウンするためのHTML/JSバッジ（右上に固定） ---
+    # 終了時刻をミリ秒で渡す（JS側で1秒ごとに更新）
+    end_ts_ms = int(ended_at_dt.timestamp() * 1000)
+    badge_html = f"""
+    <div id="sr_remain_timer_badge" style="
+        position: fixed;
+        top: 14px;
+        right: 16px;
+        z-index: 9999;
+        background: rgba(255,255,255,0.95);
+        border: 1px solid #e0e0e0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        font-weight: 600;
+        font-family: inherit;
+        ">
+      <div style="font-size:12px; color:#666;">残り時間</div>
+      <div id="sr_remain_timer" style="font-size:16px; color:#c62828; margin-top:2px;">--:--:--</div>
+    </div>
+
+    <script>
+    // end_ts_ms injected from Python
+    const END_TS = {end_ts_ms};
+
+    function formatDiff(ms) {{
+        if (ms < 0) {{ ms = 0; }}
+        let s = Math.floor(ms / 1000);
+        let days = Math.floor(s / 86400);
+        s = s % 86400;
+        let hh = Math.floor(s / 3600);
+        let mm = Math.floor((s % 3600) / 60);
+        let ss = s % 60;
+        if (days > 0) {{
+            return `${{days}}d ${{String(hh).padStart(2,'0')}}:${{String(mm).padStart(2,'0')}}:${{String(ss).padStart(2,'0')}}`;
+        }}
+        return `${{String(hh).padStart(2,'0')}}:${{String(mm).padStart(2,'0')}}:${{String(ss).padStart(2,'0')}}`;
+    }}
+
+    function updateTimerOnce() {{
+        const diff = END_TS - Date.now();
+        const el = document.getElementById('sr_remain_timer');
+        if (el) {{
+            el.textContent = formatDiff(diff);
+        }}
+    }}
+
+    // update every 1 second
+    updateTimerOnce();
+    setInterval(updateTimerOnce, 1000);
+    </script>
+    """
+    # Render the badge (small HTML component). This does not cause server reruns.
+    st.components.v1.html(badge_html, height=0, scrolling=False)
 
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
@@ -317,8 +383,9 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
-    # 10秒ごとに自動更新
-    #st_autorefresh(interval=10000, limit=None, key="data_refresh")
+    # 10秒ごとに自動更新（データの再取得・グラフ更新）
+    # st_autorefresh はページ全体を再実行しますが、残り時間はクライアント側で毎秒更新されるため影響は小さいです。
+    st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 1])
@@ -327,7 +394,12 @@ def main():
             st.write(f"**{event_period_str}**")
         with col2:
             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
+            # 初回ロード用の表示（JSが動作しない環境向けのフォールバック）
+            now_local = datetime.datetime.now(JST)
+            remain_local_sec = int((ended_at_dt - now_local).total_seconds())
+            remain_time_readable = format_timedelta_seconds(remain_local_sec)
             time_placeholder = st.empty()
+            time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
 
     current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -629,8 +701,9 @@ def main():
                     hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                     labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
                 )
-                st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
+                # uirevision を設定して不必要な完全リセットを防ぐ
                 fig_points.update_layout(uirevision="const")
+                st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
 
             if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                 df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
@@ -641,8 +714,8 @@ def main():
                     hover_data=["現在の順位", "現在のポイント"],
                     labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
-                st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
                 fig_upper_gap.update_layout(uirevision="const")
+                st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
 
             if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                 df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
@@ -653,19 +726,10 @@ def main():
                     hover_data=["現在の順位", "現在のポイント"],
                     labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                 )
-                st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                 fig_lower_gap.update_layout(uirevision="const")
+                st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
     
-    if final_remain_time is not None:
-        remain_time_readable = str(datetime.timedelta(seconds=final_remain_time))
-        time_placeholder.markdown(f"<span style='color: red;'>**{remain_time_readable}**</span>", unsafe_allow_html=True)
-    else:
-        time_placeholder.info("残り時間情報を取得できませんでした。")
-    
-    st_autorefresh(interval=10000, limit=None, key="data_refresh")
-
-#    time.sleep(5)
-#    st.rerun()
+    # note: 残り時間のクライアント側カウントダウンが動いているため、ここでは特に処理しない
 
 if __name__ == "__main__":
     main()
