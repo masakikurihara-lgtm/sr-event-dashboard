@@ -273,58 +273,6 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
-    # --- クライアント側で1秒カウントダウンするためのHTML/JSバッジ（右上に固定） ---
-    # 終了時刻をミリ秒で渡す（JS側で1秒ごとに更新）
-    end_ts_ms = int(ended_at_dt.timestamp() * 1000)
-    badge_html = f"""
-    <div id="sr_remain_timer_badge" style="
-        position: fixed;
-        top: 14px;
-        right: 16px;
-        z-index: 9999;
-        background: rgba(255,255,255,0.95);
-        border: 1px solid #e0e0e0;
-        padding: 8px 12px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-        font-weight: 600;
-        font-family: inherit;
-        ">
-      <div style="font-size:12px; color:#666;">残り時間</div>
-      <div id="sr_remain_timer" style="font-size:16px; color:#c62828; margin-top:2px;">--:--:--</div>
-    </div>
-
-    <script>
-    // end_ts_ms injected from Python
-    const END_TS = {end_ts_ms};
-
-    function formatDiff(ms) {{
-        if (ms < 0) {{ ms = 0; }}
-        let s = Math.floor(ms / 1000);
-        let days = Math.floor(s / 86400);
-        s = s % 86400;
-        let hh = Math.floor(s / 3600);
-        let mm = Math.floor((s % 3600) / 60);
-        let ss = s % 60;
-        if (days > 0) {{
-            return `${{days}}d ${{String(hh).padStart(2,'0')}}:${{String(mm).padStart(2,'0')}}:${{String(ss).padStart(2,'0')}}`;
-        }}
-        return `${{String(hh).padStart(2,'0')}}:${{String(mm).padStart(2,'0')}}:${{String(ss).padStart(2,'0')}}`;
-    }}
-
-    function updateTimerOnce() {{
-        const diff = END_TS - Date.now();
-        const el = document.getElementById('sr_remain_timer');
-        if (el) {{
-            el.textContent = formatDiff(diff);
-        }}
-    }}
-
-    // update every 1 second
-    updateTimerOnce();
-    setInterval(updateTimerOnce, 1000);
-    </script>
-    """
     # Render the badge (small HTML component). This does not cause server reruns.
     st.components.v1.html(badge_html, height=0, scrolling=False)
 
@@ -382,12 +330,15 @@ def main():
         st.warning("最低1つのルームを選択してください。")
         return
 
+    # ルーム選択後のみ描画
     if st.session_state.get("event_end_ts"):
         st.components.v1.html(f"""
-        <div style="position:fixed;top:10px;right:20px;z-index:1000;
-                    background:rgba(255,255,255,.95);padding:6px 12px;
-                    border-radius:8px;border:1px solid #ccc;
-                    font-family:inherit;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,0.15)">
+        <div style="position:fixed;top:20px;right:20px;z-index:9999;
+                    background:rgba(255,255,255,0.95);
+                    padding:6px 12px;border-radius:8px;
+                    border:1px solid #ccc;
+                    font-family:inherit;font-weight:600;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.15)">
           残り時間: <span id="remain_timer">--:--:--</span>
         </div>
         <script>
@@ -401,7 +352,7 @@ def main():
         function upd(){{document.getElementById("remain_timer").textContent=fmt(END-Date.now());}}
         upd();setInterval(upd,1000);
         </script>
-        """,height=0)
+        """, height=0)
 
     st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
     st.info("10秒ごとに自動更新されます。")
