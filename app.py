@@ -645,7 +645,7 @@ def main():
                 .gift-item {
                     display: flex;
                     flex-direction: column;
-                    padding: 8px 0;
+                    padding: 8px 8px;
                     border-bottom: 1px solid #eee;
                     gap: 4px;
                 }
