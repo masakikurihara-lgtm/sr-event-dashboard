@@ -350,7 +350,7 @@ def main():
                     background-color: #4CAF50;
                     color: white;
                     padding: 8px 14px;
-                    border-radius: 18px;
+                    border-radius: 12px;
                     font-size: 1rem;
                     font-weight: 600;
                     box-shadow: 0 4px 10px rgba(0,0,0,0.18);
