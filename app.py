@@ -355,11 +355,12 @@ def main():
                 ended_ms = ended_at * 1000
                 st.components.v1.html(f"""
                 <style>
+                /* スクロールしても常に右上に固定されるバッジ */
                 #sr_countdown_badge {{
-                    position: fixed;
-                    top: 50px;
-                    right: 20px;
-                    z-index: 2147483647;
+                    position: fixed;  /* スクロール追従に必須 */
+                    top: 20px;        /* 画面上からの距離 */
+                    right: 20px;      /* 画面右からの距離 */
+                    z-index: 2147483647; /* 他要素より最前面 */
                     background-color: #4CAF50;
                     color: white;
                     padding: 8px 14px;
@@ -369,7 +370,7 @@ def main():
                     box-shadow: 0 4px 10px rgba(0,0,0,0.18);
                     font-family: inherit;
                     transition: background-color 0.4s ease;
-                    pointer-events: none;
+                    pointer-events: none;  /* クリック透過 */
                 }}
                 #sr_countdown_badge .label {{
                     font-size:0.75rem;
@@ -377,10 +378,12 @@ def main():
                     display:block;
                 }}
                 </style>
+
                 <div id="sr_countdown_badge" data-end="{ended_ms}">
                   <span class="label">残り時間</span>
                   <span id="sr_countdown_timer">計算中...</span>
                 </div>
+
                 <script>
                 (function() {{
                   function start() {{
