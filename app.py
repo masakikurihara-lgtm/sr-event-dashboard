@@ -372,13 +372,13 @@ def main():
                     </div>
                     <script>
                     (function() {{
-                        // Streamlitの再実行で、タイマーが重複して作成されないようにする
+                        // タイマーがすでに開始されているかを確認する
                         if (window._sr_countdown_interval) {{
+                            // すでに実行中の場合は、再起動の試行をスキップ
                             return;
                         }}
                         
                         function pad(n) {{ return String(n).padStart(2, '0'); }}
-                        
                         function formatMs(ms) {{
                             if (ms < 0) ms = 0;
                             let s = Math.floor(ms / 1000);
@@ -417,20 +417,9 @@ def main():
                             else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
                             else badge.style.backgroundColor = '#4CAF50';
                         }}
-
-                        // HTML要素がレンダリングされるまで待機する
-                        function startWhenReady() {{
-                            if (document.getElementById('sr_countdown_badge') && document.getElementById('sr_countdown_timer')) {{
-                                // 要素が見つかったら、1秒ごとのタイマーを開始
-                                window._sr_countdown_interval = setInterval(update, 1000);
-                                update(); // 初回表示を即時更新
-                            }} else {{
-                                // 要素が見つからない場合、少し待って再試行
-                                setTimeout(startWhenReady, 50);
-                            }}
-                        }}
-
-                        startWhenReady();
+                        
+                        // 1秒ごとにタイマーを更新する
+                        window._sr_countdown_interval = setInterval(update, 1000);
                         
                     }})();
                     </script>
