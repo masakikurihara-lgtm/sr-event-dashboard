@@ -7,7 +7,7 @@ import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
 from datetime import timedelta
-import time
+
 
 # Set page configuration
 st.set_page_config(
