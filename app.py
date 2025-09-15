@@ -697,7 +697,7 @@ def main():
                     st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                     fig_lower_gap.update_layout(uirevision="const")
                     
-        #st_autorefresh(interval=10000, limit=None, key="data_refresh")            
+        st_autorefresh(interval=10000, limit=None, key="data_refresh")            
         
     
 if __name__ == "__main__":
