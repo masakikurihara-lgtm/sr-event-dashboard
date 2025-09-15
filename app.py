@@ -408,153 +408,153 @@ def main():
                     </script>
                     """, unsafe_allow_html=True)
 
-        with st.container(border=True):
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
-                st.write(f"**{event_period_str}**")
-            with col2:
-                st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-                now = datetime.datetime.now(JST)
-                remaining_seconds = (ended_at_dt - now).total_seconds()
-                if remaining_seconds > 0:
-                    remaining_readable = str(timedelta(seconds=int(remaining_seconds)))
-                    st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
-
-        current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-        st.write(f"最終更新日時 (日本時間): {current_time}")
-
-        is_event_ended = datetime.datetime.now(JST) > ended_at_dt
-        
-        final_ranking_data = {}
-        if is_event_ended:
-            with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
-                event_url_key = selected_event_data.get('event_url_key')
-                event_id = selected_event_data.get('event_id')
-                final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
-                if final_ranking_map:
-                    for name, data in final_ranking_map.items():
-                        if 'room_id' in data:
-                            final_ranking_data[data['room_id']] = {
-                                'rank': data.get('rank'), 'point': data.get('point')
-                            }
-                else:
-                    st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
-
-        onlives_rooms = get_onlives_rooms()
-
-        data_to_display = []
-        if st.session_state.selected_room_names:
-            for room_name in st.session_state.selected_room_names:
-                try:
-                    if room_name not in st.session_state.room_map_data:
-                        st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
-                        continue
-                    
-                    room_id = st.session_state.room_map_data[room_name]['room_id']
-                    rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
-                    
-                    if is_event_ended:
-                        if room_id in final_ranking_data:
-                            rank = final_ranking_data[room_id].get('rank', 'N/A')
-                            point = final_ranking_data[room_id].get('point', 'N/A')
-                            upper_gap, lower_gap = 0, 0
-                        else:
-                            st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
-                            continue
+            with st.container(border=True):
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
+                    st.write(f"**{event_period_str}**")
+                with col2:
+                    st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
+                    now = datetime.datetime.now(JST)
+                    remaining_seconds = (ended_at_dt - now).total_seconds()
+                    if remaining_seconds > 0:
+                        remaining_readable = str(timedelta(seconds=int(remaining_seconds)))
+                        st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
                     else:
-                        room_info = get_room_event_info(room_id)
-                        if not isinstance(room_info, dict):
-                            st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
+                        st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
+
+            current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+            st.write(f"最終更新日時 (日本時間): {current_time}")
+
+            is_event_ended = datetime.datetime.now(JST) > ended_at_dt
+            
+            final_ranking_data = {}
+            if is_event_ended:
+                with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
+                    event_url_key = selected_event_data.get('event_url_key')
+                    event_id = selected_event_data.get('event_id')
+                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
+                    if final_ranking_map:
+                        for name, data in final_ranking_map.items():
+                            if 'room_id' in data:
+                                final_ranking_data[data['room_id']] = {
+                                    'rank': data.get('rank'), 'point': data.get('point')
+                                }
+                    else:
+                        st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
+
+            onlives_rooms = get_onlives_rooms()
+
+            data_to_display = []
+            if st.session_state.selected_room_names:
+                for room_name in st.session_state.selected_room_names:
+                    try:
+                        if room_name not in st.session_state.room_map_data:
+                            st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
                             continue
                         
-                        rank_info = None
-                        if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
-                            rank_info = room_info['ranking']
-                        elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
-                            event_info = room_info['event_and_support_info']
-                            if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
-                                rank_info = event_info['ranking']
-                        elif 'event' in room_info and isinstance(room_info['event'], dict):
-                            event_data = room_info['event']
-                            if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
-                                rank_info = event_data['ranking']
-
-                        if rank_info and 'point' in rank_info:
-                            rank = rank_info.get('rank', 'N/A')
-                            point = rank_info.get('point', 'N/A')
-                            upper_gap = rank_info.get('upper_gap', 'N/A')
-                            lower_gap = rank_info.get('lower_gap', 'N/A')
+                        room_id = st.session_state.room_map_data[room_name]['room_id']
+                        rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
+                        
+                        if is_event_ended:
+                            if room_id in final_ranking_data:
+                                rank = final_ranking_data[room_id].get('rank', 'N/A')
+                                point = final_ranking_data[room_id].get('point', 'N/A')
+                                upper_gap, lower_gap = 0, 0
+                            else:
+                                st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
+                                continue
                         else:
-                            st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
-                            continue
-                    
-                    is_live = int(room_id) in onlives_rooms
-                    started_at_str = ""
-                    if is_live:
-                        started_at_ts = onlives_rooms.get(int(room_id))
-                        if started_at_ts:
-                            started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
-                            started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+                            room_info = get_room_event_info(room_id)
+                            if not isinstance(room_info, dict):
+                                st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
+                                continue
+                            
+                            rank_info = None
+                            if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
+                                rank_info = room_info['ranking']
+                            elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
+                                event_info = room_info['event_and_support_info']
+                                if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
+                                    rank_info = event_info['ranking']
+                            elif 'event' in room_info and isinstance(room_info['event'], dict):
+                                event_data = room_info['event']
+                                if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
+                                    rank_info = event_data['ranking']
 
-                    data_to_display.append({
-                        "配信中": "🔴" if is_live else "", "ルーム名": room_name,
-                        "現在の順位": rank, "現在のポイント": point,
-                        "上位とのポイント差": upper_gap, "下位とのポイント差": lower_gap,
-                        "配信開始時間": started_at_str
-                    })
-                except Exception as e:
-                    st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
-                    continue
+                            if rank_info and 'point' in rank_info:
+                                rank = rank_info.get('rank', 'N/A')
+                                point = rank_info.get('point', 'N/A')
+                                upper_gap = rank_info.get('upper_gap', 'N/A')
+                                lower_gap = rank_info.get('lower_gap', 'N/A')
+                            else:
+                                st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+                                continue
+                        
+                        is_live = int(room_id) in onlives_rooms
+                        started_at_str = ""
+                        if is_live:
+                            started_at_ts = onlives_rooms.get(int(room_id))
+                            if started_at_ts:
+                                started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
+                                started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
 
-        if data_to_display:
-            df = pd.DataFrame(data_to_display)
-            df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-            df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-            df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
-            live_status = df['配信中']
-            
-            df = df.drop(columns=['配信中'])
-            
-            df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            if not df.empty:
-                df.at[0, '上位とのポイント差'] = 0
-            df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            df.insert(0, '配信中', live_status)
-            
-            started_at_column = df['配信開始時間']
-            df = df.drop(columns=['配信開始時間'])
-            df.insert(1, '配信開始時間', started_at_column)
+                        data_to_display.append({
+                            "配信中": "🔴" if is_live else "", "ルーム名": room_name,
+                            "現在の順位": rank, "現在のポイント": point,
+                            "上位とのポイント差": upper_gap, "下位とのポイント差": lower_gap,
+                            "配信開始時間": started_at_str
+                        })
+                    except Exception as e:
+                        st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
+                        continue
 
-            st.subheader("📊 比較対象ルームのステータス")
-            required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
-            if all(col in df.columns for col in required_cols):
-                try:
-                    def highlight_rows(row):
-                        if row['配信中'] == '🔴':
-                            return ['background-color: #e6fff2'] * len(row)
-                        elif row.name % 2 == 1:
-                            return ['background-color: #fcfcfc'] * len(row)
-                        else:
-                            return [''] * len(row)
-                    df_to_format = df.copy()
-                    for col in required_cols:
-                        df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
-                    styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
-                        {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
-                    
-                    table_height_css = """
-                    <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
-                    """
-                    st.markdown(table_height_css, unsafe_allow_html=True)
-                    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
-                except Exception as e:
-                    st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
+            if data_to_display:
+                df = pd.DataFrame(data_to_display)
+                df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+                df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+                df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+                live_status = df['配信中']
+                
+                df = df.drop(columns=['配信中'])
+                
+                df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
+                if not df.empty:
+                    df.at[0, '上位とのポイント差'] = 0
+                df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+                df.insert(0, '配信中', live_status)
+                
+                started_at_column = df['配信開始時間']
+                df = df.drop(columns=['配信開始時間'])
+                df.insert(1, '配信開始時間', started_at_column)
+
+                st.subheader("📊 比較対象ルームのステータス")
+                required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
+                if all(col in df.columns for col in required_cols):
+                    try:
+                        def highlight_rows(row):
+                            if row['配信中'] == '🔴':
+                                return ['background-color: #e6fff2'] * len(row)
+                            elif row.name % 2 == 1:
+                                return ['background-color: #fcfcfc'] * len(row)
+                            else:
+                                return [''] * len(row)
+                        df_to_format = df.copy()
+                        for col in required_cols:
+                            df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
+                        styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
+                            {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                        
+                        table_height_css = """
+                        <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
+                        """
+                        st.markdown(table_height_css, unsafe_allow_html=True)
+                        st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
+                    except Exception as e:
+                        st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
+                        st.dataframe(df, use_container_width=True, hide_index=True, height=265)
+                else:
                     st.dataframe(df, use_container_width=True, hide_index=True, height=265)
-            else:
-                st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
             gift_history_title = "🎁 スペシャルギフト履歴"
             if is_event_ended:
@@ -701,7 +701,7 @@ def main():
                     st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                     fig_lower_gap.update_layout(uirevision="const")
                     
-        st_autorefresh(interval=10000, limit=None, key="data_refresh")
+            st_autorefresh(interval=10000, limit=None, key="data_refresh")
         
     
 if __name__ == "__main__":
