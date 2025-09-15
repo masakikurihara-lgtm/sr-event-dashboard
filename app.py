@@ -166,7 +166,7 @@ def get_and_update_gift_log(room_id):
         return st.session_state.gift_log_cache[room_id]
         
     except requests.exceptions.RequestException as e:
-        st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。ライブ配信中か確認してください: {e}")
+        st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
 
 def get_onlives_rooms():
@@ -199,9 +199,9 @@ def get_onlives_rooms():
                 except (ValueError, TypeError):
                     continue
     except requests.exceptions.RequestException as e:
-        st.warning(f"ライブ配信情報取得中にエラーが発生しました: {e}")
+        st.warning(f"配信情報取得中にエラーが発生しました: {e}")
     except (ValueError, AttributeError):
-        st.warning("ライブ配信情報のJSONデコードまたは解析に失敗しました。")
+        st.warning("配信情報のJSONデコードまたは解析に失敗しました。")
     return onlives
 
 def get_rank_color(rank):
@@ -532,7 +532,7 @@ def main():
                     if rank_info and 'point' in rank_info:
                         is_live = int(room_id) in onlives_rooms
                         data_to_display.append({
-                            "ライブ中": "🔴" if is_live else "",
+                            "配信中": "🔴" if is_live else "",
                             "ルーム名": room_name,
                             "現在の順位": rank_info.get('rank', 'N/A'),
                             "現在のポイント": rank_info.get('point', 'N/A'),
@@ -550,20 +550,20 @@ def main():
             df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
-            live_status = df['ライブ中']
-            df = df.drop(columns=['ライブ中'])
+            live_status = df['配信中']
+            df = df.drop(columns=['配信中'])
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
             df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
-            df.insert(0, 'ライブ中', live_status)
+            df.insert(0, '配信中', live_status)
 
             st.subheader("📊 比較対象ルームのステータス")
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
                     def highlight_rows(row):
-                        if row['ライブ中'] == '🔴':
+                        if row['配信中'] == '🔴':
                             return ['background-color: #e6fff2'] * len(row)
                         elif row.name % 2 == 1:
                             return ['background-color: #fafafa'] * len(row)
@@ -676,11 +676,11 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                # ライブ配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
+                # 配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
                 # これにより、配信終了したルームのコンテナが残るのを防ぐ
                 selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
                 
-                # ライブ配信が終了したルームのキャッシュを削除する
+                # 配信が終了したルームのキャッシュを削除する
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
                 for room_id in rooms_to_delete:
                     del st.session_state.gift_log_cache[room_id]
@@ -767,15 +767,15 @@ def main():
                             f'<div class="room-container">'
                             f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
                             f'<div class="room-title">{room_name}</div>'
-                            f'<p style="text-align: center;">ライブ配信していません。</p>'
+                            f'<p style="text-align: center;">配信していません。</p>'
                             f'</div>'
                         )
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
-                # ★ 修正箇所: ライブ配信中のルームがない場合も、コンテナを更新する
-                gift_container.info("選択されたルームに現在ライブ配信中のルームはありません。")
+                # ★ 修正箇所: 配信中のルームがない場合も、コンテナを更新する
+                gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
             # ★ 修正箇所: ここに余白を追加
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
