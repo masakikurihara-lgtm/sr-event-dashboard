@@ -326,24 +326,37 @@ def main():
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
-        # イベント終了時間（UNIX秒）を取得
-        event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000  # ミリ秒に変換
+        # 終了時間をUNIXミリ秒に変換
+        event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000
 
-        # 残り時間のカウントダウンタイマー
+        # 右上固定のカウントダウンバッジ（1か所だけ）
         st.components.v1.html(f"""
-        <div id="countdown-badge" style="
-            position:fixed;
-            top:20px;
-            right:20px;
-            z-index:9999;
-            background:rgba(255,255,255,0.95);
-            padding:6px 12px;
-            border-radius:8px;
-            border:1px solid #ccc;
-            font-family:inherit;
-            font-weight:600;
-            box-shadow:0 2px 6px rgba(0,0,0,0.15);">
-          残り時間: <span id="remain_timer">計算中...</span>
+        <style>
+        .fixed-countdown {{
+            position: fixed;
+            top: 100px;
+            right: 15px;
+            z-index: 1000;
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.5s ease;
+        }}
+        .countdown-label {{
+            font-size: 0.8rem;
+            opacity: 0.8;
+            display: block;
+        }}
+        </style>
+
+        <div id="countdown-badge" class="fixed-countdown">
+            <span class="countdown-label">残り時間</span>
+            <span id="countdown-timer">計算中...</span>
         </div>
 
         <script>
@@ -351,115 +364,44 @@ def main():
             if (window.myCountdownTimer) {{
                 clearInterval(window.myCountdownTimer);
             }}
-            const END = {event_end_ts};
-            const timerEl = document.getElementById('remain_timer');
-            const badgeEl = document.getElementById('countdown-badge');
-            if (!timerEl || !badgeEl) return;
+            const timerElement = document.getElementById('countdown-timer');
+            const badgeElement = document.getElementById('countdown-badge');
+            if (!timerElement || !badgeElement) return;
 
-            function fmt(ms) {{
-                if (ms < 0) ms = 0;
-                let s = Math.floor(ms / 1000);
-                let d = Math.floor(s / 86400);
-                s %= 86400;
-                let h = Math.floor(s / 3600);
-                let m = Math.floor((s % 3600) / 60);
-                let sec = s % 60;
-                return d > 0
-                  ? `${{d}}d ${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`
-                  : `${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`;
-            }}
+            const endedAtTimestamp = {event_end_ts};
 
             function updateCountdown() {{
-                const dist = END - Date.now();
-                if (dist <= 0) {{
-                    timerEl.textContent = 'イベント終了';
-                    badgeEl.style.backgroundColor = '#808080';
+                const now = Date.now();
+                const distance = endedAtTimestamp - now;
+                if (distance <= 0) {{
+                    timerElement.textContent = 'イベント終了';
+                    badgeElement.style.backgroundColor = '#808080';
                     clearInterval(window.myCountdownTimer);
                     return;
                 }}
-                timerEl.textContent = fmt(dist);
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                timerElement.textContent =
+                    `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
+
+                const totalSeconds = distance / 1000;
+                if (totalSeconds <= 3600) {{
+                    badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
+                }} else if (totalSeconds <= 10800) {{
+                    badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
+                }} else {{
+                    badgeElement.style.backgroundColor = '#4CAF50';  // 緑
+                }}
             }}
 
-            updateCountdown();
+            updateCountdown(); // 初回即実行
             window.myCountdownTimer = setInterval(updateCountdown, 1000);
         }})();
         </script>
         """, height=0)
-
-
-        # 固定位置で右上に残り時間バッジを表示（既存レイアウトを保持）
-        st.markdown(f"""
-            <style>
-            .fixed-countdown {{
-                position: fixed;
-                top: 100px;
-                right: 15px;
-                z-index: 1000;
-                background-color: #4CAF50;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                transition: background-color 0.5s ease;
-            }}
-            .countdown-label {{
-                font-size: 0.8rem;
-                opacity: 0.8;
-                display: block;
-            }}
-            </style>
-
-            <div id="countdown-badge" class="fixed-countdown">
-                <span class="countdown-label">残り時間</span>
-                <span id="countdown-timer">計算中...</span>
-            </div>
-
-            <script>
-            (function() {{
-                if (window.myCountdownTimer) {{
-                    clearInterval(window.myCountdownTimer);
-                }}
-                const timerElement = document.getElementById('countdown-timer');
-                const badgeElement = document.getElementById('countdown-badge');
-                if (!timerElement || !badgeElement) return;
-
-                const endedAtTimestamp = {int(selected_event_data.get('ended_at', 0))} * 1000;
-
-                function updateCountdown() {{
-                    const now = Date.now();
-                    const distance = endedAtTimestamp - now;
-                    if (distance <= 0) {{
-                        timerElement.textContent = 'イベント終了';
-                        badgeElement.style.backgroundColor = '#808080';
-                        clearInterval(window.myCountdownTimer);
-                        return;
-                    }}
-                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                    timerElement.textContent =
-                        `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
-
-                    const totalSeconds = distance / 1000;
-                    if (totalSeconds <= 3600) {{
-                        badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
-                    }} else if (totalSeconds <= 10800) {{
-                        badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
-                    }} else {{
-                        badgeElement.style.backgroundColor = '#4CAF50';  // 緑
-                    }}
-                }}
-
-                updateCountdown();
-                window.myCountdownTimer = setInterval(updateCountdown, 1000);
-            }})();
-            </script>
-        """, unsafe_allow_html=True)
 
 
 
