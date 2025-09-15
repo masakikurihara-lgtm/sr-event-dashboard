@@ -337,6 +337,8 @@ def main():
         st.rerun()
     
     if st.session_state.show_dashboard:
+    import logging
+    logging.warning("デバッグ: ダッシュボード表示ブロックが実行されました。")
             if not st.session_state.selected_room_names:
                 st.warning("最低1つのルームを選択してください。")
                 return
