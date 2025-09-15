@@ -372,56 +372,55 @@ def main():
                     </div>
                     <script>
                     (function() {{
-                        function startCountdown() {{
+                        // タイマーがすでに開始されているかを確認する
+                        if (window._sr_countdown_interval) {{
+                            // すでに実行中の場合は、再起動の試行をスキップ
+                            return;
+                        }}
+                        
+                        function pad(n) {{ return String(n).padStart(2, '0'); }}
+                        function formatMs(ms) {{
+                            if (ms < 0) ms = 0;
+                            let s = Math.floor(ms / 1000);
+                            let days = Math.floor(s / 86400); s %= 86400;
+                            let hh = Math.floor(s / 3600);
+                            let mm = Math.floor((s % 3600) / 60);
+                            let ss = s % 60;
+                            if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                            return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                        }}
+                        
+                        function update() {{
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
                             if (!badge || !timer) {{
-                                return false;
+                                clearInterval(window._sr_countdown_interval);
+                                window._sr_countdown_interval = null;
+                                return;
                             }}
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) {{
-                                // データがない場合はタイマーを終了
                                 timer.textContent = 'データなし';
-                                return true;
+                                return;
                             }}
-                            if (window._sr_countdown_interval) {{
-                                clearInterval(window._sr_countdown_interval);
+                            
+                            const diff = END - Date.now();
+                            if (diff <= 0) {{
+                                timer.textContent = 'イベント終了';
+                                badge.style.backgroundColor = '#808080';
+                                if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
+                                return;
                             }}
-                            function pad(n) {{ return String(n).padStart(2, '0'); }}
-                            function formatMs(ms) {{
-                                if (ms < 0) ms = 0;
-                                let s = Math.floor(ms / 1000);
-                                let days = Math.floor(s / 86400); s %= 86400;
-                                let hh = Math.floor(s / 3600);
-                                let mm = Math.floor((s % 3600) / 60);
-                                let ss = s % 60;
-                                if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                            }}
-                            function update() {{
-                                const diff = END - Date.now();
-                                if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
-                                    if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                                    return;
-                                }}
-                                timer.textContent = formatMs(diff);
-                                const totalSeconds = Math.floor(diff / 1000);
-                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                                else badge.style.backgroundColor = '#4CAF50';
-                            }}
-                            update();
-                            window._sr_countdown_interval = setInterval(update, 1000);
-                            return true;
+                            timer.textContent = formatMs(diff);
+                            const totalSeconds = Math.floor(diff / 1000);
+                            if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                            else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                            else badge.style.backgroundColor = '#4CAF50';
                         }}
-                        let checkInterval;
-                        function checkAndStart() {{
-                            if (startCountdown()) {{
-                                clearInterval(checkInterval);
-                            }}
-                        }}
-                        checkInterval = setInterval(checkAndStart, 200);
+                        
+                        // 1秒ごとにタイマーを更新する
+                        window._sr_countdown_interval = setInterval(update, 1000);
+                        
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
