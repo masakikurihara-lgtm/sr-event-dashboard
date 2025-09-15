@@ -338,7 +338,6 @@ def main():
         st.rerun()
     
     if st.session_state.show_dashboard:
-            logging.warning("デバッグ: ダッシュボード表示ブロックが実行されました。")
             if not st.session_state.selected_room_names:
                 st.warning("最低1つのルームを選択してください。")
                 return
@@ -405,8 +404,12 @@ def main():
                                 update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
                             }} catch (err) {{ return false; }}
                         }}
-                        // 500ミリ秒の遅延を追加して、より確実にDOM要素がレンダリングされてから実行します
-                        setTimeout(start, 500);
+                        let retries = 0;
+                        const retry = () => {{
+                            if (window._sr_countdown_interval || retries++ > 10) return;
+                            if (!start()) setTimeout(retry, 300);
+                        }};
+                        retry();
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
