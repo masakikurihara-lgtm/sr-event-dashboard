@@ -169,8 +169,9 @@ def get_and_update_gift_log(room_id):
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
 
+# ★ 修正箇所: 戻り値をsetからdictに変更
 def get_onlives_rooms():
-    onlives = set()
+    onlives = {}
     try:
         url = "https://www.showroom-live.com/api/live/onlives"
         response = requests.get(url, headers=HEADERS, timeout=5)
@@ -187,15 +188,19 @@ def get_onlives_rooms():
                     all_lives.extend(data[live_type])
         for room in all_lives:
             room_id = None
+            started_at = None
             if isinstance(room, dict):
                 room_id = room.get('room_id')
+                started_at = room.get('started_at')
                 if room_id is None and 'live_info' in room and isinstance(room['live_info'], dict):
                     room_id = room['live_info'].get('room_id')
+                    started_at = room['live_info'].get('started_at')
                 if room_id is None and 'room' in room and isinstance(room['room'], dict):
                     room_id = room['room'].get('room_id')
-            if room_id:
+                    started_at = room['room'].get('started_at')
+            if room_id and started_at is not None:
                 try:
-                    onlives.add(int(room_id))
+                    onlives[int(room_id)] = started_at
                 except (ValueError, TypeError):
                     continue
     except requests.exceptions.RequestException as e:
@@ -500,6 +505,8 @@ def main():
 
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
+
+        # ★ 修正: onlives_roomsを辞書として取得
         onlives_rooms = get_onlives_rooms()
 
         data_to_display = []
@@ -531,6 +538,15 @@ def main():
                             remain_time_sec = event_data.get('remain_time')
                     if rank_info and 'point' in rank_info:
                         is_live = int(room_id) in onlives_rooms
+                        
+                        # ★ 修正: 配信中の場合は開始時間を取得してフォーマット
+                        started_at_str = ""
+                        if is_live:
+                            started_at_ts = onlives_rooms.get(int(room_id))
+                            if started_at_ts:
+                                started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
+                                started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+                        
                         data_to_display.append({
                             "配信中": "🔴" if is_live else "",
                             "ルーム名": room_name,
@@ -538,6 +554,7 @@ def main():
                             "現在のポイント": rank_info.get('point', 'N/A'),
                             "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
                             "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
+                            "配信開始時間": started_at_str  # ★ 修正: 新しい列を追加
                         })
                     else:
                         st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
@@ -551,14 +568,24 @@ def main():
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
             live_status = df['配信中']
+            # ★ 修正: 配信中列をドロップしない
             df = df.drop(columns=['配信中'])
+            # dfに「配信開始時間」が追加されていることを確認して表示
+            # df = df.drop(columns=['配信中'])
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
             df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
             df.insert(0, '配信中', live_status)
+            
+            # ★ 修正: 配信開始時間を挿入する
+            started_at_column = df['配信開始時間']
+            df = df.drop(columns=['配信開始時間'])
+            df.insert(1, '配信開始時間', started_at_column)
+
 
             st.subheader("📊 比較対象ルームのステータス")
+            # 修正: 配信開始時間を加える
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
@@ -678,7 +705,7 @@ def main():
             if not df.empty and st.session_state.room_map_data:
                 # 配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
                 # これにより、配信終了したルームのコンテナが残るのを防ぐ
-                selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if int(st.session_state.room_map_data[row['ルーム名']]['room_id']) in onlives_rooms}
+                selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if '配信中' in row and row['配信中'] == '🔴'}
                 
                 # 配信が終了したルームのキャッシュを削除する
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
