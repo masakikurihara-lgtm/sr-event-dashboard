@@ -329,14 +329,13 @@ def main():
         # 終了時間をUNIXミリ秒に変換
         event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000
 
-        # タイマー付き右上固定バッジ
         st.components.v1.html(f"""
         <style>
-        .fixed-countdown {{
-            position: fixed;         /* ビューポートに固定 */
-            top: 100px;              /* 上からの距離 */
-            right: 15px;             /* 右からの距離 */
-            z-index: 1000;
+        #countdown-badge {{
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2147483647; /* 最前面に */
             background-color: #4CAF50;
             color: white;
             padding: 8px 15px;
@@ -346,6 +345,7 @@ def main():
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             transition: background-color 0.5s ease;
+            pointer-events: none;
         }}
         .countdown-label {{
             font-size: 0.8rem;
@@ -354,19 +354,25 @@ def main():
         }}
         </style>
 
-        <div id="countdown-badge" class="fixed-countdown">
+        <!-- 一旦StreamlitのDOMに置く -->
+        <div id="countdown-badge">
           <span class="countdown-label">残り時間</span>
           <span id="countdown-timer">計算中...</span>
         </div>
 
         <script>
         (function() {{
+            // DOM読み込み後、body直下へ移動
+            const badge = document.getElementById('countdown-badge');
+            if (badge && badge.parentNode !== document.body) {{
+                document.body.appendChild(badge);
+            }}
+
             if (window.myCountdownTimer) {{
                 clearInterval(window.myCountdownTimer);
             }}
             const timerElement = document.getElementById('countdown-timer');
-            const badgeElement = document.getElementById('countdown-badge');
-            if (!timerElement || !badgeElement) return;
+            if (!timerElement) return;
 
             const endedAtTimestamp = {event_end_ts};
 
@@ -375,7 +381,7 @@ def main():
                 const distance = endedAtTimestamp - now;
                 if (distance <= 0) {{
                     timerElement.textContent = 'イベント終了';
-                    badgeElement.style.backgroundColor = '#808080';
+                    badge.style.backgroundColor = '#808080';
                     clearInterval(window.myCountdownTimer);
                     return;
                 }}
@@ -385,15 +391,15 @@ def main():
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
                 timerElement.textContent =
-                    `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
+                  `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
 
                 const totalSeconds = distance / 1000;
                 if (totalSeconds <= 3600) {{
-                    badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
+                    badge.style.backgroundColor = '#ff4b4b';
                 }} else if (totalSeconds <= 10800) {{
-                    badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
+                    badge.style.backgroundColor = '#ffa500';
                 }} else {{
-                    badgeElement.style.backgroundColor = '#4CAF50';  // 緑
+                    badge.style.backgroundColor = '#4CAF50';
                 }}
             }}
 
@@ -402,8 +408,6 @@ def main():
         }})();
         </script>
         """, height=0)
-
-
 
 
 
