@@ -285,8 +285,7 @@ def main():
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
-    # --- ▼▼▼ ここからが修正箇所(1) ▼▼▼ ---
-    # イベントを変更した場合、「上位10ルームまでを選択」のチェックボックスも初期化する
+    # イベントを変更した場合、キャッシュと選択をリセット
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
@@ -294,12 +293,9 @@ def main():
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
         st.session_state.multiselect_key_counter += 1
-        # チェックボックスのキーが存在すればFalseに設定
-        if 'select_top_10_checkbox' in st.session_state:
-            st.session_state.select_top_10_checkbox = False
+        st.session_state.select_top_10_checkbox = False
         st.session_state.show_dashboard = False
         st.rerun()
-    # --- ▲▲▲ ここまでが修正箇所(1) ▲▲▲ ---
 
     room_count_text = ""
     if st.session_state.room_map_data:
@@ -329,7 +325,6 @@ def main():
         if st.session_state.select_top_10_checkbox:
             st.session_state.selected_room_names = top_10_rooms
             st.session_state.multiselect_default_value = top_10_rooms
-            st.session_state.multiselect_key_counter += 1
         else:
             st.session_state.selected_room_names = selected_room_names_temp
             st.session_state.multiselect_default_value = selected_room_names_temp
@@ -344,8 +339,9 @@ def main():
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("10秒ごとに自動更新されます。")
 
-
-        if st.session_state.get("selected_room_names") and selected_event_data:
+        # カウントダウンタイマーの表示ロジック
+        is_event_ended = datetime.datetime.now(JST) > ended_at_dt
+        if not is_event_ended:
             ended_at = selected_event_data.get("ended_at")
             try:
                 ended_at = int(ended_at)
@@ -402,18 +398,12 @@ def main():
                             update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
                         }} catch (err) {{ return false; }}
                     }}
-                    let retries = 0;
-                    const retry = () => {{
-                        if (window._sr_countdown_interval || retries++ > 10) return;
-                        if (!start()) setTimeout(retry, 300);
-                    }};
-                    // 即時実行に変更
-                    retry();
+                    // 即座に実行
+                    start();
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
-                
-
+        
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
             with col1:
@@ -432,7 +422,6 @@ def main():
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
 
-        # --- ▼▼▼ ここからが修正箇所(2) ▼▼▼ ---
         is_event_ended = datetime.datetime.now(JST) > ended_at_dt
         
         final_ranking_data = {}
@@ -450,7 +439,6 @@ def main():
                 else:
                     st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
 
-        # 配信中ルームの情報はイベントの終了状態に関わらず常に取得する
         onlives_rooms = get_onlives_rooms()
 
         data_to_display = []
@@ -465,7 +453,6 @@ def main():
                     rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
                     
                     if is_event_ended:
-                        # イベント終了後のデータ取得ロジック
                         if room_id in final_ranking_data:
                             rank = final_ranking_data[room_id].get('rank', 'N/A')
                             point = final_ranking_data[room_id].get('point', 'N/A')
@@ -474,14 +461,12 @@ def main():
                             st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
                             continue
                     else:
-                        # イベント開催中のデータ取得ロジック
                         room_info = get_room_event_info(room_id)
                         if not isinstance(room_info, dict):
                             st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                             continue
                         
                         rank_info = None
-                        # (既存のパース処理)
                         if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                             rank_info = room_info['ranking']
                         elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
@@ -502,7 +487,6 @@ def main():
                             st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                             continue
                     
-                    # 配信状態のチェック（イベント終了後も行うように変更）
                     is_live = int(room_id) in onlives_rooms
                     started_at_str = ""
                     if is_live:
@@ -520,7 +504,6 @@ def main():
                 except Exception as e:
                     st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                     continue
-        # --- ▲▲▲ ここまでが修正箇所(2) ▲▲▲ ---
 
         if data_to_display:
             df = pd.DataFrame(data_to_display)
@@ -569,15 +552,12 @@ def main():
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
-            # --- ▼▼▼ ここからが修正箇所(3) ▼▼▼ ---
-            # 配信中のルームのみ表示」の文言を動的に変更
             gift_history_title = "🎁 スペシャルギフト履歴"
             if is_event_ended:
                 gift_history_title += " <span style='font-size: 14px;'>（イベントは終了しましたが、現在配信中のルームのみ表示）</span>"
             else:
                 gift_history_title += " <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
-            # --- ▲▲▲ ここまでが修正箇所(3) ▲▲▲ ---
 
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
