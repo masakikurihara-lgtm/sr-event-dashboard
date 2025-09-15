@@ -416,6 +416,7 @@ def main():
                                 """, height=40)
                             else:
                                 st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
+                    
 
             current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
             st.write(f"最終更新日時 (日本時間): {current_time}")
