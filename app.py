@@ -367,6 +367,7 @@ def main():
                 </div>
 
                 <script>
+                console.log("sr_countdown script loaded, END =", ended_ms);
                 (function() {{
                     // start() が true を返すとタイマーが開始されたことを意味する
                     function start() {{
