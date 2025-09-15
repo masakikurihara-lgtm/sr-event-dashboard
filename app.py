@@ -353,14 +353,13 @@ def main():
 
             if ended_at > 0:
                 ended_ms = ended_at * 1000
-                st.components.v1.html(f"""
+                st.markdown(f"""
                 <style>
-                /* スクロールしても常に右上に固定されるバッジ */
                 #sr_countdown_badge {{
-                    position: fixed;  /* スクロール追従に必須 */
-                    top: 20px;        /* 画面上からの距離 */
-                    right: 20px;      /* 画面右からの距離 */
-                    z-index: 2147483647; /* 他要素より最前面 */
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 2147483647;
                     background-color: #4CAF50;
                     color: white;
                     padding: 8px 14px;
@@ -370,7 +369,7 @@ def main():
                     box-shadow: 0 4px 10px rgba(0,0,0,0.18);
                     font-family: inherit;
                     transition: background-color 0.4s ease;
-                    pointer-events: none;  /* クリック透過 */
+                    pointer-events: none;
                 }}
                 #sr_countdown_badge .label {{
                     font-size:0.75rem;
@@ -430,7 +429,7 @@ def main():
                   else window.addEventListener('load', retry);
                 }})();
                 </script>
-                """, height=0)
+                """, unsafe_allow_html=True)
                 
 
         with st.container(border=True):
