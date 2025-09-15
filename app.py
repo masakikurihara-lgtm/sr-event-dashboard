@@ -328,25 +328,25 @@ def main():
 
 
 
-        # --- ここだけを差し替えてください（既存のバッジ出力は削除） ---
-        # selected_event_data が存在し、かつルーム選択済みのときだけ表示します（"表示する" 押下後に動く）
+        # --- 残り時間バッジ：ここを既存のバッジ表示箇所に置き換えてください ---
         if st.session_state.get("selected_room_names") and selected_event_data:
-            # Python側で終了時刻（秒）を取り、ミリ秒に変換して JS に渡す
-            ended_at = int(selected_event_data.get("ended_at", 0))  # 秒単位（int）
-            if ended_at > 0:
-                ended_ms = ended_at * 1000  # ミリ秒（数値）
-                # 一意なIDを付けることで、万が一重複しても上書きされるようにしておく
-                badge_id = "sr_countdown_badge"
-                timer_id = "sr_countdown_timer"
+            ended_at = selected_event_data.get("ended_at")
+            try:
+                ended_at = int(ended_at)
+            except Exception:
+                ended_at = 0
 
+            if ended_at > 0:
+                ended_ms = ended_at * 1000  # ミリ秒
+
+                # バッジを一箇所だけ出す（IDは sr_countdown_badge / sr_countdown_timer）
                 st.markdown(f"""
                 <style>
-                /* バッジの見た目（既存レイアウトに影響を与えないように最小限） */
-                #{badge_id} {{
+                #sr_countdown_badge {{
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    z-index: 2147483647; /* 最前面 */
+                    z-index: 2147483647;
                     background-color: #4CAF50;
                     color: white;
                     padding: 8px 14px;
@@ -356,81 +356,128 @@ def main():
                     box-shadow: 0 4px 10px rgba(0,0,0,0.18);
                     font-family: inherit;
                     transition: background-color 0.4s ease;
-                    pointer-events: none; /* バッジの上でクリックを妨げない */
+                    pointer-events: none;
                 }}
-                #{badge_id} .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
+                #sr_countdown_badge .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
                 </style>
 
-                <div id="{badge_id}">
+                <div id="sr_countdown_badge" data-end="{ended_ms}">
                   <span class="label">残り時間</span>
-                  <span id="{timer_id}">計算中...</span>
+                  <span id="sr_countdown_timer">計算中...</span>
                 </div>
 
                 <script>
                 (function() {{
-                    // 既に同じタイマーが存在すればクリア（連続描画への対策）
-                    if (window._sr_countdown_interval) {{
-                        clearInterval(window._sr_countdown_interval);
-                        window._sr_countdown_interval = null;
-                    }}
+                    // start() が true を返すとタイマーが開始されたことを意味する
+                    function start() {{
+                        try {{
+                            const badge = document.getElementById('sr_countdown_badge');
+                            const timer = document.getElementById('sr_countdown_timer');
+                            if (!badge || !timer) {{
+                                // 要素がまだ存在しない
+                                return false;
+                            }}
 
-                    const END = {ended_ms}; // ← Pythonで注入された数値（ミリ秒）
-                    const timerEl = document.getElementById("{timer_id}");
-                    const badgeEl = document.getElementById("{badge_id}");
-                    if (!timerEl || !badgeEl) {{
-                        // DOMがまだ準備できていないときの安全策
-                        return;
-                    }}
+                            // data-end 属性からミリ秒値を取得（安全）
+                            const endStr = badge.dataset.end;
+                            const END = parseInt(endStr, 10);
+                            if (isNaN(END)) {{
+                                console.error('sr_countdown: invalid END value', endStr);
+                                return false;
+                            }}
 
-                    function pad(n) {{ return String(n).padStart(2,'0'); }}
-
-                    function formatMs(ms) {{
-                        if (ms < 0) ms = 0;
-                        let s = Math.floor(ms / 1000);
-                        let days = Math.floor(s / 86400);
-                        s = s % 86400;
-                        let hh = Math.floor(s / 3600);
-                        let mm = Math.floor((s % 3600) / 60);
-                        let ss = s % 60;
-                        if (days > 0) {{
-                            return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                        }}
-                        return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                    }}
-
-                    function update() {{
-                        const diff = END - Date.now();
-                        if (diff <= 0) {{
-                            timerEl.textContent = 'イベント終了';
-                            badgeEl.style.backgroundColor = '#808080';
+                            // 既存 interval があればクリア
                             if (window._sr_countdown_interval) {{
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
                             }}
-                            return;
-                        }}
-                        timerEl.textContent = formatMs(diff);
 
-                        const totalSeconds = Math.floor(diff / 1000);
-                        if (totalSeconds <= 3600) {{
-                            badgeEl.style.backgroundColor = '#ff4b4b'; // 赤
-                        }} else if (totalSeconds <= 10800) {{
-                            badgeEl.style.backgroundColor = '#ffa500'; // オレンジ
-                        }} else {{
-                            badgeEl.style.backgroundColor = '#4CAF50'; // 緑
+                            function pad(n) {{ return String(n).padStart(2,'0'); }}
+
+                            function formatMs(ms) {{
+                                if (ms < 0) ms = 0;
+                                let s = Math.floor(ms / 1000);
+                                let days = Math.floor(s / 86400);
+                                s = s % 86400;
+                                let hh = Math.floor(s / 3600);
+                                let mm = Math.floor((s % 3600) / 60);
+                                let ss = s % 60;
+                                if (days > 0) {{
+                                    return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                                }}
+                                return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                            }}
+
+                            function update() {{
+                                const diff = END - Date.now();
+                                if (diff <= 0) {{
+                                    timer.textContent = 'イベント終了';
+                                    badge.style.backgroundColor = '#808080';
+                                    if (window._sr_countdown_interval) {{
+                                        clearInterval(window._sr_countdown_interval);
+                                        window._sr_countdown_interval = null;
+                                    }}
+                                    return;
+                                }}
+                                timer.textContent = formatMs(diff);
+
+                                const totalSeconds = Math.floor(diff / 1000);
+                                if (totalSeconds <= 3600) {{
+                                    badge.style.backgroundColor = '#ff4b4b';
+                                }} else if (totalSeconds <= 10800) {{
+                                    badge.style.backgroundColor = '#ffa500';
+                                }} else {{
+                                    badge.style.backgroundColor = '#4CAF50';
+                                }}
+                            }}
+
+                            // 即時実行 + 1秒間隔
+                            update();
+                            window._sr_countdown_interval = setInterval(update, 1000);
+
+                            return true;
+                        }} catch (err) {{
+                            console.error('sr_countdown: exception in start()', err);
+                            return false;
                         }}
                     }}
 
-                    // 初回実行 + インターバルセット
-                    update();
-                    window._sr_countdown_interval = setInterval(update, 1000);
+                    // DOM の準備を待って start を試みる（ロード済みなら即試行）
+                    if (document.readyState === 'complete' || document.readyState === 'interactive') {{
+                        // 即試行。うまくいかなければ短時間後に再試行（Streamlitの再描画に備える）
+                        if (!start()) {{
+                            setTimeout(start, 200);
+                        }}
+                    }} else {{
+                        window.addEventListener('load', function() {{
+                            if (!start()) setTimeout(start, 200);
+                        }});
+                    }}
+
+                    // 追加のリトライ（DOM が差し替わるケースに備えて最大 10 回試す）
+                    let retries = 0;
+                    const retryInterval = setInterval(function() {{
+                        if (window._sr_countdown_interval) {{
+                            clearInterval(retryInterval);
+                            return;
+                        }}
+                        retries++;
+                        if (start()) {{
+                            clearInterval(retryInterval);
+                            return;
+                        }}
+                        if (retries > 10) {{
+                            clearInterval(retryInterval);
+                            console.warn('sr_countdown: failed to start after retries');
+                        }}
+                    }}, 300);
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
             else:
-                # 終了時刻が取れない場合は出さない（既存の表示やレイアウトに干渉しない）
+                # ended_at が取得できない場合はバッジを出さない（既存表示に影響なし）
                 pass
-        # --- 差し替えここまで ---
+        # --- ここまで ---
 
 
 
