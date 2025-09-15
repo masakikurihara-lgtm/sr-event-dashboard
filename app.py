@@ -601,6 +601,19 @@ def main():
                         df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
                     styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                    
+                    # --- ★ 修正箇所: CSSを埋め込んで表示高さを調整 ---
+                    table_height_css = """
+                    <style>
+                        .st-emotion-cache-1r7r34u { /* StreamlitのコンテナID */
+                            height: 300px; /* 7位くらいが見える高さに調整 */
+                            overflow-y: auto;
+                        }
+                    </style>
+                    """
+                    st.markdown(table_height_css, unsafe_allow_html=True)
+                    # --- ★ 修正箇所ここまで ---
+                    
                     st.dataframe(styled_df, use_container_width=True, hide_index=True)
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
