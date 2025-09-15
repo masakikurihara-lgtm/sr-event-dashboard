@@ -344,7 +344,7 @@ def main():
                 <style>
                 #sr_countdown_badge {{
                     position: fixed;
-                    top: 20px;
+                    top: 50px;
                     right: 20px;
                     z-index: 2147483647;
                     background-color: #4CAF50;
