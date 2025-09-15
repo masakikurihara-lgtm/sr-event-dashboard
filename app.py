@@ -140,6 +140,7 @@ def get_gift_list(room_id):
                 point_value = int(gift.get('point', 0))
             except (ValueError, TypeError):
                 point_value = 0
+            # ★ 修正箇所: gift_idを文字列に変換してキーとして保存する
             gift_list_map[str(gift['gift_id'])] = {
                 'name': gift.get('gift_name', 'N/A'),
                 'point': point_value,
@@ -150,9 +151,11 @@ def get_gift_list(room_id):
         st.error(f"ルームID {room_id} のギフトリスト取得中にエラーが発生しました: {e}")
         return {}
 
+# 差分更新のためのキャッシュをセッション状態に保存する
 if "gift_log_cache" not in st.session_state:
     st.session_state.gift_log_cache = {}
 
+# 更新されたギフトログのみを取得・マージする関数
 def get_and_update_gift_log(room_id):
     url = f"https://www.showroom-live.com/api/live/gift_log?room_id={room_id}"
     try:
@@ -160,19 +163,24 @@ def get_and_update_gift_log(room_id):
         response.raise_for_status()
         new_gift_log = response.json().get('gift_log', [])
         
+        # セッション状態から既存のログを取得
         if room_id not in st.session_state.gift_log_cache:
             st.session_state.gift_log_cache[room_id] = []
         
         existing_log = st.session_state.gift_log_cache[room_id]
         
+        # 新しいログを既存のログにマージ
         if new_gift_log:
+            # 重複を避けるために既存のログをセットに変換
             existing_log_set = {(log.get('gift_id'), log.get('created_at'), log.get('num')) for log in existing_log}
             
             for log in new_gift_log:
+                # ユニークなキーを作成して重複をチェック
                 log_key = (log.get('gift_id'), log.get('created_at'), log.get('num'))
                 if log_key not in existing_log_set:
                     existing_log.append(log)
         
+        # ログをタイムスタンプでソート
         st.session_state.gift_log_cache[room_id].sort(key=lambda x: x.get('created_at', 0), reverse=True)
         
         return st.session_state.gift_log_cache[room_id]
@@ -181,6 +189,7 @@ def get_and_update_gift_log(room_id):
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
 
+# ★ 修正箇所: 戻り値をsetからdictに変更
 def get_onlives_rooms():
     onlives = {}
     try:
@@ -264,6 +273,7 @@ def main():
         "イベント名を選択してください:", 
         options=list(event_options.keys()), key="event_selector")
     
+    # 修正箇所: ここに注意書きを追加
     st.markdown(
         "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型は対象外になります。</p>",
         unsafe_allow_html=True
@@ -284,21 +294,17 @@ def main():
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
-    # --- ▼▼▼ ここからが修正箇所(1) ▼▼▼ ---
-    # イベントを変更した場合、「上位10ルームまでを選択」のチェックボックスも初期化する
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
-        st.session_state.multiselect_key_counter += 1
-        # チェックボックスのキーが存在すればFalseに設定
-        if 'select_top_10_checkbox' in st.session_state:
-            st.session_state.select_top_10_checkbox = False
+        st.session_state.multiselect_key_counter = 0
+        if 'select_top_15_checkbox' in st.session_state:
+            st.session_state.select_top_15_checkbox = False
         st.session_state.show_dashboard = False
         st.rerun()
-    # --- ▲▲▲ ここまでが修正箇所(1) ▲▲▲ ---
 
     room_count_text = ""
     if st.session_state.room_map_data:
@@ -343,6 +349,8 @@ def main():
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("10秒ごとに自動更新されます。")
 
+
+        # --- 残り時間バッジ ---
         if st.session_state.get("selected_room_names") and selected_event_data:
             ended_at = selected_event_data.get("ended_at")
             try:
@@ -410,6 +418,7 @@ def main():
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
+        # --- ここまで ---
 
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
@@ -429,26 +438,32 @@ def main():
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
 
-        # --- ▼▼▼ ここからが修正箇所(2) ▼▼▼ ---
+        # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
+        # イベントが終了したかどうかを判定
         is_event_ended = datetime.datetime.now(JST) > ended_at_dt
         
         final_ranking_data = {}
+        # イベント終了時のみ、最終ランキングデータを先に一括で取得
         if is_event_ended:
             with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
                 event_url_key = selected_event_data.get('event_url_key')
                 event_id = selected_event_data.get('event_id')
+                # ページ数を多めに設定して全ランキングを取得
                 final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
                 if final_ranking_map:
                     for name, data in final_ranking_map.items():
                         if 'room_id' in data:
                             final_ranking_data[data['room_id']] = {
-                                'rank': data.get('rank'), 'point': data.get('point')
+                                'rank': data.get('rank'),
+                                'point': data.get('point')
                             }
                 else:
                     st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
 
-        # 配信中ルームの情報はイベントの終了状態に関わらず常に取得する
-        onlives_rooms = get_onlives_rooms()
+        # 配信中ルームの情報はイベント開催中のみ必要
+        onlives_rooms = {}
+        if not is_event_ended:
+            onlives_rooms = get_onlives_rooms()
 
         data_to_display = []
         if st.session_state.selected_room_names:
@@ -459,26 +474,29 @@ def main():
                         continue
                     
                     room_id = st.session_state.room_map_data[room_name]['room_id']
-                    rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
                     
+                    rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
+                    is_live = False
+                    started_at_str = ""
+
                     if is_event_ended:
                         # イベント終了後のデータ取得ロジック
                         if room_id in final_ranking_data:
                             rank = final_ranking_data[room_id].get('rank', 'N/A')
                             point = final_ranking_data[room_id].get('point', 'N/A')
+                            # ポイント差は後でDataFrameで一括計算するため、ここでは0を仮置き
                             upper_gap, lower_gap = 0, 0
                         else:
                             st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
                             continue
                     else:
-                        # イベント開催中のデータ取得ロジック
+                        # イベント開催中のデータ取得ロジック（既存の処理）
                         room_info = get_room_event_info(room_id)
                         if not isinstance(room_info, dict):
                             st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                             continue
                         
                         rank_info = None
-                        # (既存のパース処理)
                         if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                             rank_info = room_info['ranking']
                         elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
@@ -498,26 +516,28 @@ def main():
                         else:
                             st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                             continue
-                    
-                    # 配信状態のチェック（イベント終了後も行うように変更）
-                    is_live = int(room_id) in onlives_rooms
-                    started_at_str = ""
-                    if is_live:
-                        started_at_ts = onlives_rooms.get(int(room_id))
-                        if started_at_ts:
-                            started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
-                            started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
 
+                        is_live = int(room_id) in onlives_rooms
+                        if is_live:
+                            started_at_ts = onlives_rooms.get(int(room_id))
+                            if started_at_ts:
+                                started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
+                                started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+
+                    # データをリストに追加
                     data_to_display.append({
-                        "配信中": "🔴" if is_live else "", "ルーム名": room_name,
-                        "現在の順位": rank, "現在のポイント": point,
-                        "上位とのポイント差": upper_gap, "下位とのポイント差": lower_gap,
+                        "配信中": "🔴" if is_live else "",
+                        "ルーム名": room_name,
+                        "現在の順位": rank,
+                        "現在のポイント": point,
+                        "上位とのポイント差": upper_gap,
+                        "下位とのポイント差": lower_gap,
                         "配信開始時間": started_at_str
                     })
                 except Exception as e:
                     st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                     continue
-        # --- ▲▲▲ ここまでが修正箇所(2) ▲▲▲ ---
+        # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
         if data_to_display:
             df = pd.DataFrame(data_to_display)
@@ -528,6 +548,7 @@ def main():
             
             df = df.drop(columns=['配信中'])
             
+            # 終了後イベントでもポイント差が計算されるように、この処理は分岐の外に置く
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
@@ -566,16 +587,8 @@ def main():
             else:
                 st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
-            # --- ▼▼▼ ここからが修正箇所(3) ▼▼▼ ---
-            # 配信中のルームのみ表示」の文言を動的に変更
-            gift_history_title = "🎁 スペシャルギフト履歴"
-            if is_event_ended:
-                gift_history_title += " <span style='font-size: 14px;'>（イベントは終了しましたが、現在配信中のルームのみ表示）</span>"
-            else:
-                gift_history_title += " <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>"
-            st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
-            # --- ▲▲▲ ここまでが修正箇所(3) ▲▲▲ ---
-
+            # --- スペシャルギフト履歴 ---
+            st.markdown("### 🎁 スペシャルギフト履歴 <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>", unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
             
