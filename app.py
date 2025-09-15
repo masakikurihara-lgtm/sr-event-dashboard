@@ -403,7 +403,8 @@ def main():
                                 update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
                             }} catch (err) {{ return false; }}
                         }}
-                        setTimeout(start, 100);
+                        // 500ミリ秒の遅延を追加して、より確実にDOM要素がレンダリングされてから実行します
+                        setTimeout(start, 500);
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
