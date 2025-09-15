@@ -400,6 +400,63 @@ def main():
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
+        # 右上に残り時間バッジを追加（既存レイアウトに影響なし）
+        st.components.v1.html(f"""
+        <div id="countdown-badge" style="
+            position:fixed;
+            top:20px;
+            right:20px;
+            z-index:9999;
+            background:rgba(255,255,255,0.95);
+            padding:6px 12px;
+            border-radius:8px;
+            border:1px solid #ccc;
+            font-family:inherit;
+            font-weight:600;
+            box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+          残り時間: <span id="remain_timer">計算中...</span>
+        </div>
+
+        <script>
+        (function() {{
+            if (window.myCountdownTimer) {{
+                clearInterval(window.myCountdownTimer);
+            }}
+            const END = {st.session_state.event_end_ts};
+            const timerEl = document.getElementById('remain_timer');
+            const badgeEl = document.getElementById('countdown-badge');
+            if (!timerEl || !badgeEl) return;
+
+            function fmt(ms) {{
+                if (ms < 0) ms = 0;
+                let s = Math.floor(ms / 1000);
+                let d = Math.floor(s / 86400);
+                s %= 86400;
+                let h = Math.floor(s / 3600);
+                let m = Math.floor((s % 3600) / 60);
+                let sec = s % 60;
+                return d > 0
+                  ? `${{d}}d ${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`
+                  : `${{h.toString().padStart(2,'0')}}:${{m.toString().padStart(2,'0')}}:${{sec.toString().padStart(2,'0')}}`;
+            }}
+
+            function updateCountdown() {{
+                const dist = END - Date.now();
+                if (dist <= 0) {{
+                    timerEl.textContent = 'イベント終了';
+                    badgeEl.style.backgroundColor = '#808080';
+                    clearInterval(window.myCountdownTimer);
+                    return;
+                }}
+                timerEl.textContent = fmt(dist);
+            }}
+
+            updateCountdown(); // 初回即時実行
+            window.myCountdownTimer = setInterval(updateCountdown, 1000);
+        }})();
+        </script>
+        """, height=0)
+
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
             with col1:
