@@ -350,12 +350,12 @@ def main():
                         with col1:
                             st.components.v1.html(f"""
                             <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                            <div style="font-weight: bold; font-size: 1.2rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
+                            <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
                             """, height=80)
                         with col2:
                             st.components.v1.html(f"""
                             <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
-                            <div style="font-weight: bold; font-size: 1.2rem; line-height: 1.2;">
+                            <div style="font-weight: bold; font-size: 1.1rem; line-height: 1.2;">
                                 <span id="sr_countdown_timer_in_col" style="color: #4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
                             </div>
                             </div>
