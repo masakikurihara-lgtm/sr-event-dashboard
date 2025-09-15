@@ -380,6 +380,8 @@ def main():
                             }}
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) {{
+                                // データがない場合はタイマーを終了
+                                timer.textContent = 'データなし';
                                 return true;
                             }}
                             if (window._sr_countdown_interval) {{
