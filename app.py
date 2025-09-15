@@ -407,8 +407,8 @@ def main():
                         if (window._sr_countdown_interval || retries++ > 10) return;
                         if (!start()) setTimeout(retry, 300);
                     }};
-                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                    else window.addEventListener('load', retry);
+                    // 即時実行に変更
+                    retry();
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
