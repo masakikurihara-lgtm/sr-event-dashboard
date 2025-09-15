@@ -346,76 +346,78 @@ def main():
             st.info("10秒ごとに自動更新されます。")
 
             with st.container(border=True):
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
-                    st.markdown(f"**{event_period_str}**", unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
+                            st.markdown(f"**{event_period_str}**", unsafe_allow_html=True)
+                        with col2:
+                            st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
 
-                    if selected_event_data and selected_event_data.get("ended_at"):
-                        ended_at = selected_event_data.get("ended_at")
-                        try:
-                            ended_at = int(ended_at)
-                        except Exception:
-                            ended_at = 0
-                    else:
-                        ended_at = 0
+                            if selected_event_data and selected_event_data.get("ended_at"):
+                                ended_at = selected_event_data.get("ended_at")
+                                try:
+                                    ended_at = int(ended_at)
+                                except Exception:
+                                    ended_at = 0
+                            else:
+                                ended_at = 0
 
-                    if ended_at > 0:
-                        ended_ms = ended_at * 1000
-                        st.components.v1.html(f"""
-                        <div style="height: 25px; display: flex; align-items: center; padding-top: 5px;">
-                            <span id="sr_countdown_timer_in_col" style="color: red; font-weight: bold; font-size: 1.5rem;" data-end="{ended_ms}">計算中...</span>
-                        </div>
-                        <script>
-                        (function() {{
-                            function start() {{
-                                const timer = document.getElementById('sr_countdown_timer_in_col');
-                                if (!timer) return false;
-                                const END = parseInt(timer.dataset.end, 10);
-                                if (isNaN(END)) return false;
-                                if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
-
-                                function pad(n) {{ return String(n).padStart(2,'0'); }}
-                                function formatMs(ms) {{
-                                    if (ms < 0) ms = 0;
-                                    let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
-                                    s %= 86400;
-                                    let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                                    if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                                    return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                                }}
-                                function update() {{
-                                    const diff = END - Date.now();
-                                    if (diff <= 0) {{
-                                        timer.textContent = 'イベント終了';
-                                        timer.style.color = '#808080';
-                                        clearInterval(window._sr_countdown_interval_in_col);
-                                        return;
+                            if ended_at > 0:
+                                ended_ms = ended_at * 1000
+                                st.markdown(f"""
+                                    <div style="height: 25px; display: flex; align-items: center; padding-top: 5px;">
+                                        <span id="sr_countdown_timer_in_col" style="color: green; font-weight: bold; font-size: 1.5rem;" data-end="{ended_ms}">計算中...</span>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                st.components.v1.html(f"""
+                                <script>
+                                (function() {{
+                                    function start() {{
+                                        const timer = document.getElementById('sr_countdown_timer_in_col');
+                                        if (!timer) return false;
+                                        const END = parseInt(timer.dataset.end, 10);
+                                        if (isNaN(END)) return false;
+                                        if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
+                                        
+                                        function pad(n) {{ return String(n).padStart(2,'0'); }}
+                                        function formatMs(ms) {{
+                                            if (ms < 0) ms = 0;
+                                            let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
+                                            s %= 86400;
+                                            let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                                            if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                                            return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                                        }}
+                                        function update() {{
+                                            const diff = END - Date.now();
+                                            if (diff <= 0) {{
+                                                timer.textContent = 'イベント終了';
+                                                timer.style.color = '#808080';
+                                                clearInterval(window._sr_countdown_interval_in_col);
+                                                return;
+                                            }}
+                                            timer.textContent = formatMs(diff);
+                                            const totalSeconds = Math.floor(diff / 1000);
+                                            if (totalSeconds <= 3600) timer.style.color = '#ff4b4b'; // 赤
+                                            else if (totalSeconds <= 10800) timer.style.color = '#ffa500'; // オレンジ
+                                            else timer.style.color = '#4CAF50'; // 緑
+                                        }}
+                                        update();
+                                        window._sr_countdown_interval_in_col = setInterval(update, 1000);
+                                        return true;
                                     }}
-                                    timer.textContent = formatMs(diff);
-                                    const totalSeconds = Math.floor(diff / 1000);
-                                    if (totalSeconds <= 3600) timer.style.color = '#ff4b4b'; // 赤
-                                    else if (totalSeconds <= 10800) timer.style.color = '#ffa500'; // オレンジ
-                                    else timer.style.color = '#4CAF50'; // 緑
-                                }}
-                                update();
-                                window._sr_countdown_interval_in_col = setInterval(update, 1000);
-                                return true;
-                            }}
-                            let retries = 0;
-                            const retry = () => {{
-                                if (window._sr_countdown_interval_in_col || retries++ > 10) return;
-                                if (!start()) setTimeout(retry, 300);
-                            }};
-                            if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                            else window.addEventListener('load', retry);
-                        }})();
-                        </script>
-                        """, height=40)
-                    else:
-                        st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
+                                    let retries = 0;
+                                    const retry = () => {{
+                                        if (window._sr_countdown_interval_in_col || retries++ > 10) return;
+                                        if (!start()) setTimeout(retry, 300);
+                                    }};
+                                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
+                                    else window.addEventListener('load', retry);
+                                }})();
+                                </script>
+                                """, height=0)
+                            else:
+                                st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
 
             current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
             st.write(f"最終更新日時 (日本時間): {current_time}")
