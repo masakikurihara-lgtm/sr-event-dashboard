@@ -593,7 +593,7 @@ def main():
                         if row['配信中'] == '🔴':
                             return ['background-color: #e6fff2'] * len(row)
                         elif row.name % 2 == 1:
-                            return ['background-color: #fefefe'] * len(row)
+                            return ['background-color: #fcfcfc'] * len(row)
                         else:
                             return [''] * len(row)
                     df_to_format = df.copy()
