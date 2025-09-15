@@ -329,14 +329,15 @@ def main():
         # 終了時間をUNIXミリ秒に変換
         event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000
 
-        # 右上固定のカウントダウンバッジ（1か所だけ）
+        # ビューポート右上に固定されるカウントダウンバッジ
         st.components.v1.html(f"""
         <style>
+        /* body に直接固定するために z-index と pointer-events を設定 */
         .fixed-countdown {{
-            position: fixed;
-            top: 100px;
-            right: 15px;
-            z-index: 1000;
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 99999 !important;
             background-color: #4CAF50;
             color: white;
             padding: 8px 15px;
@@ -346,6 +347,7 @@ def main():
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             transition: background-color 0.5s ease;
+            pointer-events: none; /* バッジの上でもクリックを透過 */
         }}
         .countdown-label {{
             font-size: 0.8rem;
@@ -389,15 +391,15 @@ def main():
 
                 const totalSeconds = distance / 1000;
                 if (totalSeconds <= 3600) {{
-                    badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
+                    badgeElement.style.backgroundColor = '#ff4b4b';
                 }} else if (totalSeconds <= 10800) {{
-                    badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
+                    badgeElement.style.backgroundColor = '#ffa500';
                 }} else {{
-                    badgeElement.style.backgroundColor = '#4CAF50';  // 緑
+                    badgeElement.style.backgroundColor = '#4CAF50';
                 }}
             }}
 
-            updateCountdown(); // 初回即実行
+            updateCountdown();
             window.myCountdownTimer = setInterval(updateCountdown, 1000);
         }})();
         </script>
