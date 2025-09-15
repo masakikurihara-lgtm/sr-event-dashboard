@@ -349,10 +349,10 @@ def main():
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
-                            st.markdown(f"**{event_period_str}**", unsafe_allow_html=True)
+                            st.write(f"**{event_period_str}**")
                         with col2:
                             st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-
+                            
                             if selected_event_data and selected_event_data.get("ended_at"):
                                 ended_at = selected_event_data.get("ended_at")
                                 try:
@@ -365,9 +365,7 @@ def main():
                             if ended_at > 0:
                                 ended_ms = ended_at * 1000
                                 st.components.v1.html(f"""
-                                <div style="height: 25px; display: flex; align-items: center; padding-top: 5px;">
-                                    <span id="sr_countdown_timer_in_col" style="color: red; font-weight: bold; font-size: 1.5rem;" data-end="{ended_ms}">計算中...</span>
-                                </div>
+                                <span id="sr_countdown_timer_in_col" style="color: green; font-weight: bold; font-size: 1.5rem;" data-end="{ended_ms}">計算中...</span>
                                 <script>
                                 (function() {{
                                     function start() {{
@@ -396,9 +394,9 @@ def main():
                                             }}
                                             timer.textContent = formatMs(diff);
                                             const totalSeconds = Math.floor(diff / 1000);
-                                            if (totalSeconds <= 3600) timer.style.color = '#ff4b4b';
-                                            else if (totalSeconds <= 10800) timer.style.color = '#ffa500';
-                                            else timer.style.color = '#4CAF50';
+                                            if (totalSeconds <= 3600) timer.style.color = '#ff4b4b'; // 赤
+                                            else if (totalSeconds <= 10800) timer.style.color = '#ffa500'; // オレンジ
+                                            else timer.style.color = '#4CAF50'; // 緑
                                         }}
                                         update();
                                         window._sr_countdown_interval_in_col = setInterval(update, 1000);
@@ -413,7 +411,7 @@ def main():
                                     else window.addEventListener('load', retry);
                                 }})();
                                 </script>
-                                """, height=40)
+                                """, height=35)
                             else:
                                 st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
                     
