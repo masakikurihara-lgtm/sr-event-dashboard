@@ -358,13 +358,8 @@ def main():
             # ミリ秒に変換（JS に渡す）
             ended_ms = ended_at_val * 1000
 
-            # body に「永続的」なバッジを作るスクリプトを注入します。
-            # - 要素が既にあれば再作成しない
-            # - 終了時刻が更新されれば dataset.end を上書きして即座に反映する
-            # - タイマーは window._sr_persistent_interval で一元管理（多重起動防止）
-            html = """
+            html = f"""
             <style>
-            /* バッジの CSS（必要ならここで微調整）*/
             #sr_persistent_countdown {{
                 position: fixed !important;
                 top: 20px !important;
@@ -379,94 +374,57 @@ def main():
                 box-shadow: 0 4px 12px rgba(0,0,0,0.18);
                 font-family: inherit;
                 transition: background-color 0.4s ease;
-                pointer-events: none; /* クリックを透過させる（必要なら true に） */
-                display: inline-flex;
-                flex-direction: column;
-                align-items: center;
-                min-width: 110px;
+                pointer-events: none;
             }}
             #sr_persistent_countdown .label {{
                 font-size: 0.75rem;
                 opacity: 0.9;
                 margin-bottom: 2px;
             }}
-            #sr_persistent_countdown .timer {{
-                font-size: 1.05rem;
-                letter-spacing: 0.02em;
-            }}
             </style>
 
+            <div id="sr_persistent_countdown" data-end="{ended_ms}">
+              <span class="label">残り時間</span>
+              <span id="sr_persistent_timer">計算中...</span>
+            </div>
+
             <script>
-            (function(){
-                try {
-                    var END_MS = {0};
-
-                    // 既存のバッジがあれば取得、なければ作る
-                    var badge = document.getElementById('sr_persistent_countdown');
-                    if (!badge) {
-                        badge = document.createElement('div');
-                        badge.id = 'sr_persistent_countdown';
-                        badge.innerHTML = '<div class="label">残り時間</div><div id="sr_persistent_timer" class="timer">計算中...</div>';
-                        // append to body so it lives outside Streamlit's internal container and survives reruns better
-                        document.body.appendChild(badge);
-                    }
-
-                    // 終了時刻を dataset に保持（更新時はここで上書きされる）
-                    badge.dataset.end = String(END_MS);
-
-                    function pad(n) { return String(n).padStart(2,'0'); }
-
-                    function formatMs(ms) {
-                        if (ms < 0) ms = 0;
-                        var s = Math.floor(ms / 1000);
-                        var days = Math.floor(s / 86400);
-                        s = s % 86400;
-                        var hh = Math.floor(s / 3600);
-                        var mm = Math.floor((s % 3600) / 60);
-                        var ss = s % 60;
-                        if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                        return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                    }
-
-                    function updateOnce() {
-                        try {
-                            var end = parseInt(badge.dataset.end, 10);
-                            if (isNaN(end)) return;
-                            var diff = end - Date.now();
-                            var timerEl = document.getElementById('sr_persistent_timer');
-                            if (!timerEl) return;
-                            if (diff <= 0) {
-                                timerEl.textContent = 'イベント終了';
-                                badge.style.backgroundColor = '#808080';
-                                if (window._sr_persistent_interval) { clearInterval(window._sr_persistent_interval); window._sr_persistent_interval = null; }
-                                return;
-                            }
-                            timerEl.textContent = formatMs(diff);
-                            var totalSeconds = Math.floor(diff / 1000);
-                            if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                            else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                            else badge.style.backgroundColor = '#4CAF50';
-                        } catch (e) {
-                            console.warn('sr_countdown update error', e);
-                        }
-                    }
-
-                    // タイマーを一度しか作らない（複数 interval 作成を防ぐ）
-                    if (!window._sr_persistent_interval) {
-                        updateOnce();
-                        window._sr_persistent_interval = setInterval(updateOnce, 1000);
-                    } else {
-                        // 既に interval があれば即時更新（終了時刻が変わったケースに対応）
-                        updateOnce();
-                    }
-                } catch (e) {
-                    console.warn('sr_countdown init error', e);
-                }
-            })();
+            (function() {{
+                // JavaScript 内の波括弧は {{ }} にエスケープしなくてOK（f-stringだから）
+                const END = {ended_ms};
+                function pad(n) {{ return String(n).padStart(2,'0'); }}
+                function formatMs(ms) {{
+                  if (ms < 0) ms = 0;
+                  let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
+                  s %= 86400;
+                  let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                  if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                  return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                }}
+                function update() {{
+                  const diff = END - Date.now();
+                  const timer = document.getElementById('sr_persistent_timer');
+                  const badge = document.getElementById('sr_persistent_countdown');
+                  if (!timer || !badge) return;
+                  if (diff <= 0) {{
+                    timer.textContent = 'イベント終了';
+                    badge.style.backgroundColor = '#808080';
+                    clearInterval(window._sr_persistent_interval);
+                    return;
+                  }}
+                  timer.textContent = formatMs(diff);
+                  const totalSeconds = Math.floor(diff / 1000);
+                  if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                  else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                  else badge.style.backgroundColor = '#4CAF50';
+                }}
+                if (window._sr_persistent_interval) clearInterval(window._sr_persistent_interval);
+                update();
+                window._sr_persistent_interval = setInterval(update, 1000);
+            }})();
             </script>
-            """.format(ended_ms)
+            """
 
-            # unsafe_allow_html=True で挿入（これだけを追加します）
             st.markdown(html, unsafe_allow_html=True)
 
         # ----------------------------
