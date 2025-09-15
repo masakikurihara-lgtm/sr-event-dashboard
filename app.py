@@ -372,11 +372,10 @@ def main():
                     </div>
                     <script>
                     (function() {{
-                        // タイマーがすでに開始されているか確認するためのグローバル状態変数
-                        if (window._sr_countdown_interval_running) {{
+                        // Streamlitの再実行で、タイマーが重複して作成されないようにする
+                        if (window._sr_countdown_interval) {{
                             return;
                         }}
-                        window._sr_countdown_interval_running = true;
                         
                         function pad(n) {{ return String(n).padStart(2, '0'); }}
                         
@@ -398,7 +397,6 @@ def main():
                             if (!badge || !timer) {{
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             
@@ -414,7 +412,6 @@ def main():
                                 badge.style.backgroundColor = '#808080';
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             timer.textContent = formatMs(diff);
@@ -424,8 +421,20 @@ def main():
                             else badge.style.backgroundColor = '#4CAF50';
                         }}
 
-                        window._sr_countdown_interval = setInterval(update, 1000);
-                        update();
+                        // HTML要素がレンダリングされるまで待機する
+                        function startWhenReady() {{
+                            if (document.getElementById('sr_countdown_badge') && document.getElementById('sr_countdown_timer')) {{
+                                // 要素が見つかったら、1秒ごとのタイマーを開始
+                                window._sr_countdown_interval = setInterval(update, 1000);
+                                update(); // 初回表示を即時更新
+                            }} else {{
+                                // 要素が見つからない場合、少し待って再試行
+                                setTimeout(startWhenReady, 50);
+                            }}
+                        }}
+
+                        startWhenReady();
+                        
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
