@@ -400,7 +400,10 @@ def main():
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
         st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
-        # 右上に残り時間バッジを追加（既存レイアウトに影響なし）
+        # イベント終了時間（UNIX秒）を取得
+        event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000  # ミリ秒に変換
+
+        # 右上に残り時間バッジを追加
         st.components.v1.html(f"""
         <div id="countdown-badge" style="
             position:fixed;
@@ -422,7 +425,7 @@ def main():
             if (window.myCountdownTimer) {{
                 clearInterval(window.myCountdownTimer);
             }}
-            const END = {st.session_state.event_end_ts};
+            const END = {event_end_ts};
             const timerEl = document.getElementById('remain_timer');
             const badgeEl = document.getElementById('countdown-badge');
             if (!timerEl || !badgeEl) return;
@@ -451,7 +454,7 @@ def main():
                 timerEl.textContent = fmt(dist);
             }}
 
-            updateCountdown(); // 初回即時実行
+            updateCountdown();
             window.myCountdownTimer = setInterval(updateCountdown, 1000);
         }})();
         </script>
