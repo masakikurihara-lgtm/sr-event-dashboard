@@ -324,7 +324,7 @@ def main():
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("10秒ごとに自動更新されます。")
         # 「表示する」ボタンが押された後のみ自動更新を稼働させる
-        st_autorefresh(interval=10000, limit=None, key="data_refresh")
+        #st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
 
 
@@ -821,6 +821,8 @@ def main():
                     )
                     st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                     fig_lower_gap.update_layout(uirevision="const")
+                    
+        st_autorefresh(interval=10000, limit=None, key="data_refresh")            
         
     
 if __name__ == "__main__":
