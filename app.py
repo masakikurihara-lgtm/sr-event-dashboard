@@ -345,88 +345,85 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("10秒ごとに自動更新されます。")
 
-            # カウントダウンタイマーの表示ロジック
-            is_event_ended = datetime.datetime.now(JST) > ended_at_dt
-            if not is_event_ended:
-                ended_at = selected_event_data.get("ended_at")
-                try:
-                    ended_at = int(ended_at)
-                except Exception:
-                    ended_at = 0
+            # 終了時間をミリ秒に変換
+            ended_ms = int(selected_event_data.get("ended_at", 0)) * 1000
 
-                if ended_at > 0:
-                    ended_ms = ended_at * 1000
-                    st.html(f"""
-                    <style>
-                    #sr_countdown_badge {{
-                        position: fixed; top: 50px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
-                        color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
-                        transition: background-color 0.4s ease; pointer-events: none;
-                    }}
-                    #sr_countdown_badge .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
-                    </style>
-                    <div id="sr_countdown_badge" data-end="{ended_ms}">
-                      <span class="label">残り時間</span>
-                      <span id="sr_countdown_timer">計算中...</span>
-                    </div>
-                    <script>
-                    (function() {{
-                        // タイマーがすでに開始されているか確認
-                        if (window._sr_countdown_interval) {{
-                            return; // 既に動いている場合は何もしない
-                        }}
+            st.markdown(f"""
+            <style>
+            #sr_persistent_countdown {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 2147483647;
+                background-color: #4CAF50;
+                color: white;
+                padding: 8px 14px;
+                border-radius: 10px;
+                font-size: 1rem;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+                font-family: inherit;
+                transition: background-color 0.4s ease;
+                pointer-events: none;
+            }}
+            #sr_persistent_countdown .label {{
+                font-size: 0.75rem;
+                opacity: 0.9;
+                display: block;
+            }}
+            </style>
 
-                        function pad(n) {{ return String(n).padStart(2, '0'); }}
-                        
-                        function formatMs(ms) {{
-                            if (ms < 0) ms = 0;
-                            let s = Math.floor(ms / 1000);
-                            let days = Math.floor(s / 86400); s %= 86400;
-                            let hh = Math.floor(s / 3600);
-                            let mm = Math.floor((s % 3600) / 60);
-                            let ss = s % 60;
-                            if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                            return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                        }}
-                        
-                        function update() {{
-                            const badge = document.getElementById('sr_countdown_badge');
-                            const timer = document.getElementById('sr_countdown_timer');
-                            
-                            // 要素が見つからない場合はタイマーを停止
-                            if (!badge || !timer) {{
-                                clearInterval(window._sr_countdown_interval);
-                                window._sr_countdown_interval = null;
-                                return;
-                            }}
-                            
-                            const END = parseInt(badge.dataset.end, 10);
-                            if (isNaN(END)) {{
-                                timer.textContent = 'データなし';
-                                return;
-                            }}
-                            
-                            const diff = END - Date.now();
-                            if (diff <= 0) {{
-                                timer.textContent = 'イベント終了';
-                                badge.style.backgroundColor = '#808080';
-                                clearInterval(window._sr_countdown_interval);
-                                window._sr_countdown_interval = null;
-                                return;
-                            }}
-                            timer.textContent = formatMs(diff);
-                            const totalSeconds = Math.floor(diff / 1000);
-                            if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                            else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                            else badge.style.backgroundColor = '#4CAF50';
-                        }}
+            <div id="sr_persistent_countdown" data-end="{ended_ms}">
+              <span class="label">残り時間</span>
+              <span id="sr_persistent_timer">計算中...</span>
+            </div>
 
-                        window._sr_countdown_interval = setInterval(update, 1000);
-                        update(); // 初回表示を即時更新
-                    }})();
-                    </script>
-                    """)
+            <script>
+            document.addEventListener('DOMContentLoaded', function () {{
+              const badge = document.getElementById('sr_persistent_countdown');
+              const timer = document.getElementById('sr_persistent_timer');
+              if (!badge || !timer) return;
+
+              const END = parseInt(badge.dataset.end, 10);
+              if (!END || isNaN(END)) return;
+
+              if (window._sr_persistent_interval) clearInterval(window._sr_persistent_interval);
+
+              function pad(n) {{ return String(n).padStart(2,'0'); }}
+              function formatMs(ms) {{
+                if (ms < 0) ms = 0;
+                let s = Math.floor(ms / 1000);
+                let days = Math.floor(s / 86400);
+                s %= 86400;
+                let hh = Math.floor(s / 3600);
+                let mm = Math.floor((s % 3600) / 60);
+                let ss = s % 60;
+                if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+              }}
+
+              function update() {{
+                const diff = END - Date.now();
+                if (diff <= 0) {{
+                  timer.textContent = 'イベント終了';
+                  badge.style.backgroundColor = '#808080';
+                  clearInterval(window._sr_persistent_interval);
+                  return;
+                }}
+                timer.textContent = formatMs(diff);
+
+                const totalSeconds = Math.floor(diff / 1000);
+                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                else badge.style.backgroundColor = '#4CAF50';
+              }}
+
+              update();
+              window._sr_persistent_interval = setInterval(update, 1000);
+            }});
+            </script>
+            """, unsafe_allow_html=True)
+
 
             with st.container(border=True):
                 col1, col2 = st.columns([1, 1])
