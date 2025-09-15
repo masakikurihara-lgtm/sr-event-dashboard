@@ -345,7 +345,7 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("10秒ごとに自動更新されます。")
 
-            st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
