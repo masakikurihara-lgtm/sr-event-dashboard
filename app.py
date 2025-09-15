@@ -372,56 +372,70 @@ def main():
                     </div>
                     <script>
                     (function() {{
-                        function startCountdown() {{
+                        // タイマーがすでに開始されているか確認するためのグローバル状態変数
+                        if (window._sr_countdown_active) {{
+                            // すでにアクティブな場合は何もしない
+                            return;
+                        }}
+
+                        window._sr_countdown_active = true;
+                        
+                        function pad(n) {{ return String(n).padStart(2, '0'); }}
+                        
+                        function formatMs(ms) {{
+                            if (ms < 0) ms = 0;
+                            let s = Math.floor(ms / 1000);
+                            let days = Math.floor(s / 86400); s %= 86400;
+                            let hh = Math.floor(s / 3600);
+                            let mm = Math.floor((s % 3600) / 60);
+                            let ss = s % 60;
+                            if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                            return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                        }}
+                        
+                        function update() {{
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
+                            
                             if (!badge || !timer) {{
-                                return false;
+                                // 要素が見つからない場合、タイマーを停止して状態をリセット
+                                clearInterval(window._sr_countdown_interval);
+                                window._sr_countdown_interval = null;
+                                window._sr_countdown_active = false;
+                                return;
                             }}
+                            
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) {{
-                                // データがない場合はタイマーを終了
                                 timer.textContent = 'データなし';
-                                return true;
+                                return;
                             }}
-                            if (window._sr_countdown_interval) {{
+                            
+                            const diff = END - Date.now();
+                            if (diff <= 0) {{
+                                timer.textContent = 'イベント終了';
+                                badge.style.backgroundColor = '#808080';
                                 clearInterval(window._sr_countdown_interval);
+                                window._sr_countdown_interval = null;
+                                window._sr_countdown_active = false;
+                                return;
                             }}
-                            function pad(n) {{ return String(n).padStart(2, '0'); }}
-                            function formatMs(ms) {{
-                                if (ms < 0) ms = 0;
-                                let s = Math.floor(ms / 1000);
-                                let days = Math.floor(s / 86400); s %= 86400;
-                                let hh = Math.floor(s / 3600);
-                                let mm = Math.floor((s % 3600) / 60);
-                                let ss = s % 60;
-                                if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                            }}
-                            function update() {{
-                                const diff = END - Date.now();
-                                if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
-                                    if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                                    return;
-                                }}
-                                timer.textContent = formatMs(diff);
-                                const totalSeconds = Math.floor(diff / 1000);
-                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                                else badge.style.backgroundColor = '#4CAF50';
-                            }}
-                            update();
-                            window._sr_countdown_interval = setInterval(update, 1000);
-                            return true;
+                            timer.textContent = formatMs(diff);
+                            const totalSeconds = Math.floor(diff / 1000);
+                            if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                            else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                            else badge.style.backgroundColor = '#4CAF50';
                         }}
-                        let checkInterval;
-                        function checkAndStart() {{
-                            if (startCountdown()) {{
-                                clearInterval(checkInterval);
+
+                        // HTML要素がレンダリングされるまで待機し、見つかったらタイマーを開始する
+                        const checkAndStartTimer = setInterval(() => {{
+                            if (document.getElementById('sr_countdown_badge') && document.getElementById('sr_countdown_timer')) {{
+                                clearInterval(checkAndStartTimer);
+                                window._sr_countdown_interval = setInterval(update, 1000);
+                                update(); // 初回表示を即時更新
                             }}
-                        }}
-                        checkInterval = setInterval(checkAndStart, 200);
+                        }}, 50); // 50ミリ秒ごとに要素をチェック
+                        
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
