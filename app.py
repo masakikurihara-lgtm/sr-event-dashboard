@@ -20,35 +20,55 @@ JST = pytz.timezone('Asia/Tokyo')
 
 @st.cache_data(ttl=3600)
 def get_events():
-    events = []
-    page = 1
-    for _ in range(10):
-        url = f"https://www.showroom-live.com/api/event/search?page={page}&include_ended=0"
-        try:
-            response = requests.get(url, headers=HEADERS, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            page_events = []
-            if isinstance(data, dict):
-                if 'events' in data:
-                    page_events = data['events']
-                elif 'event_list' in data:
-                    page_events = data['event_list']
-            elif isinstance(data, list):
-                page_events = data
-            if not page_events:
-                    break
-            # 修正箇所: show_rankingがfalseではないイベントとis_event_blockがtrueではないイベントのみを追加
-            filtered_page_events = [event for event in page_events if event.get("show_ranking") is not False and event.get("is_event_block") is not True]
-            events.extend(filtered_page_events)
-            page += 1
-        except requests.exceptions.RequestException as e:
-            st.error(f"イベントデータ取得中にエラーが発生しました: {e}")
-            return []
-        except ValueError:
-            st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
-            return []
-    return events
+    """
+    開催中および終了済みのイベントリストを取得する。
+    終了済みイベントには "[終了]" という接頭辞を付ける。
+    """
+    all_events = []
+    # status=1 (開催中) と status=4 (終了済み) の両方を取得
+    for status in [1, 4]:
+        page = 1
+        # 各ステータスで最大10ページまで取得
+        for _ in range(10):
+            url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
+            try:
+                response = requests.get(url, headers=HEADERS, timeout=5)
+                response.raise_for_status()
+                data = response.json()
+                
+                page_events = []
+                if isinstance(data, dict):
+                    if 'events' in data:
+                        page_events = data['events']
+                    elif 'event_list' in data:
+                        page_events = data['event_list']
+                elif isinstance(data, list):
+                    page_events = data
+
+                if not page_events:
+                    break  # イベントがなくなったらループを抜ける
+
+                # 既存のフィルタリングロジックを適用
+                filtered_page_events = [
+                    event for event in page_events 
+                    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
+                ]
+                
+                # 終了済みイベントの場合、イベント名に接頭辞を追加
+                if status == 4:
+                    for event in filtered_page_events:
+                        event['event_name'] = f"[終了] {event['event_name']}"
+
+                all_events.extend(filtered_page_events)
+                page += 1
+            except requests.exceptions.RequestException as e:
+                st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
+                break
+            except ValueError:
+                st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
+                break
+    return all_events
+
 
 RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
@@ -245,7 +265,7 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     events = get_events()
     if not events:
-        st.warning("現在開催中のイベントが見つかりませんでした。")
+        st.warning("表示可能なイベントが見つかりませんでした。")
         return
 
     event_options = {event['event_name']: event for event in events}
@@ -328,12 +348,9 @@ def main():
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("10秒ごとに自動更新されます。")
-        # 「表示する」ボタンが押された後のみ自動更新を稼働させる
-        #st_autorefresh(interval=10000, limit=None, key="data_refresh")
 
 
-
-        # --- 残り時間バッジ：ここを既存のバッジ表示箇所に置き換えてください ---
+        # --- 残り時間バッジ ---
         if st.session_state.get("selected_room_names") and selected_event_data:
             ended_at = selected_event_data.get("ended_at")
             try:
@@ -342,150 +359,66 @@ def main():
                 ended_at = 0
 
             if ended_at > 0:
-                ended_ms = ended_at * 1000  # ミリ秒
-
-                # バッジを一箇所だけ出す（IDは sr_countdown_badge / sr_countdown_timer）
+                ended_ms = ended_at * 1000
                 st.markdown(f"""
                 <style>
                 #sr_countdown_badge {{
-                    position: fixed;
-                    top: 50px;
-                    right: 20px;
-                    z-index: 2147483647;
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-                    font-family: inherit;
-                    transition: background-color 0.4s ease;
-                    pointer-events: none;
+                    position: fixed; top: 50px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
+                    color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
+                    transition: background-color 0.4s ease; pointer-events: none;
                 }}
                 #sr_countdown_badge .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
                 </style>
-
                 <div id="sr_countdown_badge" data-end="{ended_ms}">
                   <span class="label">残り時間</span>
                   <span id="sr_countdown_timer">計算中...</span>
                 </div>
-
                 <script>
-                console.log("sr_countdown script loaded, END =", ended_ms);
                 (function() {{
-                    // start() が true を返すとタイマーが開始されたことを意味する
                     function start() {{
                         try {{
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
-                            if (!badge || !timer) {{
-                                // 要素がまだ存在しない
-                                return false;
-                            }}
-
-                            // data-end 属性からミリ秒値を取得（安全）
-                            const endStr = badge.dataset.end;
-                            const END = parseInt(endStr, 10);
-                            if (isNaN(END)) {{
-                                console.error('sr_countdown: invalid END value', endStr);
-                                return false;
-                            }}
-
-                            // 既存 interval があればクリア
-                            if (window._sr_countdown_interval) {{
-                                clearInterval(window._sr_countdown_interval);
-                                window._sr_countdown_interval = null;
-                            }}
-
+                            if (!badge || !timer) return false;
+                            const END = parseInt(badge.dataset.end, 10);
+                            if (isNaN(END)) return false;
+                            if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
                             function pad(n) {{ return String(n).padStart(2,'0'); }}
-
                             function formatMs(ms) {{
                                 if (ms < 0) ms = 0;
-                                let s = Math.floor(ms / 1000);
-                                let days = Math.floor(s / 86400);
-                                s = s % 86400;
-                                let hh = Math.floor(s / 3600);
-                                let mm = Math.floor((s % 3600) / 60);
-                                let ss = s % 60;
-                                if (days > 0) {{
-                                    return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                }}
+                                let s = Math.floor(ms / 1000), days = Math.floor(s / 86400); s %= 86400;
+                                let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                                if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                                 return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                             }}
-
                             function update() {{
                                 const diff = END - Date.now();
                                 if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了';
-                                    badge.style.backgroundColor = '#808080';
-                                    if (window._sr_countdown_interval) {{
-                                        clearInterval(window._sr_countdown_interval);
-                                        window._sr_countdown_interval = null;
-                                    }}
+                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
+                                    if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
                                     return;
                                 }}
                                 timer.textContent = formatMs(diff);
-
                                 const totalSeconds = Math.floor(diff / 1000);
-                                if (totalSeconds <= 3600) {{
-                                    badge.style.backgroundColor = '#ff4b4b';
-                                }} else if (totalSeconds <= 10800) {{
-                                    badge.style.backgroundColor = '#ffa500';
-                                }} else {{
-                                    badge.style.backgroundColor = '#4CAF50';
-                                }}
+                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                                else badge.style.backgroundColor = '#4CAF50';
                             }}
-
-                            // 即時実行 + 1秒間隔
-                            update();
-                            window._sr_countdown_interval = setInterval(update, 1000);
-
-                            return true;
-                        }} catch (err) {{
-                            console.error('sr_countdown: exception in start()', err);
-                            return false;
-                        }}
+                            update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
+                        }} catch (err) {{ return false; }}
                     }}
-
-                    // DOM の準備を待って start を試みる（ロード済みなら即試行）
-                    if (document.readyState === 'complete' || document.readyState === 'interactive') {{
-                        // 即試行。うまくいかなければ短時間後に再試行（Streamlitの再描画に備える）
-                        if (!start()) {{
-                            setTimeout(start, 200);
-                        }}
-                    }} else {{
-                        window.addEventListener('load', function() {{
-                            if (!start()) setTimeout(start, 200);
-                        }});
-                    }}
-
-                    // 追加のリトライ（DOM が差し替わるケースに備えて最大 10 回試す）
                     let retries = 0;
-                    const retryInterval = setInterval(function() {{
-                        if (window._sr_countdown_interval) {{
-                            clearInterval(retryInterval);
-                            return;
-                        }}
-                        retries++;
-                        if (start()) {{
-                            clearInterval(retryInterval);
-                            return;
-                        }}
-                        if (retries > 10) {{
-                            clearInterval(retryInterval);
-                            console.warn('sr_countdown: failed to start after retries');
-                        }}
-                    }}, 300);
+                    const retry = () => {{
+                        if (window._sr_countdown_interval || retries++ > 10) return;
+                        if (!start()) setTimeout(retry, 300);
+                    }};
+                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
+                    else window.addEventListener('load', retry);
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
-            else:
-                # ended_at が取得できない場合はバッジを出さない（既存表示に影響なし）
-                pass
         # --- ここまで ---
-
-
 
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
@@ -494,7 +427,6 @@ def main():
                 st.write(f"**{event_period_str}**")
             with col2:
                 st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-                # ここで再度、Streamlitの自動更新に合わせた残り時間表示を復活させる
                 now = datetime.datetime.now(JST)
                 remaining_seconds = (ended_at_dt - now).total_seconds()
                 if remaining_seconds > 0:
@@ -506,8 +438,32 @@ def main():
         current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         st.write(f"最終更新日時 (日本時間): {current_time}")
 
-        # ★ 修正: onlives_roomsを辞書として取得
-        onlives_rooms = get_onlives_rooms()
+        # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
+        # イベントが終了したかどうかを判定
+        is_event_ended = datetime.datetime.now(JST) > ended_at_dt
+        
+        final_ranking_data = {}
+        # イベント終了時のみ、最終ランキングデータを先に一括で取得
+        if is_event_ended:
+            with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
+                event_url_key = selected_event_data.get('event_url_key')
+                event_id = selected_event_data.get('event_id')
+                # ページ数を多めに設定して全ランキングを取得
+                final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
+                if final_ranking_map:
+                    for name, data in final_ranking_map.items():
+                        if 'room_id' in data:
+                            final_ranking_data[data['room_id']] = {
+                                'rank': data.get('rank'),
+                                'point': data.get('point')
+                            }
+                else:
+                    st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
+
+        # 配信中ルームの情報はイベント開催中のみ必要
+        onlives_rooms = {}
+        if not is_event_ended:
+            onlives_rooms = get_onlives_rooms()
 
         data_to_display = []
         if st.session_state.selected_room_names:
@@ -516,51 +472,72 @@ def main():
                     if room_name not in st.session_state.room_map_data:
                         st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
                         continue
+                    
                     room_id = st.session_state.room_map_data[room_name]['room_id']
-                    room_info = get_room_event_info(room_id)
-                    if not isinstance(room_info, dict):
-                        st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
-                        continue
-                    rank_info = None
-                    remain_time_sec = None
-                    if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
-                        rank_info = room_info['ranking']
-                        remain_time_sec = room_info.get('remain_time')
-                    elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
-                        event_info = room_info['event_and_support_info']
-                        if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
-                            rank_info = event_info['ranking']
-                            remain_time_sec = event_info.get('remain_time')
-                    elif 'event' in room_info and isinstance(room_info['event'], dict):
-                        event_data = room_info['event']
-                        if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
-                            rank_info = event_data['ranking']
-                            remain_time_sec = event_data.get('remain_time')
-                    if rank_info and 'point' in rank_info:
-                        is_live = int(room_id) in onlives_rooms
+                    
+                    rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
+                    is_live = False
+                    started_at_str = ""
+
+                    if is_event_ended:
+                        # イベント終了後のデータ取得ロジック
+                        if room_id in final_ranking_data:
+                            rank = final_ranking_data[room_id].get('rank', 'N/A')
+                            point = final_ranking_data[room_id].get('point', 'N/A')
+                            # ポイント差は後でDataFrameで一括計算するため、ここでは0を仮置き
+                            upper_gap, lower_gap = 0, 0
+                        else:
+                            st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
+                            continue
+                    else:
+                        # イベント開催中のデータ取得ロジック（既存の処理）
+                        room_info = get_room_event_info(room_id)
+                        if not isinstance(room_info, dict):
+                            st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
+                            continue
                         
-                        # ★ 修正: 配信中の場合は開始時間を取得してフォーマット
-                        started_at_str = ""
+                        rank_info = None
+                        if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
+                            rank_info = room_info['ranking']
+                        elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
+                            event_info = room_info['event_and_support_info']
+                            if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
+                                rank_info = event_info['ranking']
+                        elif 'event' in room_info and isinstance(room_info['event'], dict):
+                            event_data = room_info['event']
+                            if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
+                                rank_info = event_data['ranking']
+
+                        if rank_info and 'point' in rank_info:
+                            rank = rank_info.get('rank', 'N/A')
+                            point = rank_info.get('point', 'N/A')
+                            upper_gap = rank_info.get('upper_gap', 'N/A')
+                            lower_gap = rank_info.get('lower_gap', 'N/A')
+                        else:
+                            st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+                            continue
+
+                        is_live = int(room_id) in onlives_rooms
                         if is_live:
                             started_at_ts = onlives_rooms.get(int(room_id))
                             if started_at_ts:
                                 started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
                                 started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
-                        
-                        data_to_display.append({
-                            "配信中": "🔴" if is_live else "",
-                            "ルーム名": room_name,
-                            "現在の順位": rank_info.get('rank', 'N/A'),
-                            "現在のポイント": rank_info.get('point', 'N/A'),
-                            "上位とのポイント差": rank_info.get('upper_gap', 'N/A'),
-                            "下位とのポイント差": rank_info.get('lower_gap', 'N/A'),
-                            "配信開始時間": started_at_str  # ★ 修正: 新しい列を追加
-                        })
-                    else:
-                        st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+
+                    # データをリストに追加
+                    data_to_display.append({
+                        "配信中": "🔴" if is_live else "",
+                        "ルーム名": room_name,
+                        "現在の順位": rank,
+                        "現在のポイント": point,
+                        "上位とのポイント差": upper_gap,
+                        "下位とのポイント差": lower_gap,
+                        "配信開始時間": started_at_str
+                    })
                 except Exception as e:
                     st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                     continue
+        # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
         if data_to_display:
             df = pd.DataFrame(data_to_display)
@@ -568,24 +545,21 @@ def main():
             df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
             df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
             live_status = df['配信中']
-            # ★ 修正: 配信中列をドロップしない
+            
             df = df.drop(columns=['配信中'])
-            # dfに「配信開始時間」が追加されていることを確認して表示
-            # df = df.drop(columns=['配信中'])
+            
+            # 終了後イベントでもポイント差が計算されるように、この処理は分岐の外に置く
             df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
             if not df.empty:
                 df.at[0, '上位とのポイント差'] = 0
             df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
             df.insert(0, '配信中', live_status)
             
-            # ★ 修正: 配信開始時間を挿入する
             started_at_column = df['配信開始時間']
             df = df.drop(columns=['配信開始時間'])
             df.insert(1, '配信開始時間', started_at_column)
 
-
             st.subheader("📊 比較対象ルームのステータス")
-            # 修正: 配信開始時間を加える
             required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
             if all(col in df.columns for col in required_cols):
                 try:
@@ -602,18 +576,10 @@ def main():
                     styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                         {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                     
-                    # --- ★ 修正箇所: CSSを埋め込んで表示高さを調整 ---
                     table_height_css = """
-                    <style>
-                        .st-emotion-cache-1r7r34u { /* StreamlitのコンテナID */
-                            height: 265px; /* 7位くらいが見える高さに調整 */
-                            overflow-y: auto;
-                        }
-                    </style>
+                    <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
                     """
                     st.markdown(table_height_css, unsafe_allow_html=True)
-                    # --- ★ 修正箇所ここまで ---
-                    
                     st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
@@ -626,101 +592,38 @@ def main():
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
             
-            # ここにCSSを配置して、HTMLのレンダリングを一度にまとめる
             css_style = """
                 <style>
-                .container-wrapper {
-                    display: flex;
-                    flex-wrap: wrap; 
-                    gap: 15px;
-                }
+                .container-wrapper { display: flex; flex-wrap: wrap; gap: 15px; }
                 .room-container {
-                    position: relative;
-                    width: 175px; 
-                    flex-shrink: 0;
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                    padding: 10px;
-                    height: 500px;
-                    display: flex;
-                    flex-direction: column;
-                    padding-top: 30px; /* ランクラベルのスペースを確保 */
+                    position: relative; width: 175px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
+                    padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px;
                 }
                 .ranking-label {
-                    position: absolute;
-                    top: -12px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 0.9rem;
-                    z-index: 10;
-                    white-space: nowrap;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                    position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 2px 8px;
+                    border-radius: 12px; color: white; font-weight: bold; font-size: 0.9rem; z-index: 10;
+                    white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
                 }
                 .room-title {
-                    text-align: center;
-                    font-size: 1rem;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden; 
-                    white-space: normal;
-                    line-height: 1.4em;
-                    min-height: calc(1.4em * 3);
+                    text-align: center; font-size: 1rem; font-weight: bold; margin-bottom: 10px; display: -webkit-box;
+                    -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;
+                    line-height: 1.4em; min-height: calc(1.4em * 3);
                 }
-                .gift-list-container {
-                    flex-grow: 1;
-                    height: 400px;
-                    overflow-y: scroll;
-                    scrollbar-width: auto;
-                }
-                .gift-list-container::-webkit-scrollbar {
-                    /* display: none;*/
-                }
-                .gift-item {
-                    display: flex;
-                    flex-direction: column;
-                    padding: 8px 8px;
-                    border-bottom: 1px solid #eee;
-                    gap: 4px;
-                }
-                .gift-item:last-child {border-bottom: none;}
-                .gift-header {font-weight: bold;}
-                .gift-info-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-                .gift-image {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 5px;
-                    object-fit: contain;
-                }
-                
-                /* 追加したハイライトスタイル */
-                .highlight-10000 { background-color: #ffe5e5; } /* 薄い赤 */
-                .highlight-30000 { background-color: #ffcccc; } /* 少し濃い赤 */
-                .highlight-60000 { background-color: #ffb2b2; } /* もっと濃い赤 */
-                .highlight-100000 { background-color: #ff9999; } /* 非常に濃い赤 */
-                .highlight-300000 { background-color: #ff7f7f; } /* 最も濃い赤 */
-                
+                .gift-list-container { flex-grow: 1; height: 400px; overflow-y: scroll; scrollbar-width: auto; }
+                .gift-item { display: flex; flex-direction: column; padding: 8px 8px; border-bottom: 1px solid #eee; gap: 4px; }
+                .gift-item:last-child { border-bottom: none; }
+                .gift-header { font-weight: bold; }
+                .gift-info-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+                .gift-image { width: 30px; height: 30px; border-radius: 5px; object-fit: contain; }
+                .highlight-10000 { background-color: #ffe5e5; } .highlight-30000 { background-color: #ffcccc; }
+                .highlight-60000 { background-color: #ffb2b2; } .highlight-100000 { background-color: #ff9999; }
+                .highlight-300000 { background-color: #ff7f7f; }
                 </style>
             """
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                # 配信中のルームが、選択されたルームリストから外れた場合、キャッシュを削除する
-                # これにより、配信終了したルームのコンテナが残るのを防ぐ
                 selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if '配信中' in row and row['配信中'] == '🔴'}
-                
-                # 配信が終了したルームのキャッシュを削除する
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
                 for room_id in rooms_to_delete:
                     del st.session_state.gift_log_cache[room_id]
@@ -731,9 +634,7 @@ def main():
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         if int(room_id) in onlives_rooms:
                             live_rooms_data.append({
-                                "room_name": room_name,
-                                "room_id": room_id,
-                                "rank": row['現在の順位']
+                                "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
                             })
             
             room_html_list = []
@@ -745,17 +646,13 @@ def main():
                     rank_color = get_rank_color(rank)
 
                     if int(room_id) in onlives_rooms:
-                        gift_log = get_and_update_gift_log(room_id) # 修正関数を呼び出す
-                        gift_list_map = get_gift_list(room_id) # gift_listも取得
+                        gift_log = get_and_update_gift_log(room_id)
+                        gift_list_map = get_gift_list(room_id)
                         
                         html_content = f"""
                         <div class="room-container">
-                            <div class="ranking-label" style="background-color: {rank_color};">
-                                {rank}位
-                            </div>
-                            <div class="room-title">
-                                {room_name}
-                            </div>
+                            <div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>
+                            <div class="room-title">{room_name}</div>
                             <div class="gift-list-container">
                         """
                         if not gift_list_map:
@@ -764,37 +661,24 @@ def main():
                         if gift_log:
                             for log in gift_log:
                                 gift_id = log.get('gift_id')
-                                # ★ 修正箇所: get_gift_listでキーを文字列に変換したため、ここでも文字列キーで検索する
                                 gift_info = gift_list_map.get(str(gift_id), {})
-                                
                                 gift_point = gift_info.get('point', 0)
                                 gift_count = log.get('num', 0)
                                 total_point = gift_point * gift_count
-
                                 highlight_class = ""
                                 if gift_point >= 500:
-                                    if total_point >= 300000:
-                                        highlight_class = "highlight-300000"
-                                    elif total_point >= 100000:
-                                        highlight_class = "highlight-100000"
-                                    elif total_point >= 60000:
-                                        highlight_class = "highlight-60000"
-                                    elif total_point >= 30000:
-                                        highlight_class = "highlight-30000"
-                                    elif total_point >= 10000:
-                                        highlight_class = "highlight-10000"
+                                    if total_point >= 300000: highlight_class = "highlight-300000"
+                                    elif total_point >= 100000: highlight_class = "highlight-100000"
+                                    elif total_point >= 60000: highlight_class = "highlight-60000"
+                                    elif total_point >= 30000: highlight_class = "highlight-30000"
+                                    elif total_point >= 10000: highlight_class = "highlight-10000"
                                 
                                 gift_image = log.get('image', gift_info.get('image', ''))
-
                                 html_content += (
                                     f'<div class="gift-item {highlight_class}">'
                                     f'<div class="gift-header"><small>{datetime.datetime.fromtimestamp(log.get("created_at", 0), JST).strftime("%H:%M:%S")}</small></div>'
-                                    f'<div class="gift-info-row">'
-                                    f'<img src="{gift_image}" class="gift-image" />'
-                                    f'<span>×{gift_count}</span>'
-                                    f'</div>'
-                                    f'<div>{gift_point}pt</div>' # ★ 再度追加: ポイントを表示
-                                    f'</div>'
+                                    f'<div class="gift-info-row"><img src="{gift_image}" class="gift-image" /><span>×{gift_count}</span></div>'
+                                    f'<div>{gift_point}pt</div></div>'
                                 )
                             html_content += '</div>'
                         else:
@@ -802,37 +686,22 @@ def main():
                         
                         html_content += '</div>'
                         room_html_list.append(html_content)
-                    else:
-                        room_html_list.append(
-                            f'<div class="room-container">'
-                            f'<div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>'
-                            f'<div class="room-title">{room_name}</div>'
-                            f'<p style="text-align: center;">配信していません。</p>'
-                            f'</div>'
-                        )
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
-                # ★ 修正箇所: 最後に作成したコンテナにHTMLを一括で書き込む
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
-                # ★ 修正箇所: 配信中のルームがない場合も、コンテナを更新する
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
-            # ★ 修正箇所: ここに余白を追加
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
-
-            # 1回だけコンテナを作成して再利用
             points_container = st.container()
 
             with points_container:
                 if '現在のポイント' in df.columns:
                     fig_points = px.bar(
-                        df, x="ルーム名", y="現在のポイント",
-                        title="各ルームの現在のポイント", color="ルーム名",
-                        color_discrete_map=color_map,
-                        hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
+                        df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
+                        color_discrete_map=color_map, hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
                         labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
                     )
                     st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
@@ -841,10 +710,8 @@ def main():
                 if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
                     df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
                     fig_upper_gap = px.bar(
-                        df, x="ルーム名", y="上位とのポイント差",
-                        title="上位とのポイント差", color="ルーム名",
-                        color_discrete_map=color_map,
-                        hover_data=["現在の順位", "現在のポイント"],
+                        df, x="ルーム名", y="上位とのポイント差", title="上位とのポイント差", color="ルーム名",
+                        color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
                         labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                     )
                     st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
@@ -853,10 +720,8 @@ def main():
                 if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
                     df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
                     fig_lower_gap = px.bar(
-                        df, x="ルーム名", y="下位とのポイント差",
-                        title="下位とのポイント差", color="ルーム名",
-                        color_discrete_map=color_map,
-                        hover_data=["現在の順位", "現在のポイント"],
+                        df, x="ルーム名", y="下位とのポイント差", title="下位とのポイント差", color="ルーム名",
+                        color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
                         labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
                     )
                     st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
