@@ -606,7 +606,7 @@ def main():
                     table_height_css = """
                     <style>
                         .st-emotion-cache-1r7r34u { /* StreamlitのコンテナID */
-                            height: 275px; /* 7位くらいが見える高さに調整 */
+                            height: 265px; /* 7位くらいが見える高さに調整 */
                             overflow-y: auto;
                         }
                     </style>
@@ -614,12 +614,12 @@ def main():
                     st.markdown(table_height_css, unsafe_allow_html=True)
                     # --- ★ 修正箇所ここまで ---
                     
-                    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=275)
+                    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
                 except Exception as e:
                     st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
-                    st.dataframe(df, use_container_width=True, hide_index=True, height=275)
+                    st.dataframe(df, use_container_width=True, hide_index=True, height=265)
             else:
-                st.dataframe(df, use_container_width=True, hide_index=True, height=275)
+                st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
             # --- スペシャルギフト履歴 ---
             st.markdown("### 🎁 スペシャルギフト履歴 <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>", unsafe_allow_html=True)
