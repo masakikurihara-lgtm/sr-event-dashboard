@@ -345,94 +345,81 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("10秒ごとに自動更新されます。")
 
-            # 1秒刻みのカウントダウンタイマーを配置
-            if st.session_state.get("selected_room_names") and selected_event_data:
-                ended_at = selected_event_data.get("ended_at")
-                try:
-                    ended_at = int(ended_at)
-                except Exception:
-                    ended_at = 0
-
-                if ended_at > 0:
-                    ended_ms = ended_at * 1000
-                    st.components.v1.html(f"""
-                    <style>
-                    #sr_countdown_badge {{
-                        position: fixed; top: 20px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
-                        color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
-                        transition: background-color 0.4s ease; pointer-events: none;
-                    }}
-                    #sr_countdown_badge .label {{
-                        font-size:0.75rem; opacity:0.85; display:block;
-                    }}
-                    </style>
-                    <div id="sr_countdown_badge" data-end="{ended_ms}">
-                      <span class="label">残り時間</span>
-                      <span id="sr_countdown_timer">計算中...</span>
-                    </div>
-                    <script>
-                    (function() {{
-                      function start() {{
-                        const badge = document.getElementById('sr_countdown_badge');
-                        const timer = document.getElementById('sr_countdown_timer');
-                        if (!badge || !timer) return false;
-                        const END = parseInt(badge.dataset.end, 10);
-                        if (isNaN(END)) return false;
-                        if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                        function pad(n) {{ return String(n).padStart(2,'0'); }}
-                        function formatMs(ms) {{
-                          if (ms < 0) ms = 0;
-                          let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
-                          s %= 86400;
-                          let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                          if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                          return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                        }}
-                        function update() {{
-                          const diff = END - Date.now();
-                          if (diff <= 0) {{
-                            timer.textContent = 'イベント終了';
-                            badge.style.backgroundColor = '#808080';
-                            clearInterval(window._sr_countdown_interval);
-                            return;
-                          }}
-                          timer.textContent = formatMs(diff);
-                          const totalSeconds = Math.floor(diff / 1000);
-                          if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                          else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                          else badge.style.backgroundColor = '#4CAF50';
-                        }}
-                        update();
-                        window._sr_countdown_interval = setInterval(update, 1000);
-                        return true;
-                      }}
-                      let retries = 0;
-                      const retry = () => {{
-                        if (window._sr_countdown_interval || retries++ > 10) return;
-                        if (!start()) setTimeout(retry, 300);
-                      }};
-                      if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                      else window.addEventListener('load', retry);
-                    }})();
-                    </script>
-                    """, height=0)
-
-
             with st.container(border=True):
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
                     st.write(f"**{event_period_str}**")
                 with col2:
-                    # ここに1秒刻みのタイマーを配置
-                    # StreamlitのUIにはこの時点で何も表示しない
                     st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
-                    now = datetime.datetime.now(JST)
-                    remaining_seconds = (ended_at_dt - now).total_seconds()
-                    if remaining_seconds > 0:
-                        remaining_readable = str(timedelta(seconds=int(remaining_seconds)))
-                        st.markdown(f"<span style='color: red;'>**{remaining_readable}**</span>", unsafe_allow_html=True)
+
+                    if selected_event_data and selected_event_data.get("ended_at"):
+                        ended_at = selected_event_data.get("ended_at")
+                        try:
+                            ended_at = int(ended_at)
+                        except Exception:
+                            ended_at = 0
+                    else:
+                        ended_at = 0
+
+                    if ended_at > 0:
+                        ended_ms = ended_at * 1000
+                        st.components.v1.html(f"""
+                        <style>
+                        #sr_countdown_timer_in_col {{
+                            font-size: 1.5rem;
+                            font-weight: bold;
+                            color: #ff4b4b; /* 赤色 */
+                            margin-top: 5px;
+                        }}
+                        </style>
+                        <span id="sr_countdown_timer_in_col" data-end="{ended_ms}">計算中...</span>
+                        <script>
+                        (function() {{
+                            function start() {{
+                                const timer = document.getElementById('sr_countdown_timer_in_col');
+                                if (!timer) return false;
+                                const END = parseInt(timer.dataset.end, 10);
+                                if (isNaN(END)) return false;
+                                if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
+
+                                function pad(n) {{ return String(n).padStart(2,'0'); }}
+                                function formatMs(ms) {{
+                                    if (ms < 0) ms = 0;
+                                    let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
+                                    s %= 86400;
+                                    let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                                    if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                                    return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                                }}
+                                function update() {{
+                                    const diff = END - Date.now();
+                                    if (diff <= 0) {{
+                                        timer.textContent = 'イベント終了';
+                                        timer.style.color = '#808080';
+                                        clearInterval(window._sr_countdown_interval_in_col);
+                                        return;
+                                    }}
+                                    timer.textContent = formatMs(diff);
+                                    const totalSeconds = Math.floor(diff / 1000);
+                                    if (totalSeconds <= 3600) timer.style.color = '#ff4b4b'; // 赤
+                                    else if (totalSeconds <= 10800) timer.style.color = '#ffa500'; // オレンジ
+                                    else timer.style.color = '#4CAF50'; // 緑
+                                }}
+                                update();
+                                window._sr_countdown_interval_in_col = setInterval(update, 1000);
+                                return true;
+                            }}
+                            let retries = 0;
+                            const retry = () => {{
+                                if (window._sr_countdown_interval_in_col || retries++ > 10) return;
+                                if (!start()) setTimeout(retry, 300);
+                            }};
+                            if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
+                            else window.addEventListener('load', retry);
+                        }})();
+                        </script>
+                        """, height=50) # 高さを適切に調整
                     else:
                         st.markdown(f"<span style='color: #808080;'>**イベント終了**</span>", unsafe_allow_html=True)
 
