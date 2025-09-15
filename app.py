@@ -373,12 +373,10 @@ def main():
                     <script>
                     (function() {{
                         // タイマーがすでに開始されているか確認するためのグローバル状態変数
-                        if (window._sr_countdown_active) {{
-                            // すでにアクティブな場合は何もしない
+                        if (window._sr_countdown_interval_running) {{
                             return;
                         }}
-
-                        window._sr_countdown_active = true;
+                        window._sr_countdown_interval_running = true;
                         
                         function pad(n) {{ return String(n).padStart(2, '0'); }}
                         
@@ -398,10 +396,9 @@ def main():
                             const timer = document.getElementById('sr_countdown_timer');
                             
                             if (!badge || !timer) {{
-                                // 要素が見つからない場合、タイマーを停止して状態をリセット
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_active = false;
+                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             
@@ -417,7 +414,7 @@ def main():
                                 badge.style.backgroundColor = '#808080';
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_active = false;
+                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             timer.textContent = formatMs(diff);
@@ -427,15 +424,8 @@ def main():
                             else badge.style.backgroundColor = '#4CAF50';
                         }}
 
-                        // HTML要素がレンダリングされるまで待機し、見つかったらタイマーを開始する
-                        const checkAndStartTimer = setInterval(() => {{
-                            if (document.getElementById('sr_countdown_badge') && document.getElementById('sr_countdown_timer')) {{
-                                clearInterval(checkAndStartTimer);
-                                window._sr_countdown_interval = setInterval(update, 1000);
-                                update(); // 初回表示を即時更新
-                            }}
-                        }}, 50); // 50ミリ秒ごとに要素をチェック
-                        
+                        window._sr_countdown_interval = setInterval(update, 1000);
+                        update();
                     }})();
                     </script>
                     """, unsafe_allow_html=True)
