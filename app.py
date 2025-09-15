@@ -356,15 +356,16 @@ def main():
 
         if ended_at_val > 0:
             # ミリ秒に変換（JS に渡す）
-            ended_ms = ended_at_val * 1000
+            # 終了時間をミリ秒に変換
+            ended_ms = int(selected_event_data.get("ended_at", 0)) * 1000
 
-            html = f"""
+            st.markdown(f"""
             <style>
             #sr_persistent_countdown {{
-                position: fixed !important;
-                top: 20px !important;
-                right: 20px !important;
-                z-index: 2147483647 !important;
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 2147483647;
                 background-color: #4CAF50;
                 color: white;
                 padding: 8px 14px;
@@ -379,7 +380,7 @@ def main():
             #sr_persistent_countdown .label {{
                 font-size: 0.75rem;
                 opacity: 0.9;
-                margin-bottom: 2px;
+                display: block;
             }}
             </style>
 
@@ -389,43 +390,50 @@ def main():
             </div>
 
             <script>
-            (function() {{
-                // JavaScript 内の波括弧は {{ }} にエスケープしなくてOK（f-stringだから）
-                const END = {ended_ms};
-                function pad(n) {{ return String(n).padStart(2,'0'); }}
-                function formatMs(ms) {{
-                  if (ms < 0) ms = 0;
-                  let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
-                  s %= 86400;
-                  let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                  if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                  return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
-                }}
-                function update() {{
-                  const diff = END - Date.now();
-                  const timer = document.getElementById('sr_persistent_timer');
-                  const badge = document.getElementById('sr_persistent_countdown');
-                  if (!timer || !badge) return;
-                  if (diff <= 0) {{
-                    timer.textContent = 'イベント終了';
-                    badge.style.backgroundColor = '#808080';
-                    clearInterval(window._sr_persistent_interval);
-                    return;
-                  }}
-                  timer.textContent = formatMs(diff);
-                  const totalSeconds = Math.floor(diff / 1000);
-                  if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                  else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                  else badge.style.backgroundColor = '#4CAF50';
-                }}
-                if (window._sr_persistent_interval) clearInterval(window._sr_persistent_interval);
-                update();
-                window._sr_persistent_interval = setInterval(update, 1000);
-            }})();
-            </script>
-            """
+            document.addEventListener('DOMContentLoaded', function () {{
+              const badge = document.getElementById('sr_persistent_countdown');
+              const timer = document.getElementById('sr_persistent_timer');
+              if (!badge || !timer) return;
 
-            st.markdown(html, unsafe_allow_html=True)
+              const END = parseInt(badge.dataset.end, 10);
+              if (!END || isNaN(END)) return;
+
+              if (window._sr_persistent_interval) clearInterval(window._sr_persistent_interval);
+
+              function pad(n) {{ return String(n).padStart(2,'0'); }}
+              function formatMs(ms) {{
+                if (ms < 0) ms = 0;
+                let s = Math.floor(ms / 1000);
+                let days = Math.floor(s / 86400);
+                s %= 86400;
+                let hh = Math.floor(s / 3600);
+                let mm = Math.floor((s % 3600) / 60);
+                let ss = s % 60;
+                if (days > 0) return days + 'd ' + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+                return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+              }}
+
+              function update() {{
+                const diff = END - Date.now();
+                if (diff <= 0) {{
+                  timer.textContent = 'イベント終了';
+                  badge.style.backgroundColor = '#808080';
+                  clearInterval(window._sr_persistent_interval);
+                  return;
+                }}
+                timer.textContent = formatMs(diff);
+
+                const totalSeconds = Math.floor(diff / 1000);
+                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
+                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                else badge.style.backgroundColor = '#4CAF50';
+              }}
+
+              update();
+              window._sr_persistent_interval = setInterval(update, 1000);
+            }});
+            </script>
+            """, unsafe_allow_html=True)
 
         # ----------------------------
         # --- ここまでを貼り付けてください ---
