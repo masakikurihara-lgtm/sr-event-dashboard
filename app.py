@@ -339,9 +339,9 @@ def main():
     if st.session_state.show_dashboard:
         import logging
         logging.warning("デバッグ: ダッシュボード表示ブロックが実行されました。")
-            if not st.session_state.selected_room_names:
-                st.warning("最低1つのルームを選択してください。")
-                return
+        if not st.session_state.selected_room_names:
+            st.warning("最低1つのルームを選択してください。")
+            return
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("10秒ごとに自動更新されます。")
