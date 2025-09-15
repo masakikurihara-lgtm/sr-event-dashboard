@@ -297,13 +297,13 @@ def main():
         return
 
     with st.form("room_selection_form"):
-        select_top_15 = st.checkbox(
-            "上位15ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
-            key="select_top_15_checkbox")
+        select_top_10 = st.checkbox(
+            "上位10ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
+            key="select_top_10_checkbox")
         room_map = st.session_state.room_map_data
         sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
         room_options = [room[0] for room in sorted_rooms]
-        top_15_rooms = room_options[:15]
+        top_10_rooms = room_options[:10]
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", options=room_options,
             default=st.session_state.multiselect_default_value,
@@ -311,9 +311,9 @@ def main():
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        if st.session_state.select_top_15_checkbox:
-            st.session_state.selected_room_names = top_15_rooms
-            st.session_state.multiselect_default_value = top_15_rooms
+        if st.session_state.select_top_10_checkbox:
+            st.session_state.selected_room_names = top_10_rooms
+            st.session_state.multiselect_default_value = top_10_rooms
             st.session_state.multiselect_key_counter += 1
         else:
             st.session_state.selected_room_names = selected_room_names_temp
