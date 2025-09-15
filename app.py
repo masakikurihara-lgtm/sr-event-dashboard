@@ -393,11 +393,14 @@ def main():
                         function update() {{
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
+                            
                             if (!badge || !timer) {{
+                                // 要素が見つからない場合、タイマーを停止して再試行を待つ
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
                                 return;
                             }}
+                            
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) {{
                                 timer.textContent = 'データなし';
@@ -408,7 +411,8 @@ def main():
                             if (diff <= 0) {{
                                 timer.textContent = 'イベント終了';
                                 badge.style.backgroundColor = '#808080';
-                                if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
+                                clearInterval(window._sr_countdown_interval);
+                                window._sr_countdown_interval = null;
                                 return;
                             }}
                             timer.textContent = formatMs(diff);
@@ -418,19 +422,14 @@ def main():
                             else badge.style.backgroundColor = '#4CAF50';
                         }}
 
-                        // HTML要素がレンダリングされるまで待機する
-                        function startWhenReady() {{
+                        // HTML要素がレンダリングされるまで待機し、見つかったらタイマーを開始する
+                        const checkAndStartTimer = setInterval(() => {{
                             if (document.getElementById('sr_countdown_badge') && document.getElementById('sr_countdown_timer')) {{
-                                // 要素が見つかったら、1秒ごとのタイマーを開始
+                                clearInterval(checkAndStartTimer);
                                 window._sr_countdown_interval = setInterval(update, 1000);
                                 update(); // 初回表示を即時更新
-                            }} else {{
-                                // 要素が見つからない場合、少し待って再試行
-                                setTimeout(startWhenReady, 50);
                             }}
-                        }}
-
-                        startWhenReady();
+                        }}, 50); // 50ミリ秒ごとに要素をチェック
                         
                     }})();
                     </script>
