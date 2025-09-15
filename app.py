@@ -345,7 +345,7 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("10秒ごとに自動更新されます。")
 
-
+            # 1秒刻みのカウントダウンタイマーを配置
             if st.session_state.get("selected_room_names") and selected_event_data:
                 ended_at = selected_event_data.get("ended_at")
                 try:
@@ -357,35 +357,20 @@ def main():
                     ended_ms = ended_at * 1000
                     st.components.v1.html(f"""
                     <style>
-                    /* スクロールしても常に右上に固定されるバッジ */
                     #sr_countdown_badge {{
-                        position: fixed;  /* スクロール追従に必須 */
-                        top: 20px;        /* 画面上からの距離 */
-                        right: 20px;      /* 画面右からの距離 */
-                        z-index: 2147483647; /* 他要素より最前面 */
-                        background-color: #4CAF50;
-                        color: white;
-                        padding: 8px 14px;
-                        border-radius: 8px;
-                        font-size: 1rem;
-                        font-weight: 600;
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-                        font-family: inherit;
-                        transition: background-color 0.4s ease;
-                        pointer-events: none;  /* クリック透過 */
+                        position: fixed; top: 20px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
+                        color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
+                        transition: background-color 0.4s ease; pointer-events: none;
                     }}
                     #sr_countdown_badge .label {{
-                        font-size:0.75rem;
-                        opacity:0.85;
-                        display:block;
+                        font-size:0.75rem; opacity:0.85; display:block;
                     }}
                     </style>
-
                     <div id="sr_countdown_badge" data-end="{ended_ms}">
                       <span class="label">残り時間</span>
                       <span id="sr_countdown_timer">計算中...</span>
                     </div>
-
                     <script>
                     (function() {{
                       function start() {{
@@ -395,7 +380,6 @@ def main():
                         const END = parseInt(badge.dataset.end, 10);
                         if (isNaN(END)) return false;
                         if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-
                         function pad(n) {{ return String(n).padStart(2,'0'); }}
                         function formatMs(ms) {{
                           if (ms < 0) ms = 0;
@@ -441,6 +425,8 @@ def main():
                     st.markdown(f"**<font size='5'>イベント期間</font>**", unsafe_allow_html=True)
                     st.write(f"**{event_period_str}**")
                 with col2:
+                    # ここに1秒刻みのタイマーを配置
+                    # StreamlitのUIにはこの時点で何も表示しない
                     st.markdown(f"**<font size='5'>残り時間</font>**", unsafe_allow_html=True)
                     now = datetime.datetime.now(JST)
                     remaining_seconds = (ended_at_dt - now).total_seconds()
