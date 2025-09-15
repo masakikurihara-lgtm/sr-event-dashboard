@@ -356,12 +356,26 @@ def main():
                 st.markdown(f"""
                 <style>
                 #sr_countdown_badge {{
-                    position: fixed; top: 50px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
-                    color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
-                    transition: background-color 0.4s ease; pointer-events: none;
+                    position: fixed;
+                    top: 50px;
+                    right: 20px;
+                    z-index: 2147483647;
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+                    font-family: inherit;
+                    transition: background-color 0.4s ease;
+                    pointer-events: none;
                 }}
-                #sr_countdown_badge .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
+                #sr_countdown_badge .label {{
+                    font-size:0.75rem;
+                    opacity:0.85;
+                    display:block;
+                }}
                 </style>
                 <div id="sr_countdown_badge" data-end="{ended_ms}">
                   <span class="label">残り時間</span>
@@ -377,19 +391,26 @@ def main():
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) return false;
                             if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
+
                             function pad(n) {{ return String(n).padStart(2,'0'); }}
                             function formatMs(ms) {{
                                 if (ms < 0) ms = 0;
-                                let s = Math.floor(ms / 1000), days = Math.floor(s / 86400); s %= 86400;
-                                let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                                if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                                let s = Math.floor(ms / 1000),
+                                    days = Math.floor(s / 86400);
+                                s %= 86400;
+                                let hh = Math.floor(s / 3600),
+                                    mm = Math.floor((s % 3600) / 60),
+                                    ss = s % 60;
+                                if (days > 0)
+                                    return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                                 return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                             }}
                             function update() {{
                                 const diff = END - Date.now();
                                 if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
-                                    if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
+                                    timer.textContent = 'イベント終了';
+                                    badge.style.backgroundColor = '#808080';
+                                    clearInterval(window._sr_countdown_interval);
                                     return;
                                 }}
                                 timer.textContent = formatMs(diff);
@@ -398,13 +419,19 @@ def main():
                                 else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
                                 else badge.style.backgroundColor = '#4CAF50';
                             }}
-                            update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
-                        }} catch (err) {{ return false; }}
+                            console.log("sr_countdown started with END =", END);
+                            update();
+                            window._sr_countdown_interval = setInterval(update, 1000);
+                            return true;
+                        }} catch (err) {{
+                            console.error("sr_countdown error", err);
+                            return false;
+                        }}
                     }}
                     let retries = 0;
                     const retry = () => {{
-                        if (window._sr_countdown_interval || retries++ > 10) return;
-                        if (!start()) setTimeout(retry, 300);
+                        if (window._sr_countdown_interval || retries++ > 15) return;
+                        if (!start()) setTimeout(retry, 400);
                     }};
                     if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
                     else window.addEventListener('load', retry);
