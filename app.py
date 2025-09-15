@@ -345,6 +345,7 @@ def main():
         st.info("10秒ごとに自動更新されます。")
 
 
+# --- 残り時間バッジ ---
         if st.session_state.get("selected_room_names") and selected_event_data:
             ended_at = selected_event_data.get("ended_at")
             try:
@@ -354,6 +355,9 @@ def main():
 
             if ended_at > 0:
                 ended_ms = ended_at * 1000
+                # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
+                # JavaScriptの起動ロジックを、Streamlitの再レンダリングに対応した
+                # より確実なポーリング方式（要素が見つかるまで試行する方式）に修正
                 st.markdown(f"""
                 <style>
                 #sr_countdown_badge {{
@@ -370,15 +374,18 @@ def main():
                 </div>
                 <script>
                 (function() {{
-                    function start() {{
+                    function startCountdown() {{
                         try {{
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
                             if (!badge || !timer) return false;
+                            
                             const END = parseInt(badge.dataset.end, 10);
                             if (isNaN(END)) return false;
+                            
                             if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                            function pad(n) {{ return String(n).padStart(2,'0'); }}
+                            
+                            function pad(n) {{ return String(n).padStart(2, '0'); }}
                             function formatMs(ms) {{
                                 if (ms < 0) ms = 0;
                                 let s = Math.floor(ms / 1000), days = Math.floor(s / 86400); s %= 86400;
@@ -386,32 +393,43 @@ def main():
                                 if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                                 return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                             }}
+                            
                             function update() {{
                                 const diff = END - Date.now();
                                 if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
+                                    timer.textContent = 'イベント終了';
+                                    badge.style.backgroundColor = '#808080';
                                     if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
                                     return;
                                 }}
                                 timer.textContent = formatMs(diff);
                                 const totalSeconds = Math.floor(diff / 1000);
-                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
+                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b'; // 1時間以内
+                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500'; // 3時間以内
                                 else badge.style.backgroundColor = '#4CAF50';
                             }}
-                            update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
-                        }} catch (err) {{ return false; }}
+                            
+                            update();
+                            window._sr_countdown_interval = setInterval(update, 1000);
+                            return true;
+                        }} catch (err) {{
+                            return false;
+                        }}
                     }}
+
                     let retries = 0;
-                    const retry = () => {{
-                        if (window._sr_countdown_interval || retries++ > 10) return;
-                        if (!start()) setTimeout(retry, 300);
-                    }};
-                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                    else window.addEventListener('load', retry);
+                    function attemptToStart() {{
+                        if (!startCountdown() && retries < 20) {{ // 最大約6秒間試行
+                            retries++;
+                            setTimeout(attemptToStart, 300);
+                        }}
+                    }}
+                    
+                    attemptToStart();
                 }})();
                 </script>
                 """, unsafe_allow_html=True)
+                # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
                 
 
         with st.container(border=True):
