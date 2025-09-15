@@ -342,74 +342,86 @@ def main():
 
         st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
         st.info("10秒ごとに自動更新されます。")
+        
 
-        if st.session_state.get("selected_room_names") and selected_event_data:
-            ended_at = selected_event_data.get("ended_at")
-            try:
-                ended_at = int(ended_at)
-            except Exception:
-                ended_at = 0
+        # イベント終了時刻をミリ秒で取得
+        event_end_ts = int(selected_event_data.get('ended_at', 0)) * 1000
 
-            if ended_at > 0:
-                ended_ms = ended_at * 1000
-                st.markdown(f"""
-                <style>
-                #sr_countdown_badge {{
-                    position: fixed; top: 50px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
-                    color: white; padding: 8px 14px; border-radius: 8px; font-size: 1rem; font-weight: 600;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.18); font-family: inherit;
-                    transition: background-color 0.4s ease; pointer-events: none;
+        # st.components で iframe 内にバッジを描画し、その中だけでカウントダウンを実行
+        st.components.v1.html(f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {{
+              margin:0; padding:0;
+              background: transparent;
+            }}
+            #fixed-countdown {{
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              z-index: 9999;
+              background-color: #4CAF50;
+              color: white;
+              padding: 8px 15px;
+              border-radius: 20px;
+              font-size: 1.2rem;
+              font-weight: bold;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              transition: background-color 0.5s ease;
+            }}
+            #fixed-countdown .label {{
+              font-size: 0.8rem;
+              opacity: 0.8;
+              display: block;
+            }}
+          </style>
+        </head>
+        <body>
+          <div id="fixed-countdown">
+            <span class="label">残り時間</span>
+            <span id="timer">計算中...</span>
+          </div>
+          <script>
+            (function(){{
+              const END = {event_end_ts};
+              const timer = document.getElementById('timer');
+              const badge = document.getElementById('fixed-countdown');
+              function pad(n) {{return String(n).padStart(2,'0');}}
+              function format(ms){{
+                if(ms<0) ms=0;
+                let s=Math.floor(ms/1000);
+                const d=Math.floor(s/86400); s%=86400;
+                const h=Math.floor(s/3600);
+                const m=Math.floor((s%3600)/60);
+                const sec=s%60;
+                return d>0?`${{d}}d ${{pad(h)}}:${{pad(m)}}:${{pad(sec)}}`
+                           :`${{pad(h)}}:${{pad(m)}}:${{pad(sec)}}`;
+              }}
+              function update(){{
+                const diff = END - Date.now();
+                if(diff<=0){{
+                  timer.textContent='イベント終了';
+                  badge.style.backgroundColor='#808080';
+                  clearInterval(window._sr_countdown);
+                  return;
                 }}
-                #sr_countdown_badge .label {{ font-size:0.75rem; opacity:0.85; display:block; }}
-                </style>
-                <div id="sr_countdown_badge" data-end="{ended_ms}">
-                  <span class="label">残り時間</span>
-                  <span id="sr_countdown_timer">計算中...</span>
-                </div>
-                <script>
-                (function() {{
-                    function start() {{
-                        try {{
-                            const badge = document.getElementById('sr_countdown_badge');
-                            const timer = document.getElementById('sr_countdown_timer');
-                            if (!badge || !timer) return false;
-                            const END = parseInt(badge.dataset.end, 10);
-                            if (isNaN(END)) return false;
-                            if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                            function pad(n) {{ return String(n).padStart(2,'0'); }}
-                            function formatMs(ms) {{
-                                if (ms < 0) ms = 0;
-                                let s = Math.floor(ms / 1000), days = Math.floor(s / 86400); s %= 86400;
-                                let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                                if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                            }}
-                            function update() {{
-                                const diff = END - Date.now();
-                                if (diff <= 0) {{
-                                    timer.textContent = 'イベント終了'; badge.style.backgroundColor = '#808080';
-                                    if (window._sr_countdown_interval) clearInterval(window._sr_countdown_interval);
-                                    return;
-                                }}
-                                timer.textContent = formatMs(diff);
-                                const totalSeconds = Math.floor(diff / 1000);
-                                if (totalSeconds <= 3600) badge.style.backgroundColor = '#ff4b4b';
-                                else if (totalSeconds <= 10800) badge.style.backgroundColor = '#ffa500';
-                                else badge.style.backgroundColor = '#4CAF50';
-                            }}
-                            update(); window._sr_countdown_interval = setInterval(update, 1000); return true;
-                        }} catch (err) {{ return false; }}
-                    }}
-                    let retries = 0;
-                    const retry = () => {{
-                        if (window._sr_countdown_interval || retries++ > 10) return;
-                        if (!start()) setTimeout(retry, 300);
-                    }};
-                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                    else window.addEventListener('load', retry);
-                }})();
-                </script>
-                """, unsafe_allow_html=True)
+                timer.textContent=format(diff);
+                const totalSec = diff/1000;
+                badge.style.backgroundColor = totalSec<=3600? '#ff4b4b'
+                  : totalSec<=10800? '#ffa500'
+                  : '#4CAF50';
+              }}
+              update();
+              window._sr_countdown=setInterval(update,1000);
+            }})();
+          </script>
+        </body>
+        </html>
+        """, height=80)
+
 
         with st.container(border=True):
             col1, col2 = st.columns([1, 1])
