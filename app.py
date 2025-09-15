@@ -356,7 +356,7 @@ def main():
 
                 if ended_at > 0:
                     ended_ms = ended_at * 1000
-                    st.markdown(f"""
+                    st.html(f"""
                     <style>
                     #sr_countdown_badge {{
                         position: fixed; top: 50px; right: 20px; z-index: 2147483647; background-color: #4CAF50;
@@ -372,12 +372,11 @@ def main():
                     </div>
                     <script>
                     (function() {{
-                        // タイマーがすでに開始されているか確認するためのグローバル状態変数
-                        if (window._sr_countdown_interval_running) {{
-                            return;
+                        // タイマーがすでに開始されているか確認
+                        if (window._sr_countdown_interval) {{
+                            return; // 既に動いている場合は何もしない
                         }}
-                        window._sr_countdown_interval_running = true;
-                        
+
                         function pad(n) {{ return String(n).padStart(2, '0'); }}
                         
                         function formatMs(ms) {{
@@ -395,10 +394,10 @@ def main():
                             const badge = document.getElementById('sr_countdown_badge');
                             const timer = document.getElementById('sr_countdown_timer');
                             
+                            // 要素が見つからない場合はタイマーを停止
                             if (!badge || !timer) {{
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             
@@ -414,7 +413,6 @@ def main():
                                 badge.style.backgroundColor = '#808080';
                                 clearInterval(window._sr_countdown_interval);
                                 window._sr_countdown_interval = null;
-                                window._sr_countdown_interval_running = false;
                                 return;
                             }}
                             timer.textContent = formatMs(diff);
@@ -425,10 +423,10 @@ def main():
                         }}
 
                         window._sr_countdown_interval = setInterval(update, 1000);
-                        update();
+                        update(); // 初回表示を即時更新
                     }})();
                     </script>
-                    """, unsafe_allow_html=True)
+                    """)
 
             with st.container(border=True):
                 col1, col2 = st.columns([1, 1])
