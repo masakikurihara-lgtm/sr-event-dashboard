@@ -265,80 +265,6 @@ def main():
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
     
-    # バッジの表示を制御する
-    if st.session_state.show_dashboard and selected_event_data: # ★ 修正箇所
-        # JavaScriptでカウントダウンを行うためのHTMLとJavaScriptを埋め込む
-        st.markdown(f"""
-            <style>
-            .fixed-countdown {{
-                position: fixed;
-                top: 100px;
-                right: 15px;
-                z-index: 1000;
-                background-color: #4CAF50;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                transition: background-color 0.5s ease;
-            }}
-            .countdown-label {{
-                font-size: 0.8rem;
-                opacity: 0.8;
-                display: block;
-            }}
-            </style>
-            <div id="countdown-badge" class="fixed-countdown">
-                <span class="countdown-label">残り時間</span>
-                <span id="countdown-timer">計算中...</span>
-            </div>
-            <script>
-                // DOM が完全にロードされた後に実行
-                window.addEventListener('load', function () {{
-                    if (window.myCountdownTimer) {{
-                        clearInterval(window.myCountdownTimer);
-                    }}
-                    const timerElement = document.getElementById('countdown-timer');
-                    const badgeElement = document.getElementById('countdown-badge');
-                    if (!timerElement || !badgeElement) return;
-
-                    const endedAtTimestamp = {{selected_event_data.get('ended_at')}} * 1000;
-
-                    function updateCountdown() {{
-                        const now = Date.now();
-                        const distance = endedAtTimestamp - now;
-                        if (distance <= 0) {{
-                            timerElement.textContent = 'イベント終了';
-                            badgeElement.style.backgroundColor = '#808080';
-                            clearInterval(window.myCountdownTimer);
-                            return;
-                        }}
-                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                        timerElement.textContent =
-                            `${{days}}d ${{String(hours).padStart(2,'0')}}:${{String(minutes).padStart(2,'0')}}:${{String(seconds).padStart(2,'0')}}`;
-
-                        const totalSeconds = distance / 1000;
-                        if (totalSeconds <= 3600) {{
-                            badgeElement.style.backgroundColor = '#ff4b4b';  // 赤
-                        }} else if (totalSeconds <= 10800) {{
-                            badgeElement.style.backgroundColor = '#ffa500';  // オレンジ
-                        }} else {{
-                            badgeElement.style.backgroundColor = '#4CAF50';  // 緑
-                        }}
-                    }}
-
-                    updateCountdown();
-                    window.myCountdownTimer = setInterval(updateCountdown, 1000);
-                }});
-            </script>
-        """, unsafe_allow_html=True)
-
     st.markdown("<h2 style='font-size:2em;'>2. 比較したいルームを選択</h2>", unsafe_allow_html=True)
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
@@ -487,7 +413,7 @@ def main():
                         if (window.myCountdownTimer) {{
                             clearInterval(window.myCountdownTimer);
                         }}
-                        const END = {ended_at_timestamp_ms};
+                        const END = {event_end_ts};
                         const timerEl = document.getElementById('remain_timer');
                         const badgeEl = document.getElementById('countdown-badge');
                         if (!timerEl || !badgeEl) return;
