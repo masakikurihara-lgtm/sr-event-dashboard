@@ -126,6 +126,7 @@ def get_room_event_info(room_id):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
+        # このエラーはmain()でキャッチし、よりユーザーフレンドリーなメッセージを表示する
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
@@ -183,6 +184,7 @@ def get_and_update_gift_log(room_id):
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
 
+# ▼▼▼ 修正箇所(1): premium_room_typeも取得するように修正 ▼▼▼
 def get_onlives_rooms():
     onlives = {}
     try:
@@ -202,18 +204,22 @@ def get_onlives_rooms():
         for room in all_lives:
             room_id = None
             started_at = None
+            premium_room_type = 0
             if isinstance(room, dict):
                 room_id = room.get('room_id')
                 started_at = room.get('started_at')
+                premium_room_type = room.get('premium_room_type', 0)
                 if room_id is None and 'live_info' in room and isinstance(room['live_info'], dict):
                     room_id = room['live_info'].get('room_id')
                     started_at = room['live_info'].get('started_at')
+                    premium_room_type = room['live_info'].get('premium_room_type', 0)
                 if room_id is None and 'room' in room and isinstance(room['room'], dict):
                     room_id = room['room'].get('room_id')
                     started_at = room['room'].get('started_at')
+                    premium_room_type = room['room'].get('premium_room_type', 0)
             if room_id and started_at is not None:
                 try:
-                    onlives[int(room_id)] = started_at
+                    onlives[int(room_id)] = {'started_at': started_at, 'premium_room_type': premium_room_type}
                 except (ValueError, TypeError):
                     continue
     except requests.exceptions.RequestException as e:
@@ -221,6 +227,7 @@ def get_onlives_rooms():
     except (ValueError, AttributeError):
         st.warning("配信情報のJSONデコードまたは解析に失敗しました。")
     return onlives
+# ▲▲▲ 修正箇所(1) ここまで ▲▲▲
 
 def get_rank_color(rank):
     """
@@ -442,6 +449,23 @@ def main():
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
                         
+                        # ▼▼▼ 修正箇所(2): プレミアムライブの事前チェックを追加 ▼▼▼
+                        is_live = int(room_id) in onlives_rooms
+                        is_premium_live = False
+                        if is_live:
+                            live_info = onlives_rooms.get(int(room_id))
+                            if live_info and live_info.get('premium_room_type') == 1:
+                                is_premium_live = True
+
+                        if is_premium_live:
+                            st.info(f"ルーム名 '{room_name}' はプレミアムライブ（有料配信）のため、イベント情報が取得できません。")
+                            data_to_display.append({
+                                "配信中": "🔴", "ルーム名": room_name, "現在の順位": "N/A", "現在のポイント": "N/A",
+                                "上位とのポイント差": "N/A", "下位とのポイント差": "N/A", "配信開始時間": "N/A"
+                            })
+                            continue
+                        # ▲▲▲ 修正箇所(2) ここまで ▲▲▲
+                        
                         if is_event_ended:
                             if room_id in final_ranking_data:
                                 rank = final_ranking_data[room_id].get('rank', 'N/A')
@@ -477,13 +501,14 @@ def main():
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
                         
-                        is_live = int(room_id) in onlives_rooms
+                        # ▼▼▼ 修正箇所(3): is_live判定とstarted_at取得のロジック修正 ▼▼▼
                         started_at_str = ""
                         if is_live:
-                            started_at_ts = onlives_rooms.get(int(room_id))
+                            started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
                             if started_at_ts:
                                 started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
                                 started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+                        # ▲▲▲ 修正箇所(3) ここまで ▲▲▲
 
                         data_to_display.append({
                             "配信中": "🔴" if is_live else "", "ルーム名": room_name,
@@ -597,7 +622,11 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                selected_live_room_ids = {int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() if '配信中' in row and row['配信中'] == '🔴'}
+                # ▼▼▼ 修正箇所(4): onlives_roomsから情報を取得するように修正 ▼▼▼
+                selected_live_room_ids = {
+                    int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
+                    if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
+                }
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
                 for room_id in rooms_to_delete:
                     del st.session_state.gift_log_cache[room_id]
@@ -607,9 +636,15 @@ def main():
                     if room_name in st.session_state.room_map_data:
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         if int(room_id) in onlives_rooms:
-                            live_rooms_data.append({
-                                "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
-                            })
+                            if onlives_rooms.get(int(room_id), {}).get('premium_room_type') != 1:
+                                live_rooms_data.append({
+                                    "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
+                                })
+                            else:
+                                live_rooms_data.append({
+                                    "room_name": room_name, "room_id": room_id, "rank": "N/A"
+                                })
+            # ▲▲▲ 修正箇所(4) ここまで ▲▲▲
             
             room_html_list = []
             if len(live_rooms_data) > 0:
@@ -618,6 +653,21 @@ def main():
                     room_id = room_data['room_id']
                     rank = room_data.get('rank', 'N/A')
                     rank_color = get_rank_color(rank)
+
+                    # ▼▼▼ 修正箇所(5): プレミアムライブの表示ロジックを追加 ▼▼▼
+                    if onlives_rooms.get(int(room_id), {}).get('premium_room_type') == 1:
+                        html_content = f"""
+                        <div class="room-container">
+                            <div class="ranking-label" style="background-color: {rank_color};">--位</div>
+                            <div class="room-title">{room_name}</div>
+                            <div class="gift-list-container">
+                                <p style="text-align: center; padding: 12px 0; color: orange; font-size:12px;">プレミアムライブのため<br>ギフト情報取得不可</p>
+                            </div>
+                        </div>
+                        """
+                        room_html_list.append(html_content)
+                        continue
+                    # ▲▲▲ 修正箇所(5) ここまで ▲▲▲
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_and_update_gift_log(room_id)
