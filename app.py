@@ -499,7 +499,19 @@ def main():
                 df = pd.DataFrame(data_to_display)
                 df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                 df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-                df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+                
+                # ▼▼▼ 修正箇所：終了済みイベント向けのソートロジック ▼▼▼
+                if is_event_ended:
+                    # 順位が0より大きい場合にTrueとなる新しい列を作成
+                    df['has_valid_rank'] = df['現在の順位'] > 0
+                    # 1. 順位が有効なルームを先に表示 (has_valid_rank: True -> False)
+                    # 2. その後、現在の順位で昇順にソート
+                    df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
+                else:
+                    # 開催中のイベントはこれまで通り順位でソート
+                    df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+                # ▲▲▲ 修正箇所ここまで ▲▲▲
+
                 live_status = df['配信中']
                 
                 df = df.drop(columns=['配信中'])
