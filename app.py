@@ -24,7 +24,7 @@ JST = pytz.timezone('Asia/Tokyo')
 def get_events():
     """
     開催中および終了済みのイベントリストを取得する。
-    終了済みイベントには "【終了】" という接頭辞を付ける。
+    終了済みイベントには "■終了■" という接頭辞を付ける。
     """
     all_events = []
     # status=1 (開催中) と status=4 (終了済み) の両方を取得
@@ -59,7 +59,7 @@ def get_events():
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
                     for event in filtered_page_events:
-                        event['event_name'] = f"【終了】 {event['event_name']}"
+                        event['event_name'] = f"■終了■ {event['event_name']}"
 
                 all_events.extend(filtered_page_events)
                 page += 1
