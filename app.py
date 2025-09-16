@@ -350,7 +350,7 @@ def main():
                 return
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-            st.info("10秒ごとに自動更新されます。")
+            st.info("7秒ごとに自動更新されます。")
 
             #st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
 
