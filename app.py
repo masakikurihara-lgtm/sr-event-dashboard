@@ -440,6 +440,20 @@ def main():
 
             data_to_display = []
             if st.session_state.selected_room_names:
+                # プレミアムライブのルームを抽出
+                premium_live_rooms = [
+                    name for name in st.session_state.selected_room_names
+                    if st.session_state.room_map_data and name in st.session_state.room_map_data and
+                    int(st.session_state.room_map_data[name]['room_id']) in onlives_rooms and
+                    onlives_rooms.get(int(st.session_state.room_map_data[name]['room_id']), {}).get('premium_room_type') == 1
+                ]
+
+                # ▼▼▼ 修正箇所: プレミアムライブ用メッセージ表示を追加 ▼▼▼
+                if premium_live_rooms:
+                    room_names_str = '、'.join([f"'{name}'" for name in premium_live_rooms])
+                    st.info(f"{room_names_str} は、プレミアムライブのため、ポイントおよびギフト情報は取得できません。")
+                # ▲▲▲ 修正箇所ここまで ▲▲▲
+
                 for room_name in st.session_state.selected_room_names:
                     try:
                         if room_name not in st.session_state.room_map_data:
@@ -449,7 +463,6 @@ def main():
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
                         
-                        # ▼▼▼ 修正箇所(2): プレミアムライブの事前チェックを追加 ▼▼▼
                         is_live = int(room_id) in onlives_rooms
                         is_premium_live = False
                         if is_live:
@@ -458,13 +471,27 @@ def main():
                                 is_premium_live = True
 
                         if is_premium_live:
-                            st.info(f"ルーム名 '{room_name}' はプレミアムライブ（有料配信）のため、イベント情報が取得できません。")
+                            # プレミアムライブの場合はランキングAPIから順位を取得
+                            # ポイント情報は取得できないため「N/A」を設定
+                            rank = st.session_state.room_map_data[room_name].get('rank')
+
+                            started_at_str = ""
+                            if is_live:
+                                started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
+                                if started_at_ts:
+                                    started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
+                                    started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+
                             data_to_display.append({
-                                "配信中": "🔴", "ルーム名": room_name, "現在の順位": "N/A", "現在のポイント": "N/A",
-                                "上位とのポイント差": "N/A", "下位とのポイント差": "N/A", "配信開始時間": "N/A"
+                                "配信中": "🔴",
+                                "ルーム名": room_name,
+                                "現在の順位": rank,
+                                "現在のポイント": "N/A",
+                                "上位とのポイント差": "N/A",
+                                "下位とのポイント差": "N/A",
+                                "配信開始時間": started_at_str
                             })
                             continue
-                        # ▲▲▲ 修正箇所(2) ここまで ▲▲▲
                         
                         if is_event_ended:
                             if room_id in final_ranking_data:
@@ -501,14 +528,12 @@ def main():
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
                         
-                        # ▼▼▼ 修正箇所(3): is_live判定とstarted_at取得のロジック修正 ▼▼▼
                         started_at_str = ""
                         if is_live:
                             started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
                             if started_at_ts:
                                 started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
                                 started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
-                        # ▲▲▲ 修正箇所(3) ここまで ▲▲▲
 
                         data_to_display.append({
                             "配信中": "🔴" if is_live else "", "ルーム名": room_name,
@@ -642,7 +667,7 @@ def main():
                                 })
                             else:
                                 live_rooms_data.append({
-                                    "room_name": room_name, "room_id": room_id, "rank": "N/A"
+                                    "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
                                 })
             # ▲▲▲ 修正箇所(4) ここまで ▲▲▲
             
@@ -654,11 +679,11 @@ def main():
                     rank = room_data.get('rank', 'N/A')
                     rank_color = get_rank_color(rank)
 
-                    # ▼▼▼ 修正箇所(5): プレミアムライブの表示ロジックを追加 ▼▼▼
+                    # ▼▼▼ 修正箇所(5): プレミアムライブの表示ロジックを修正 ▼▼▼
                     if onlives_rooms.get(int(room_id), {}).get('premium_room_type') == 1:
                         html_content = f"""
                         <div class="room-container">
-                            <div class="ranking-label" style="background-color: {rank_color};">--位</div>
+                            <div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>
                             <div class="room-title">{room_name}</div>
                             <div class="gift-list-container">
                                 <p style="text-align: center; padding: 12px 0; color: orange; font-size:12px;">プレミアムライブのため<br>ギフト情報取得不可</p>
