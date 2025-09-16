@@ -507,6 +507,8 @@ def main():
                     # 1. 順位が有効なルームを先に表示 (has_valid_rank: True -> False)
                     # 2. その後、現在の順位で昇順にソート
                     df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
+                    # ソート用の一時列を削除
+                    df = df.drop(columns=['has_valid_rank'])
                 else:
                     # 開催中のイベントはこれまで通り順位でソート
                     df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
