@@ -293,6 +293,7 @@ def main():
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
+    # --- ▼▼▼ ここからが修正箇所(1) ▼▼▼ ---
     # イベントを変更した場合、「上位10ルームまでを選択」のチェックボックスも初期化する
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
@@ -306,6 +307,7 @@ def main():
             st.session_state.select_top_10_checkbox = False
         st.session_state.show_dashboard = False
         st.rerun()
+    # --- ▲▲▲ ここまでが修正箇所(1) ▲▲▲ ---
 
     room_count_text = ""
     if st.session_state.room_map_data:
@@ -350,71 +352,69 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("7秒ごとに自動更新されます。")
 
-            # ▼▼▼ 修正箇所: 残り時間タイマーを設置 ▼▼▼
-            with st.container(border=True):
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    st.markdown(
-                        f"""
-                        <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                        <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
-                        """, unsafe_allow_html=True
-                    )
-                with col2:
-                    st.markdown(
-                        f"""
-                        <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
-                        <div style="font-weight: bold; font-size: 1.1rem; line-height: 1.2;">
-                            <span id="sr_countdown_timer_in_col" style="color: #4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
-                        </div>
-                        <script>
-                        (function() {{
-                            function start() {{
-                                const timer = document.getElementById('sr_countdown_timer_in_col');
-                                if (!timer) return false;
-                                const END = parseInt(timer.dataset.end, 10);
-                                if (isNaN(END)) return false;
-                                if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
+            #st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
 
-                                function pad(n) {{ return String(n).padStart(2,'0'); }}
-                                function formatMs(ms) {{
-                                    if (ms < 0) ms = 0;
-                                    let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
-                                    s %= 86400;
-                                    let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                                    if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                    return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                }}
-                                function update() {{
-                                    const diff = END - Date.now();
-                                    if (diff <= 0) {{
-                                        timer.textContent = 'イベント終了';
-                                        timer.style.color = '#808080';
-                                        clearInterval(window._sr_countdown_interval_in_col);
-                                        return;
+            with st.container(border=True):
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            st.components.v1.html(f"""
+                            <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
+                            <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
+                            """, height=80)
+                        with col2:
+                            st.components.v1.html(f"""
+                            <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
+                            <div style="font-weight: bold; font-size: 1.1rem; line-height: 1.2;">
+                                <span id="sr_countdown_timer_in_col" style="color: #4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
+                            </div>
+                            </div>
+                            <script>
+                            (function() {{
+                                function start() {{
+                                    const timer = document.getElementById('sr_countdown_timer_in_col');
+                                    if (!timer) return false;
+                                    const END = parseInt(timer.dataset.end, 10);
+                                    if (isNaN(END)) return false;
+                                    if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
+
+                                    function pad(n) {{ return String(n).padStart(2,'0'); }}
+                                    function formatMs(ms) {{
+                                        if (ms < 0) ms = 0;
+                                        let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
+                                        s %= 86400;
+                                        let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                                        if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                                        return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
                                     }}
-                                    timer.textContent = formatMs(diff);
-                                    const totalSeconds = Math.floor(diff / 1000);
-                                    if (totalSeconds <= 3600) timer.style.color = '#ff4b4b';
-                                    else if (totalSeconds <= 10800) timer.style.color = '#ffa500';
-                                    else timer.style.color = '#4CAF50';
+                                    function update() {{
+                                        const diff = END - Date.now();
+                                        if (diff <= 0) {{
+                                            timer.textContent = 'イベント終了';
+                                            timer.style.color = '#808080';
+                                            clearInterval(window._sr_countdown_interval_in_col);
+                                            return;
+                                        }}
+                                        timer.textContent = formatMs(diff);
+                                        const totalSeconds = Math.floor(diff / 1000);
+                                        if (totalSeconds <= 3600) timer.style.color = '#ff4b4b';
+                                        else if (totalSeconds <= 10800) timer.style.color = '#ffa500';
+                                        else timer.style.color = '#4CAF50';
+                                    }}
+                                    update();
+                                    window._sr_countdown_interval_in_col = setInterval(update, 1000);
+                                    return true;
                                 }}
-                                update();
-                                window._sr_countdown_interval_in_col = setInterval(update, 1000);
-                                return true;
-                            }}
-                            let retries = 0;
-                            const retry = () => {{
-                                if (window._sr_countdown_interval_in_col || retries++ > 10) return;
-                                if (!start()) setTimeout(retry, 300);
-                            }};
-                            if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                            else window.addEventListener('load', retry);
-                        }})();
-                        </script>
-                        """, unsafe_allow_html=True
-                    )
-            # ▲▲▲ 修正箇所ここまで ▲▲▲
+                                let retries = 0;
+                                const retry = () => {{
+                                    if (window._sr_countdown_interval_in_col || retries++ > 10) return;
+                                    if (!start()) setTimeout(retry, 300);
+                                }};
+                                if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
+                                else window.addEventListener('load', retry);
+                            }})();
+                            </script>
+                            """, height=80)
+                    
 
             current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
             st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -647,7 +647,7 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                # onlives_roomsから情報を取得するように修正
+                # ▼▼▼ 修正箇所(4): onlives_roomsから情報を取得するように修正 ▼▼▼
                 selected_live_room_ids = {
                     int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
                     if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
@@ -669,6 +669,7 @@ def main():
                                 live_rooms_data.append({
                                     "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
                                 })
+            # ▲▲▲ 修正箇所(4) ここまで ▲▲▲
             
             room_html_list = []
             if len(live_rooms_data) > 0:
@@ -678,7 +679,7 @@ def main():
                     rank = room_data.get('rank', 'N/A')
                     rank_color = get_rank_color(rank)
 
-                    # プレミアムライブの表示ロジックを修正
+                    # ▼▼▼ 修正箇所(5): プレミアムライブの表示ロジックを修正 ▼▼▼
                     if onlives_rooms.get(int(room_id), {}).get('premium_room_type') == 1:
                         html_content = f"""
                         <div class="room-container">
@@ -691,6 +692,7 @@ def main():
                         """
                         room_html_list.append(html_content)
                         continue
+                    # ▲▲▲ 修正箇所(5) ここまで ▲▲▲
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_and_update_gift_log(room_id)
