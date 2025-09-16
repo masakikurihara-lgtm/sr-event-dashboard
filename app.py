@@ -338,16 +338,16 @@ def main():
         st.rerun()
     
     if st.session_state.show_dashboard:
-        st.markdown("""
-            <style>
-                .st-emotion-cache-18j2i2a.e1f1d6gn0 > .st-emotion-cache-163m43y {
-                    position: -webkit-sticky;
-                    position: sticky;
-                    top: 0;
-                    z-index: 999;
-                }
-            </style>
-            """, unsafe_allow_html=True)
+            st.markdown("""
+                <style>
+                    .st-emotion-cache-18j2i2a.e1f1d6gn0 > .st-emotion-cache-163m43y {
+                        position: -webkit-sticky;
+                        position: sticky;
+                        top: 0;
+                        z-index: 999;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
             if not st.session_state.selected_room_names:
                 st.warning("最低1つのルームを選択してください。")
                 return
