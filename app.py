@@ -610,7 +610,7 @@ def main():
             if is_event_ended:
                 gift_history_title += " <span style='font-size: 14px;'>（イベントは終了しましたが、現在配信中のルームのみ表示）</span>"
             else:
-                gift_history_title += " <span style='font-size: 14px;'>（配信中のルームのみ表示）</span>"
+                gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
             st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
