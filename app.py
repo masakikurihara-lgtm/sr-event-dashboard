@@ -20,7 +20,7 @@ st.set_page_config(
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
 
-#@st.cache_data(ttl=3600)
+@st.cache_data(ttl=600)
 def get_events():
     """
     開催中および終了済みのイベントリストを取得する。
