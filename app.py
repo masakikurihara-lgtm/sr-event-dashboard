@@ -414,11 +414,8 @@ def main():
             st.write(f"最終更新日時 (日本時間): {current_time}")
 
             is_event_ended = datetime.datetime.now(JST) > ended_at_dt
-            # ▼▼▼ 修正箇所 ▼▼▼
-            # is_closedがFalseかつイベントが終了している場合、集計中と判断
             is_closed = selected_event_data.get('is_closed', True)
             is_aggregating = is_event_ended and not is_closed
-            # ▲▲▲ 修正箇所 ▲▲▲
             
             final_ranking_data = {}
             if is_event_ended:
@@ -542,14 +539,19 @@ def main():
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
                 
-                # ▼▼▼ 修正箇所 ▼▼▼
                 if is_aggregating:
                     # 集計中の場合はポイントを「集計中」とし、差の計算は行わない
                     df['現在のポイント'] = '集計中'
                     df['上位とのポイント差'] = 'N/A'
                     df['下位とのポイント差'] = 'N/A'
                     df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-                    df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+                    
+                    # ▼▼▼ 修正箇所 ▼▼▼
+                    # 順位が0より大きいルームを優先してソートするロジックを適用
+                    df['has_valid_rank'] = df['現在の順位'] > 0
+                    df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
+                    df = df.drop(columns=['has_valid_rank'])
+                    # ▲▲▲ 修正箇所 ▲▲▲
                     
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
@@ -578,7 +580,6 @@ def main():
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
-                # ▲▲▲ 修正箇所 ▲▲▲
 
                 st.subheader("📊 比較対象ルームのステータス")
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
@@ -594,8 +595,6 @@ def main():
                         
                         df_to_format = df.copy()
                         
-                        # ▼▼▼ 修正箇所 ▼▼▼
-                        # 集計中でない場合のみ数値フォーマットを適用
                         if not is_aggregating:
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
                                 df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
@@ -604,7 +603,6 @@ def main():
                                 {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                         else:
                              styled_df = df_to_format.style.apply(highlight_rows, axis=1)
-                        # ▲▲▲ 修正箇所 ▲▲▲
                         
                         table_height_css = """
                         <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
@@ -751,8 +749,6 @@ def main():
             
             st.subheader("📈 ポイントと順位の比較")
             
-            # ▼▼▼ 修正箇所 ▼▼▼
-            # is_aggregatingがTrueの場合、ポイントが '集計中' となるためグラフは表示しない
             if not is_aggregating:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
                 points_container = st.container()
@@ -788,7 +784,6 @@ def main():
                         fig_lower_gap.update_layout(uirevision="const")
             else:
                 st.info("イベントポイント集計中のため、グラフは表示されません。")
-            # ▲▲▲ 修正箇所 ▲▲▲
                     
             st_autorefresh(interval=7000, limit=None, key="data_refresh")
         
