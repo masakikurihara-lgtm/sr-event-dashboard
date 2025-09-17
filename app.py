@@ -184,7 +184,6 @@ def get_and_update_gift_log(room_id):
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
 
-# ▼▼▼ 修正箇所(1): premium_room_typeも取得するように修正 ▼▼▼
 def get_onlives_rooms():
     onlives = {}
     try:
@@ -227,7 +226,6 @@ def get_onlives_rooms():
     except (ValueError, AttributeError):
         st.warning("配信情報のJSONデコードまたは解析に失敗しました。")
     return onlives
-# ▲▲▲ 修正箇所(1) ここまで ▲▲▲
 
 def get_rank_color(rank):
     """
@@ -293,7 +291,6 @@ def main():
     selected_event_key = selected_event_data.get('event_url_key', '')
     selected_event_id = selected_event_data.get('event_id')
 
-    # --- ▼▼▼ ここからが修正箇所(1) ▼▼▼ ---
     # イベントを変更した場合、「上位10ルームまでを選択」のチェックボックスも初期化する
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
@@ -307,7 +304,6 @@ def main():
             st.session_state.select_top_10_checkbox = False
         st.session_state.show_dashboard = False
         st.rerun()
-    # --- ▲▲▲ ここまでが修正箇所(1) ▲▲▲ ---
 
     room_count_text = ""
     if st.session_state.room_map_data:
@@ -351,8 +347,6 @@ def main():
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
             st.info("7秒ごとに自動更新されます。")
-
-            #st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
@@ -420,6 +414,11 @@ def main():
             st.write(f"最終更新日時 (日本時間): {current_time}")
 
             is_event_ended = datetime.datetime.now(JST) > ended_at_dt
+            # ▼▼▼ 修正箇所 ▼▼▼
+            # is_closedがFalseかつイベントが終了している場合、集計中と判断
+            is_closed = selected_event_data.get('is_closed', True)
+            is_aggregating = is_event_ended and not is_closed
+            # ▲▲▲ 修正箇所 ▲▲▲
             
             final_ranking_data = {}
             if is_event_ended:
@@ -440,7 +439,6 @@ def main():
 
             data_to_display = []
             if st.session_state.selected_room_names:
-                # プレミアムライブのルームを抽出
                 premium_live_rooms = [
                     name for name in st.session_state.selected_room_names
                     if st.session_state.room_map_data and name in st.session_state.room_map_data and
@@ -448,11 +446,9 @@ def main():
                     onlives_rooms.get(int(st.session_state.room_map_data[name]['room_id']), {}).get('premium_room_type') == 1
                 ]
 
-                # ▼▼▼ 修正箇所: プレミアムライブ用メッセージ表示を追加 ▼▼▼
                 if premium_live_rooms:
                     room_names_str = '、'.join([f"'{name}'" for name in premium_live_rooms])
                     st.info(f"{room_names_str} は、プレミアムライブのため、ポイントおよびスペシャルギフト履歴情報は取得できません。")
-                # ▲▲▲ 修正箇所ここまで ▲▲▲
 
                 for room_name in st.session_state.selected_room_names:
                     try:
@@ -471,8 +467,6 @@ def main():
                                 is_premium_live = True
 
                         if is_premium_live:
-                            # プレミアムライブの場合はランキングAPIから順位を取得
-                            # ポイント情報は取得できないため「N/A」を設定
                             rank = st.session_state.room_map_data[room_name].get('rank')
 
                             started_at_str = ""
@@ -547,36 +541,44 @@ def main():
 
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
-                df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-                df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
                 
-                # ▼▼▼ 修正箇所：終了済みイベント向けのソートロジック ▼▼▼
-                if is_event_ended:
-                    # 順位が0より大きい場合にTrueとなる新しい列を作成
-                    df['has_valid_rank'] = df['現在の順位'] > 0
-                    # 1. 順位が有効なルームを先に表示 (has_valid_rank: True -> False)
-                    # 2. その後、現在の順位で昇順にソート
-                    df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
-                    # ソート用の一時列を削除
-                    df = df.drop(columns=['has_valid_rank'])
-                else:
-                    # 開催中のイベントはこれまで通り順位でソート
+                # ▼▼▼ 修正箇所 ▼▼▼
+                if is_aggregating:
+                    # 集計中の場合はポイントを「集計中」とし、差の計算は行わない
+                    df['現在のポイント'] = '集計中'
+                    df['上位とのポイント差'] = 'N/A'
+                    df['下位とのポイント差'] = 'N/A'
+                    df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                     df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
-                # ▲▲▲ 修正箇所ここまで ▲▲▲
+                    
+                    started_at_column = df['配信開始時間']
+                    df = df.drop(columns=['配信開始時間'])
+                    df.insert(1, '配信開始時間', started_at_column)
+                else:
+                    # 通常時の処理
+                    df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+                    df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+                    
+                    if is_event_ended:
+                        df['has_valid_rank'] = df['現在の順位'] > 0
+                        df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
+                        df = df.drop(columns=['has_valid_rank'])
+                    else:
+                        df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
 
-                live_status = df['配信中']
-                
-                df = df.drop(columns=['配信中'])
-                
-                df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-                if not df.empty:
-                    df.at[0, '上位とのポイント差'] = 0
-                df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
-                df.insert(0, '配信中', live_status)
-                
-                started_at_column = df['配信開始時間']
-                df = df.drop(columns=['配信開始時間'])
-                df.insert(1, '配信開始時間', started_at_column)
+                    live_status = df['配信中']
+                    df = df.drop(columns=['配信中'])
+                    
+                    df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
+                    if not df.empty:
+                        df.at[0, '上位とのポイント差'] = 0
+                    df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+                    df.insert(0, '配信中', live_status)
+                    
+                    started_at_column = df['配信開始時間']
+                    df = df.drop(columns=['配信開始時間'])
+                    df.insert(1, '配信開始時間', started_at_column)
+                # ▲▲▲ 修正箇所 ▲▲▲
 
                 st.subheader("📊 比較対象ルームのステータス")
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
@@ -589,11 +591,20 @@ def main():
                                 return ['background-color: #fcfcfc'] * len(row)
                             else:
                                 return [''] * len(row)
+                        
                         df_to_format = df.copy()
-                        for col in required_cols:
-                            df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
-                        styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
-                            {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                        
+                        # ▼▼▼ 修正箇所 ▼▼▼
+                        # 集計中でない場合のみ数値フォーマットを適用
+                        if not is_aggregating:
+                            for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
+                                df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
+                            
+                            styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
+                                {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                        else:
+                             styled_df = df_to_format.style.apply(highlight_rows, axis=1)
+                        # ▲▲▲ 修正箇所 ▲▲▲
                         
                         table_height_css = """
                         <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
@@ -647,7 +658,6 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                # ▼▼▼ 修正箇所(4): onlives_roomsから情報を取得するように修正 ▼▼▼
                 selected_live_room_ids = {
                     int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
                     if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
@@ -669,7 +679,6 @@ def main():
                                 live_rooms_data.append({
                                     "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
                                 })
-            # ▲▲▲ 修正箇所(4) ここまで ▲▲▲
             
             room_html_list = []
             if len(live_rooms_data) > 0:
@@ -679,7 +688,6 @@ def main():
                     rank = room_data.get('rank', 'N/A')
                     rank_color = get_rank_color(rank)
 
-                    # ▼▼▼ 修正箇所(5): プレミアムライブの表示ロジックを修正 ▼▼▼
                     if onlives_rooms.get(int(room_id), {}).get('premium_room_type') == 1:
                         html_content = f"""
                         <div class="room-container">
@@ -692,7 +700,6 @@ def main():
                         """
                         room_html_list.append(html_content)
                         continue
-                    # ▲▲▲ 修正箇所(5) ここまで ▲▲▲
 
                     if int(room_id) in onlives_rooms:
                         gift_log = get_and_update_gift_log(room_id)
@@ -743,38 +750,45 @@ def main():
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
-            color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
-            points_container = st.container()
+            
+            # ▼▼▼ 修正箇所 ▼▼▼
+            # is_aggregatingがTrueの場合、ポイントが '集計中' となるためグラフは表示しない
+            if not is_aggregating:
+                color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
+                points_container = st.container()
 
-            with points_container:
-                if '現在のポイント' in df.columns:
-                    fig_points = px.bar(
-                        df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
-                        color_discrete_map=color_map, hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
-                        labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
-                    )
-                    st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
-                    fig_points.update_layout(uirevision="const")
+                with points_container:
+                    if '現在のポイント' in df.columns:
+                        fig_points = px.bar(
+                            df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
+                            color_discrete_map=color_map, hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
+                            labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
+                        )
+                        st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
+                        fig_points.update_layout(uirevision="const")
 
-                if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
-                    df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
-                    fig_upper_gap = px.bar(
-                        df, x="ルーム名", y="上位とのポイント差", title="上位とのポイント差", color="ルーム名",
-                        color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
-                        labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
-                    )
-                    st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
-                    fig_upper_gap.update_layout(uirevision="const")
+                    if len(st.session_state.selected_room_names) > 1 and "上位とのポイント差" in df.columns:
+                        df['上位とのポイント差'] = pd.to_numeric(df['上位とのポイント差'], errors='coerce')
+                        fig_upper_gap = px.bar(
+                            df, x="ルーム名", y="上位とのポイント差", title="上位とのポイント差", color="ルーム名",
+                            color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
+                            labels={"上位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
+                        )
+                        st.plotly_chart(fig_upper_gap, use_container_width=True, key="upper_gap_chart")
+                        fig_upper_gap.update_layout(uirevision="const")
 
-                if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
-                    df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
-                    fig_lower_gap = px.bar(
-                        df, x="ルーム名", y="下位とのポイント差", title="下位とのポイント差", color="ルーム名",
-                        color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
-                        labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
-                    )
-                    st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
-                    fig_lower_gap.update_layout(uirevision="const")
+                    if len(st.session_state.selected_room_names) > 1 and "下位とのポイント差" in df.columns:
+                        df['下位とのポイント差'] = pd.to_numeric(df['下位とのポイント差'], errors='coerce')
+                        fig_lower_gap = px.bar(
+                            df, x="ルーム名", y="下位とのポイント差", title="下位とのポイント差", color="ルーム名",
+                            color_discrete_map=color_map, hover_data=["現在の順位", "現在のポイント"],
+                            labels={"下位とのポイント差": "ポイント差", "ルーム名": "ルーム名"}
+                        )
+                        st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
+                        fig_lower_gap.update_layout(uirevision="const")
+            else:
+                st.info("イベントポイント集計中のため、グラフは表示されません。")
+            # ▲▲▲ 修正箇所 ▲▲▲
                     
             st_autorefresh(interval=7000, limit=None, key="data_refresh")
         
