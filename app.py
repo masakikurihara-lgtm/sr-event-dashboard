@@ -888,9 +888,9 @@ def main():
                         )
 
                     # 各テーブルのHTML生成
-                    large_html = f"<h4 style='font-size:1em;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
-                    small_html = f"<h4>有償SG（500G未満）※連打考慮外</h4>{df_to_html_table(pd.DataFrame(small_table))}"
-                    rainbow_html = f"<h4>レインボースター系</h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
+                    large_html = f"<h4 style='font-size:1.2em;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
+                    small_html = f"<h4 style='font-size:1.2em;'>有償SG（500G未満）※連打考慮外</h4>{df_to_html_table(pd.DataFrame(small_table))}"
+                    rainbow_html = f"<h4 style='font-size:1.2em;'>レインボースター系</h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
                     # 3カラムを flexbox で横並びにし、全体を枠で囲う
                     container_html = f"""
