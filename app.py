@@ -827,7 +827,11 @@ def main():
                         target_rank = st.session_state.room_map_data.get(selected_target_room, {}).get('rank')
 
                     # 表示メッセージ
-                    lower_gap_text = f"※下位とのポイント差: {target_lower_gap if target_lower_gap is not None else 'N/A'} pt"
+                    lower_gap_text = (
+                        f"※下位とのポイント差: {target_lower_gap:,} pt"
+                        if target_lower_gap is not None
+                        else "※下位とのポイント差: N/A"
+                    )
 
                     if diff > 0:
                         st.markdown(
