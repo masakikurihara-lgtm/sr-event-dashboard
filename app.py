@@ -846,7 +846,7 @@ def main():
                             unsafe_allow_html=True
                         )
 
-                    st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
 
                     # ギフト計算
