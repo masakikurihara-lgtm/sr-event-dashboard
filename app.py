@@ -824,11 +824,22 @@ def main():
                     # 表示メッセージ
                     lower_gap_text = f"※下位とのポイント差: {target_lower_gap if target_lower_gap is not None else 'N/A'} pt"
                     if diff > 0:
-                        st.success(f"<span style='font-size:1.2rem; font-weight:bold;'>{abs(diff):,}</span> pt リード しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
+                        st.success(
+                            f"<span style='font-size:1.3rem; font-weight:bold;'>{abs(diff):,}</span> pt リード しています"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}",
+                            unsafe_allow_html=True
+                        )
                     elif diff < 0:
-                        st.warning(f"<span style='font-size:1.2rem; font-weight:bold;'>{abs(diff):,}</span> pt ビハインド です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
+                        st.warning(
+                            f"<span style='font-size:1.3rem; font-weight:bold;'>{abs(diff):,}</span> pt ビハインド です"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}",
+                            unsafe_allow_html=True
+                        )
                     else:
-                        st.info(f"ポイントは同点です（<span style='font-size:1.2rem; font-weight:bold;'>{target_point:,}</span> pt）。 {lower_gap_text}")
+                        st.info(
+                            f"<span style='font-size:1.3rem; font-weight:bold;'>{target_point:,}</span> pt 同点です。 {lower_gap_text}",
+                            unsafe_allow_html=True
+                        )
 
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
 
