@@ -881,37 +881,29 @@ def main():
                     # ▼必要なギフト例（フォントサイズ拡大）
                     st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
 
-                    # HTMLテーブル作成関数（インデックス列非表示）
                     def df_to_html_table(df):
                         return df.to_html(index=False, justify="center", border=0).replace(
                             '<table border="0" class="dataframe">',
                             '<table style="border-collapse:collapse; width:100%;">'
                         )
 
-                    # --- コンテナ枠開始 + カラム全体を内包 ---
-                    st.markdown(
-                        """
-                        <div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    # 各テーブルのHTML生成
+                    large_html = f"<h4>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
+                    small_html = f"<h4>有償SG（500G未満）※連打考慮外</h4>{df_to_html_table(pd.DataFrame(small_table))}"
+                    rainbow_html = f"<h4>レインボースター系</h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
-                    # st.columns を div 内で使用
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.markdown("**有償SG（500G以上）**")
-                        st.markdown(df_to_html_table(pd.DataFrame(large_table)), unsafe_allow_html=True)
+                    # 3カラムを flexbox で横並びにし、全体を枠で囲う
+                    container_html = f"""
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>
+                      <div style='display:flex; justify-content:space-between; gap:20px;'>
+                        <div style='flex:1;'>{large_html}</div>
+                        <div style='flex:1;'>{small_html}</div>
+                        <div style='flex:1;'>{rainbow_html}</div>
+                      </div>
+                    </div>
+                    """
 
-                    with col2:
-                        st.markdown("**有償SG（500G未満）※連打考慮外**")
-                        st.markdown(df_to_html_table(pd.DataFrame(small_table)), unsafe_allow_html=True)
-
-                    with col3:
-                        st.markdown("**レインボースター系**")
-                        st.markdown(df_to_html_table(pd.DataFrame(rainbow_table)), unsafe_allow_html=True)
-
-                    # --- コンテナ枠終了（カラムと表を内包した後に閉じる） ---
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(container_html, unsafe_allow_html=True)
                 else:
                     st.info("ターゲットルームを選択してください。")
             # --- ここまで戦闘モード修正版 ---
