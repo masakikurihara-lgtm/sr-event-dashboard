@@ -850,7 +850,7 @@ def main():
                         )
 
                     st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
-                    st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: -5px;'></div>", unsafe_allow_html=True)
             
                     # ギフト計算
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
@@ -909,7 +909,7 @@ def main():
             # --- ここまで戦闘モード修正版 ---
 
 
-            st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 55px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             
