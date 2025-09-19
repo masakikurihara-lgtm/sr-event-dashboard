@@ -584,7 +584,24 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
-                st.subheader("📊 比較対象ルームのステータス")
+                st.markdown(
+                    """
+                    <style>
+                    /* 独自クラスで padding を上書き */
+                    h3.custom-status-title {
+                        padding-top: 0 !important;
+                        padding-bottom: 4px !important; /* 好みの値に調整 */
+                        margin: 0 !important;           /* 必要に応じてマージンも詰める */
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    "<h3 class='custom-status-title'>📊 比較対象ルームのステータス</h3>",
+                    unsafe_allow_html=True
+                )
+
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
