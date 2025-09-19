@@ -880,7 +880,7 @@ def main():
                     }
 
                     # ▼必要なギフト例（フォントサイズ拡大）
-                    st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例<span style='font-size: 14px;'>有償SG&レインボースター</span></span>", unsafe_allow_html=True)
 
                     def df_to_html_table(df):
                         return df.to_html(index=False, justify="center", border=0).replace(
