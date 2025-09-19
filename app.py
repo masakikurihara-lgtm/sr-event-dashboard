@@ -853,8 +853,8 @@ def main():
                         st.info(f"対象 `{selected_target_room}` と `{selected_enemy_room}` のポイントは同点です（{target_point:,} pt）。")
 
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}**")
-                    st.markdown(f"- 対象の現在ポイント: **{target_point:,} pt**")
-                    st.markdown(f"- 対象の下位とのポイント差: **{target_lower_gap if target_lower_gap is not None else 'N/A'}**")
+                    #st.markdown(f"- 対象の現在ポイント: **{target_point:,} pt**")
+                    #st.markdown(f"- 対象の下位とのポイント差: **{target_lower_gap if target_lower_gap is not None else 'N/A'}**")
 
                     # 必要ギフト例（連打数無しの簡易算出）
                     # large SG (>=500): per gift point = sg * 3
