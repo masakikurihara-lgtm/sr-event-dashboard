@@ -643,7 +643,7 @@ def main():
                 gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
-            #st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
             gift_container = st.container()        
             css_style = """
@@ -700,7 +700,6 @@ def main():
                                 })
             
             room_html_list = []
-            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
@@ -765,7 +764,7 @@ def main():
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
-                gift_container.info("選択されたルームに現在配信中のルームはありません。")
+                gift_container.info("<div style='margin-top: -16px;'>選択されたルームに現在配信中のルームはありません。</div>")
             
 
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
