@@ -584,16 +584,22 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
-                # 📌 見出しとテーブル間の隙間を詰めるCSS
+                # 📌 見出しとテーブル間の隙間を詰めるCSS（ラッパーも含めて調整）
                 st.markdown(
                     """
                     <style>
                     /* 見出しの下余白を詰める */
                     h3.custom-status-title {
-                        margin-bottom: 0px !important;
+                        margin-bottom: 2px !important;
                     }
-                    /* データフレームを囲むコンテナの上余白も詰める */
-                    div[data-testid="stDataFrame"] {
+                    /* DataFrame のラッパー全体の余白を詰める */
+                    div[data-testid="stVerticalBlock"] div[data-testid="stDataFrame"] {
+                        margin-top: 0 !important;
+                        padding-top: 0 !important;
+                    }
+                    /* DataFrame の親コンテナの余白をさらに詰める */
+                    div[data-testid="stVerticalBlock"] {
+                        padding-top: 0 !important;
                         margin-top: 0 !important;
                     }
                     </style>
