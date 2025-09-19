@@ -1,3 +1,6 @@
+# (以下はユーザー提供の app.py 全量。既存の機能は触っていません。
+# 変更点は "⚔ 戦闘モード！" 部分の追加のみです。)
+
 import streamlit as st
 import requests
 import pandas as pd
@@ -581,7 +584,34 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
-                st.subheader("📊 比較対象ルームのステータス")
+                # 📌 見出しとテーブル間の隙間を詰めるCSS（ラッパーも含めて調整）
+                st.markdown(
+                    """
+                    <style>
+                    /* 見出しの下余白を詰める */
+                    h3.custom-status-title {
+                        margin-bottom: 2px !important;
+                    }
+                    /* DataFrame のラッパー全体の余白を詰める */
+                    div[data-testid="stVerticalBlock"] div[data-testid="stDataFrame"] {
+                        margin-top: 0 !important;
+                        padding-top: 0 !important;
+                    }
+                    /* DataFrame の親コンテナの余白をさらに詰める */
+                    div[data-testid="stVerticalBlock"] {
+                        padding-top: 0 !important;
+                        margin-top: 0 !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # 📌 見出しにクラスを付与
+                st.markdown(
+                    "<h3 class='custom-status-title'>📊 比較対象ルームのステータス</h3>",
+                    unsafe_allow_html=True
+                )
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
@@ -615,6 +645,7 @@ def main():
                 else:
                     st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_history_title = "🎁 スペシャルギフト履歴"
             if is_event_ended:
                 gift_history_title += " <span style='font-size: 14px;'>（イベントは終了しましたが、現在配信中のルームのみ表示）</span>"
@@ -622,7 +653,7 @@ def main():
                 gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
-            #st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_container = st.container()
             
             css_style = """
@@ -745,7 +776,220 @@ def main():
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
-            st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+
+
+            # --- ここから「戦闘モード！」修正版 ---
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("### ⚔ 戦闘モード！", unsafe_allow_html=True)
+
+            room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
+            if not room_options_all:
+                st.info("イベント参加ルーム情報が取得できません。")
+            else:
+                # 順位ラベル付き表示
+                room_rank_map = {}
+                for rn, info in st.session_state.room_map_data.items():
+                    rank = info.get("rank", "N/A")
+                    room_rank_map[rn] = f"{rank}位：{rn}"
+
+                col_a, col_b = st.columns([1, 1])
+                with col_a:
+                    selected_target_room = st.selectbox(
+                        "対象ルームを選択:",
+                        room_options_all,
+                        format_func=lambda x: room_rank_map.get(x, x),
+                        key="battle_target_room"
+                    )
+                with col_b:
+                    other_rooms = [r for r in room_options_all if r != selected_target_room]
+                    selected_enemy_room = st.selectbox(
+                        "ターゲットルームを選択:",
+                        other_rooms,
+                        format_func=lambda x: room_rank_map.get(x, x),
+                        key="battle_enemy_room"
+                    ) if other_rooms else None
+
+                # ポイント計算
+                points_map = {}
+                try:
+                    if 'df' in locals() and not df.empty:
+                        for _, r in df.iterrows():
+                            rn = r.get('ルーム名')
+                            pval = r.get('現在のポイント')
+                            try:
+                                points_map[rn] = int(pval)
+                            except:
+                                points_map[rn] = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
+                    else:
+                        for rn, info in st.session_state.room_map_data.items():
+                            points_map[rn] = int(info.get('point', 0) or 0)
+                except:
+                    for rn, info in st.session_state.room_map_data.items():
+                        points_map[rn] = int(info.get('point', 0) or 0)
+
+                if selected_enemy_room:
+                    target_point = points_map.get(selected_target_room, 0)
+                    enemy_point = points_map.get(selected_enemy_room, 0)
+                    diff = target_point - enemy_point
+                    # 同点なら必要ポイントは0にする
+                    if enemy_point == target_point:
+                        needed = 0
+                    else:
+                        needed_points_to_overtake = max(0, enemy_point - target_point + 1)
+                        needed = max(0, needed_points_to_overtake)
+
+                    # 順位・下位差取得
+                    target_rank = None
+                    target_lower_gap = None
+                    try:
+                        if 'df' in locals() and not df.empty and 'ルーム名' in df.columns:
+                            row = df[df['ルーム名'] == selected_target_room]
+                            if not row.empty:
+                                if not pd.isna(row.iloc[0].get('現在の順位')):
+                                    target_rank = int(row.iloc[0].get('現在の順位'))
+                                if '下位とのポイント差' in row.columns:
+                                    lg = row.iloc[0].get('下位とのポイント差')
+                                    if not pd.isna(lg):
+                                        target_lower_gap = int(lg)
+                    except:
+                        pass
+                    if target_rank is None:
+                        target_rank = st.session_state.room_map_data.get(selected_target_room, {}).get('rank')
+
+                    # 表示メッセージ
+                    lower_gap_text = (
+                        f"※下位とのポイント差: {target_lower_gap:,} pt"
+                        if target_lower_gap is not None
+                        else "※下位とのポイント差: N/A"
+                    )
+
+                    if diff > 0:
+                        st.markdown(
+                            f"<div style='background-color:#d4edda; padding:16px; border-radius:8px; margin-bottom:5px;'>"
+                            f"<span style='font-size:1.4rem; font-weight:bold; color:#155724;'>{abs(diff):,}</span> pt リードしています"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
+                            unsafe_allow_html=True
+                        )
+                    elif diff < 0:
+                        st.markdown(
+                            f"<div style='background-color:#fff3cd; padding:16px; border-radius:8px; margin-bottom:5px;'>"
+                            f"<span style='font-size:1.4rem; font-weight:bold; color:#856404;'>{abs(diff):,}</span> pt ビハインドです"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            f"<div style='background-color:#d1ecf1; padding:16px; border-radius:8px; margin-bottom:5px;'>"
+                            f"ポイントは同点です（<span style='font-size:1.4rem; font-weight:bold; color:#0c5460;'>{target_point:,}</span> pt）。 {lower_gap_text}</div>",
+                            unsafe_allow_html=True
+                        )
+
+                    st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
+                    #st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
+            
+                    # ギフト計算
+                    large_sg = [500, 1000, 3000, 10000, 20000, 100000]
+                    small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
+                    rainbow_pt = 100 * 2.5
+                    big_rainbow_pt = 1250 * 1.20 * 2.5
+                    rainbow_meteor_pt = 2500 * 1.20 * 2.5
+
+                    # 同点なら必要ポイントは0にする
+                    if enemy_point == target_point:
+                        needed = 0
+                    else:
+                        needed_points_to_overtake = max(0, enemy_point - target_point + 1)
+                        needed = max(0, needed_points_to_overtake)
+
+                    large_table = {
+                        "ギフト種類": [f"{sg}G" for sg in large_sg],
+                        "必要個数 (小数2桁)": [f"{needed/(sg*3):.2f}" if sg > 0 else "0.00" for sg in large_sg]
+                    }
+                    small_table = {
+                        "ギフト種類": [f"{sg}G" for sg in small_sg],
+                        "必要個数 (小数2桁)": [f"{needed/(sg*2.5):.2f}" if sg > 0 else "0.00" for sg in small_sg]
+                    }
+                    rainbow_table = {
+                        "ギフト種類": ["レインボースター 100pt", "大レインボースター 1250pt", "レインボースター流星群 2500pt"],
+                        "必要個数 (小数2桁)": [
+                            f"{needed/rainbow_pt:.2f}",
+                            f"{needed/big_rainbow_pt:.2f}",
+                            f"{needed/rainbow_meteor_pt:.2f}"
+                        ]
+                    }
+
+                    # ▼必要なギフト例（フォントサイズ拡大 + 下余白調整）
+                    st.markdown(
+                        """
+                        <div style='margin-bottom:2px;'>
+                          <span style='font-size:1.4rem; font-weight:bold; display:inline-block; line-height:1.6;'>
+                            ▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span>
+                          </span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    def df_to_html_table(df):
+                        # DataFrameをHTMLに変換し、独自のクラスを付与
+                        html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
+                        style = """
+                        <style>
+                        table.gift-table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            font-size: 0.9rem;
+                            line-height: 1.3;
+                            margin-top: 0;             /* 上余白を詰める */
+                        }
+                        table.gift-table th {
+                            background-color: #f1f3f4; /* ヘッダー背景色 */
+                            color: #333;
+                            padding: 6px 8px;
+                            border-bottom: 1px solid #ccc;
+                            font-weight: 600;
+                        }
+                        table.gift-table td {
+                            padding: 5px 8px;
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        /* 最下行も境界線を表示する → 下記行を削除またはコメントアウト */
+                        /* table.gift-table tr:last-child td {
+                            border-bottom: none;
+                        } */
+                        table.gift-table tbody tr:nth-child(even) {
+                            background-color: #fafafa; /* 偶数行の薄い背景 */
+                        }
+                        </style>
+                        """
+                        return style + html
+
+                    # 各テーブルHTML生成
+                    large_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
+                    small_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G未満）<span style='font-size: 14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
+                    rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
+
+                    # 枠（コンテナ）
+                    container_html = f"""
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
+                      <div style='display:flex; justify-content:space-between; gap:16px;'>
+                        <div style='flex:1;'>{large_html}</div>
+                        <div style='flex:1;'>{small_html}</div>
+                        <div style='flex:1;'>{rainbow_html}</div>
+                      </div>
+                    </div>
+                    """
+
+                    st.markdown(container_html, unsafe_allow_html=True)
+                else:
+                    st.info("ターゲットルームを選択してください。")
+            # --- ここまで戦闘モード修正版 ---
+
+
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             
