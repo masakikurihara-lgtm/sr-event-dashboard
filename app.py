@@ -980,13 +980,14 @@ def main():
 
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             
 
-            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-            st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
+            #st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
 
 
-            #st.subheader("📈 ポイントと順位の比較")
+            st.subheader("📈 ポイントと順位の比較")
             
             if not is_aggregating:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
