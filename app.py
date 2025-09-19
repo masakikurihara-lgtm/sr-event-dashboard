@@ -827,7 +827,7 @@ def main():
 
                     if diff > 0:
                         st.markdown(
-                            f"<div style='background-color:#d4edda; padding:16px; border-radius:8px;'>"
+                            f"<div style='background-color:#d4edda; padding:16px; border-radius:8px; margin-bottom:4px;'>"
                             f"<span style='font-size:1.4rem; font-weight:bold; color:#155724;'>{abs(diff):,}</span> pt リードしています"
                             f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
@@ -841,12 +841,12 @@ def main():
                         )
                     else:
                         st.markdown(
-                            f"<div style='background-color:#d1ecf1; padding:16px; border-radius:8px;'>"
+                            f"<div style='background-color:#d1ecf1; padding:16px; border-radius:8px; margin-bottom:4px;'>"
                             f"ポイントは同点です（<span style='font-size:1.4rem; font-weight:bold; color:#0c5460;'>{target_point:,}</span> pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
 
-                    st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
+                    st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
 
                     # ギフト計算
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
@@ -875,7 +875,7 @@ def main():
                     }
 
                     # ▼必要なギフト例（フォントサイズ拡大）
-                    st.markdown("<span style='font-size:1.2rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size:1.4rem; font-weight:bold; margin-top:4px;'>▼必要なギフト例</span>", unsafe_allow_html=True)
 
                     # HTMLテーブル作成関数（インデックス列非表示）
                     def df_to_html_table(df):
