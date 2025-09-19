@@ -700,8 +700,8 @@ def main():
                                 })
             
             room_html_list = []
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             if len(live_rooms_data) > 0:
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
