@@ -909,7 +909,7 @@ def main():
             # --- ここまで戦闘モード修正版 ---
 
 
-            st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
             
             st.subheader("📈 ポイントと順位の比較")
             
