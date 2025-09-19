@@ -768,7 +768,7 @@ def main():
 
 
             # --- ここから「戦闘モード！」修正版 ---
-            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
             st.markdown("### ⚔ 戦闘モード！", unsafe_allow_html=True)
 
             room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
