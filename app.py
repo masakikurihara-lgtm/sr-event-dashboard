@@ -584,34 +584,7 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
-                # 📌 見出しとテーブル間の隙間を詰めるCSS（ラッパーも含めて調整）
-                st.markdown(
-                    """
-                    <style>
-                    /* 見出しの下余白を詰める */
-                    h3.custom-status-title {
-                        margin-bottom: 2px !important;
-                    }
-                    /* DataFrame のラッパー全体の余白を詰める */
-                    div[data-testid="stVerticalBlock"] div[data-testid="stDataFrame"] {
-                        margin-top: 0 !important;
-                        padding-top: 0 !important;
-                    }
-                    /* DataFrame の親コンテナの余白をさらに詰める */
-                    div[data-testid="stVerticalBlock"] {
-                        padding-top: 0 !important;
-                        margin-top: 0 !important;
-                    }
-                    </style>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                # 📌 見出しにクラスを付与
-                st.markdown(
-                    "<h3 class='custom-status-title'>📊 比較対象ルームのステータス</h3>",
-                    unsafe_allow_html=True
-                )
+                st.subheader("📊 比較対象ルームのステータス")
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
