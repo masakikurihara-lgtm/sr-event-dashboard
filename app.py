@@ -590,7 +590,7 @@ def main():
                     /* 独自クラスで padding を上書き */
                     h3.custom-status-title {
                         padding-top: 0 !important;
-                        padding-bottom: 4px !important; /* 好みの値に調整 */
+                        padding-bottom: 2px !important; /* 好みの値に調整 */
                         margin: 0 !important;           /* 必要に応じてマージンも詰める */
                     }
                     </style>
