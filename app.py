@@ -834,7 +834,7 @@ def main():
                         )
                     elif diff < 0:
                         st.markdown(
-                            f"<div style='background-color:#fff3cd; padding:16px; border-radius:8px;'>"
+                            f"<div style='background-color:#fff3cd; padding:16px; border-radius:8px; margin-bottom:16px;'>"
                             f"<span style='font-size:1.4rem; font-weight:bold; color:#856404;'>{abs(diff):,}</span> pt ビハインドです"
                             f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
@@ -846,7 +846,6 @@ def main():
                             unsafe_allow_html=True
                         )
 
-                    st.markdown("<div style='margin-top: 1px;'></div>", unsafe_allow_html=True)
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
 
                     # ギフト計算
