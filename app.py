@@ -885,7 +885,7 @@ def main():
 
                     # ▼必要なギフト例（フォントサイズ拡大 + 下余白を詰める）
                     st.markdown(
-                        "<span style='font-size:1.4rem; font-weight:bold; margin-bottom:4px; display:inline-block;'>"
+                        "<span style='font-size:1.4rem; font-weight:bold; margin-bottom:0px; display:inline-block;'>"
                         "▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span>"
                         "</span>",
                         unsafe_allow_html=True
