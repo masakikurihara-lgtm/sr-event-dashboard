@@ -651,7 +651,7 @@ def main():
                 .container-wrapper { display: flex; flex-wrap: wrap; gap: 15px; }
                 .room-container {
                     position: relative; width: 175px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
-                    padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px;
+                    padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px; margin-top: 16px;
                 }
                 .ranking-label {
                     position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 2px 8px;
@@ -677,7 +677,6 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 selected_live_room_ids = {
                     int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
                     if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
@@ -702,7 +701,6 @@ def main():
             
             room_html_list = []
             if len(live_rooms_data) > 0:
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
