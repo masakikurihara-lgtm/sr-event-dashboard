@@ -584,7 +584,10 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
-                st.subheader("📊 比較対象ルームのステータス")
+                st.markdown(
+                    "<h3 style='margin-bottom:0px;'>📊 比較対象ルームのステータス</h3>",
+                    unsafe_allow_html=True
+                )
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
