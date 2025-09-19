@@ -806,7 +806,12 @@ def main():
                     target_point = points_map.get(selected_target_room, 0)
                     enemy_point = points_map.get(selected_enemy_room, 0)
                     diff = target_point - enemy_point
-                    needed_points_to_overtake = max(0, enemy_point - target_point + 1)
+                    # 同点なら必要ポイントは0にする
+                    if enemy_point == target_point:
+                        needed = 0
+                    else:
+                        needed_points_to_overtake = max(0, enemy_point - target_point + 1)
+                        needed = max(0, needed_points_to_overtake)
 
                     # 順位・下位差取得
                     target_rank = None
@@ -864,7 +869,12 @@ def main():
                     big_rainbow_pt = 1250 * 1.20 * 2.5
                     rainbow_meteor_pt = 2500 * 1.20 * 2.5
 
-                    needed = max(0, needed_points_to_overtake)
+                    # 同点なら必要ポイントは0にする
+                    if enemy_point == target_point:
+                        needed = 0
+                    else:
+                        needed_points_to_overtake = max(0, enemy_point - target_point + 1)
+                        needed = max(0, needed_points_to_overtake)
 
                     large_table = {
                         "ギフト種類": [f"{sg}G" for sg in large_sg],
