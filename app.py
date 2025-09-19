@@ -752,7 +752,7 @@ def main():
             # gift history の直下に表示（既存部分には影響なし）
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("### ⚔ 戦闘モード！", unsafe_allow_html=True)
-            st.caption("※計算では連打数による倍率は考慮していません（連打による実際の貢献ポイントは変動します）。")
+            #st.caption("※計算では連打数による倍率は考慮していません（連打による実際の貢献ポイントは変動します）。")
 
             # ルーム選択肢（イベント参加ルーム全体）
             room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
