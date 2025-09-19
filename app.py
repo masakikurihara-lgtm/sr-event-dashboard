@@ -987,7 +987,26 @@ def main():
             #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
 
 
-            st.subheader("📈 ポイントと順位の比較")
+            st.markdown(
+                """
+                <style>
+                /* 独自クラスで padding を上書き */
+                h3.custom-status-title2 {
+                    padding-top: 0 !important;
+                    padding-bottom: 0px !important; /* 好みの値に調整 */
+                    margin: 0 !important;           /* 必要に応じてマージンも詰める */
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
+                unsafe_allow_html=True
+            )
+
+
+            #st.subheader("📈 ポイントと順位の比較")
             
             if not is_aggregating:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
