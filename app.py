@@ -764,7 +764,7 @@ def main():
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
-                gift_container.info(f"<div style='margin-top: -16px;'>選択されたルームに現在配信中のルームはありません。</div>")
+                gift_container.info("選択されたルームに現在配信中のルームはありません。")
 
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
 
