@@ -980,12 +980,6 @@ def main():
 
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-            
-
-            #st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-            #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
-
 
             st.markdown(
                 """
@@ -1004,7 +998,6 @@ def main():
                 "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
                 unsafe_allow_html=True
             )
-
 
             #st.subheader("📈 ポイントと順位の比較")
             
