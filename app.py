@@ -846,11 +846,11 @@ def main():
 
                     # 表示
                     if diff > 0:
-                        st.success(f"**{abs(diff):,} pt リード** しています（対象の現在ポイント: {target_point:,} / 相手の現在ポイント: {enemy_point:,}）。")
+                        st.success(f"**{abs(diff):,} pt リード** しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。")
                     elif diff < 0:
-                        st.warning(f"対象 `{selected_target_room}` は `{selected_enemy_room}` に **{abs(diff):,} pt ビハインド** です（対象: {target_point:,} / 相手: {enemy_point:,}）。")
+                        st.warning(f"**{abs(diff):,} pt ビハインド** です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。")
                     else:
-                        st.info(f"対象 `{selected_target_room}` と `{selected_enemy_room}` のポイントは同点です（{target_point:,} pt）。")
+                        st.info(f"ポイントは同点です（{target_point:,} pt）。")
 
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
                     #st.markdown(f"- 対象の現在ポイント: **{target_point:,} pt**")
