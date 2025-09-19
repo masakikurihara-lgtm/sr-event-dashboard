@@ -746,6 +746,53 @@ def main():
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+
+
+# 末尾の st_autorefresh の直前に追加
+            # --- 戦闘モード! 追加 ---
+            st.markdown("### ⚔ 戦闘モード！")
+            st.caption("※必要ギフト例の計算では連打数の倍率は考慮していません。")
+
+            # 戦闘モード用ルーム選択
+            room_options = list(st.session_state.room_map_data.keys())
+            selected_target_room = st.selectbox("対象ルームを選択", room_options, key="battle_target")
+            other_rooms = [r for r in room_options if r != selected_target_room]
+            selected_enemy_room = st.selectbox("ターゲットルームを選択", other_rooms, key="battle_enemy")
+
+            # 対象とターゲットのポイント差を算出
+            target_point = st.session_state.room_map_data[selected_target_room]["point"]
+            enemy_point = st.session_state.room_map_data[selected_enemy_room]["point"]
+            diff = target_point - enemy_point
+
+            target_rank = st.session_state.room_map_data[selected_target_room]["rank"]
+
+            st.markdown(f"#### {selected_target_room}（{target_rank}位） と {selected_enemy_room} のポイント差： **{abs(diff):,} pt**")
+            if diff > 0:
+                st.success(f"{selected_target_room} が {abs(diff):,} pt リードしています")
+            elif diff < 0:
+                st.warning(f"{selected_target_room} が {abs(diff):,} pt ビハインドです")
+            else:
+                st.info("ポイント差はありません")
+
+            # ギフト換算（連打数倍率なし）
+            gifts = {
+                "500G": 500*3,
+                "1000G": 1000*3,
+                "3000G": 3000*3,
+                "10000G": 10000*3,
+                "20000G": 20000*3,
+                "100000G": 100000*3,
+                "レインボースター100pt": 100*2.5,
+                "大レインボースター1250pt": 1250*2.5,
+                "流星群2500pt": 2500*2.5
+            }
+            table_data = {"ギフト種類": [], "必要個数": []}
+            for name, val in gifts.items():
+                needed = abs(diff)/val if val else 0
+                table_data["ギフト種類"].append(name)
+                table_data["必要個数"].append(f"{needed:.2f}")
+            st.table(pd.DataFrame(table_data))
+
             
             st.subheader("📈 ポイントと順位の比較")
             
