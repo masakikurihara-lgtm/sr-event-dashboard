@@ -748,165 +748,133 @@ def main():
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
-            # --- ここから「戦闘モード！」を追加しました ---
-            # gift history の直下に表示（既存部分には影響なし）
+            # --- ここから「戦闘モード！」修正版 ---
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("### ⚔ 戦闘モード！", unsafe_allow_html=True)
-            #st.caption("※計算では連打数による倍率は考慮していません（連打による実際の貢献ポイントは変動します）。")
 
-            # ルーム選択肢（イベント参加ルーム全体）
             room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
             if not room_options_all:
                 st.info("イベント参加ルーム情報が取得できません。")
             else:
-                # 選択 UI（対象 / ターゲット）
+                # 順位ラベル付き表示
+                room_rank_map = {}
+                for rn, info in st.session_state.room_map_data.items():
+                    rank = info.get("rank", "N/A")
+                    room_rank_map[rn] = f"{rank}位：{rn}"
+
                 col_a, col_b = st.columns([1, 1])
                 with col_a:
-                    selected_target_room = st.selectbox("対象ルームを選択:", room_options_all, key="battle_target_room")
+                    selected_target_room = st.selectbox(
+                        "対象ルームを選択:",
+                        room_options_all,
+                        format_func=lambda x: room_rank_map.get(x, x),
+                        key="battle_target_room"
+                    )
                 with col_b:
                     other_rooms = [r for r in room_options_all if r != selected_target_room]
-                    if other_rooms:
-                        selected_enemy_room = st.selectbox("ターゲットルームを選択:", other_rooms, key="battle_enemy_room")
-                    else:
-                        selected_enemy_room = None
+                    selected_enemy_room = st.selectbox(
+                        "ターゲットルームを選択:",
+                        other_rooms,
+                        format_func=lambda x: room_rank_map.get(x, x),
+                        key="battle_enemy_room"
+                    ) if other_rooms else None
 
-                # ポイントマップを作る（優先順: 表示用 df の '現在のポイント' → session_state.room_map_data)
+                # ポイント計算
                 points_map = {}
-                # df が存在すればそれを優先
                 try:
                     if 'df' in locals() and not df.empty:
-                        # df の 'ルーム名' と '現在のポイント' を取得
                         for _, r in df.iterrows():
                             rn = r.get('ルーム名')
                             pval = r.get('現在のポイント')
-                            pnum = None
                             try:
-                                if pd.isna(pval):
-                                    pnum = None
-                                else:
-                                    # 現在のポイント列は数値化してあることが多いが念のため int 化
-                                    pnum = int(pval)
-                            except Exception:
-                                pnum = None
-                            # フォールバック: session_state の point
-                            if pnum is None:
-                                try:
-                                    pnum = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
-                                except Exception:
-                                    pnum = 0
-                            points_map[rn] = pnum
+                                points_map[rn] = int(pval)
+                            except:
+                                points_map[rn] = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
                     else:
-                        # df がない場合は session_state の値を使用
                         for rn, info in st.session_state.room_map_data.items():
-                            try:
-                                points_map[rn] = int(info.get('point', 0) or 0)
-                            except Exception:
-                                points_map[rn] = 0
-                except Exception as e:
-                    st.warning(f"ポイントマップ作成時に問題が発生しました: {e}")
-                    # 最低限 session_state の値を詰める
-                    for rn, info in st.session_state.room_map_data.items():
-                        try:
                             points_map[rn] = int(info.get('point', 0) or 0)
-                        except Exception:
-                            points_map[rn] = 0
+                except:
+                    for rn, info in st.session_state.room_map_data.items():
+                        points_map[rn] = int(info.get('point', 0) or 0)
 
-                # 選択されたルームのポイントを取得
                 if selected_enemy_room:
                     target_point = points_map.get(selected_target_room, 0)
                     enemy_point = points_map.get(selected_enemy_room, 0)
-
-                    # 差分（対象 - ターゲット）
                     diff = target_point - enemy_point
-                    # 追いつくのに必要なポイント（敵が上回っている場合）
                     needed_points_to_overtake = max(0, enemy_point - target_point + 1)
 
-                    # 対象の順位／下位との差を df から取得（あれば）
+                    # 順位・下位差取得
                     target_rank = None
                     target_lower_gap = None
                     try:
                         if 'df' in locals() and not df.empty and 'ルーム名' in df.columns:
                             row = df[df['ルーム名'] == selected_target_room]
                             if not row.empty:
-                                target_rank = int(row.iloc[0].get('現在の順位')) if not pd.isna(row.iloc[0].get('現在の順位')) else None
-                                # 下位とのポイント差があれば
+                                if not pd.isna(row.iloc[0].get('現在の順位')):
+                                    target_rank = int(row.iloc[0].get('現在の順位'))
                                 if '下位とのポイント差' in row.columns:
                                     lg = row.iloc[0].get('下位とのポイント差')
-                                    target_lower_gap = int(lg) if not pd.isna(lg) else None
-                    except Exception:
-                        target_rank = None
-                        target_lower_gap = None
-
-                    # フォールバック: room_map_data の rank
+                                    if not pd.isna(lg):
+                                        target_lower_gap = int(lg)
+                    except:
+                        pass
                     if target_rank is None:
-                        try:
-                            target_rank = st.session_state.room_map_data.get(selected_target_room, {}).get('rank')
-                        except Exception:
-                            target_rank = None
+                        target_rank = st.session_state.room_map_data.get(selected_target_room, {}).get('rank')
 
-                    # 表示
+                    # 表示メッセージ
+                    lower_gap_text = f"※下位とのポイント差: {target_lower_gap if target_lower_gap is not None else 'N/A'} pt"
                     if diff > 0:
-                        st.success(f"**{abs(diff):,} pt リード** しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。")
+                        st.success(f"**{abs(diff):,} pt リード** しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
                     elif diff < 0:
-                        st.warning(f"**{abs(diff):,} pt ビハインド** です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。")
+                        st.warning(f"**{abs(diff):,} pt ビハインド** です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
                     else:
-                        st.info(f"ポイントは同点です（{target_point:,} pt）。")
+                        st.info(f"ポイントは同点です（{target_point:,} pt）。 {lower_gap_text}")
 
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
-                    #st.markdown(f"- 対象の現在ポイント: **{target_point:,} pt**")
-                    #st.markdown(f"- 対象の下位とのポイント差: **{target_lower_gap if target_lower_gap is not None else 'N/A'}**")
 
-                    # 必要ギフト例（連打数無しの簡易算出）
-                    # large SG (>=500): per gift point = sg * 3
+                    # ギフト計算
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
-                    # small SG (<500): per gift point = sg * 2.5 (連打倍率を無視して repeat=1 相当)
                     small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
+                    rainbow_pt = 100 * 2.5
+                    big_rainbow_pt = 1250 * 1.20 * 2.5
+                    rainbow_meteor_pt = 2500 * 1.20 * 2.5
 
-                    # レインボー等
-                    rainbow_pt = 100 * 2.5  # =250
-                    big_rainbow_pt = 1250 * 1.20 * 2.5  # 1250 * 3 = 3750
-                    rainbow_meteor_pt = 2500 * 1.20 * 2.5  # 2500 * 3 = 7500
+                    needed = max(0, needed_points_to_overtake)
 
-                    needed = needed_points_to_overtake
+                    large_table = {
+                        "ギフト種類": [f"{sg}G" for sg in large_sg],
+                        "必要個数 (小数2桁)": [f"{needed/(sg*3):.2f}" if sg > 0 else "0.00" for sg in large_sg]
+                    }
+                    small_table = {
+                        "ギフト種類": [f"{sg}G" for sg in small_sg],
+                        "必要個数 (小数2桁)": [f"{needed/(sg*2.5):.2f}" if sg > 0 else "0.00" for sg in small_sg]
+                    }
+                    rainbow_table = {
+                        "ギフト種類": ["レインボースター 100pt", "大レインボースター 1250pt", "レインボースター流星群 2500pt"],
+                        "必要個数 (小数2桁)": [
+                            f"{needed/rainbow_pt:.2f}",
+                            f"{needed/big_rainbow_pt:.2f}",
+                            f"{needed/rainbow_meteor_pt:.2f}"
+                        ]
+                    }
 
-                    if needed <= 0:
-                        st.info("現在追いつく必要はありません（対象が上回っているか同点です）。必要ギフトは 0 と表示します。")
-                        needed = 0
+                    # ▼必要なギフト例（フォントサイズ拡大）
+                    st.markdown("<span style='font-size:1.2rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
 
-                    # テーブル作成
-                    large_table = {"ギフト種類": [], "必要個数 (小数2桁)": []}
-                    for sg in large_sg:
-                        per = sg * 3
-                        cnt = (needed / per) if per > 0 else 0
-                        large_table["ギフト種類"].append(f"{sg}G")
-                        large_table["必要個数 (小数2桁)"].append(f"{cnt:.2f}")
-
-                    small_table = {"ギフト種類": [], "必要個数 (小数2桁)": []}
-                    for sg in small_sg:
-                        per = sg * 2.5
-                        cnt = (needed / per) if per > 0 else 0
-                        small_table["ギフト種類"].append(f"{sg}G")
-                        small_table["必要個数 (小数2桁)"].append(f"{cnt:.2f}")
-
-                    rainbow_table = {"ギフト種類": ["レインボースター 100pt", "大レインボースター 1250pt", "レインボースター流星群 2500pt"],
-                                     "必要個数 (小数2桁)": [f"{(needed / rainbow_pt):.2f}" if rainbow_pt>0 else "0.00",
-                                                           f"{(needed / big_rainbow_pt):.2f}" if big_rainbow_pt>0 else "0.00",
-                                                           f"{(needed / rainbow_meteor_pt):.2f}" if rainbow_meteor_pt>0 else "0.00"]}
-
-                    st.markdown("**▼必要なギフト例**")
-                    c1, c2 = st.columns(2)
+                    c1, c2, c3 = st.columns(3)
                     with c1:
                         st.markdown("**有償SG（500G以上）**")
-                        st.table(pd.DataFrame(large_table))
+                        st.table(pd.DataFrame(large_table).style.hide(axis='index'))
                     with c2:
                         st.markdown("**有償SG（500G未満）※連打考慮外**")
-                        st.table(pd.DataFrame(small_table))
-
-                    st.markdown("**レインボースター系**")
-                    st.table(pd.DataFrame(rainbow_table))
+                        st.table(pd.DataFrame(small_table).style.hide(axis='index'))
+                    with c3:
+                        st.markdown("**レインボースター系**")
+                        st.table(pd.DataFrame(rainbow_table).style.hide(axis='index'))
                 else:
                     st.info("ターゲットルームを選択してください。")
-            # --- ここまで戦闘モード追加 ---
+            # --- ここまで戦闘モード修正版 ---
+
 
             st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
             
