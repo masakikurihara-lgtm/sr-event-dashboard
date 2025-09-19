@@ -762,11 +762,11 @@ def main():
                 # 選択 UI（対象 / ターゲット）
                 col_a, col_b = st.columns([1, 1])
                 with col_a:
-                    selected_target_room = st.selectbox("対象ルームを選択", room_options_all, key="battle_target_room")
+                    selected_target_room = st.selectbox("対象ルームを選択:", room_options_all, key="battle_target_room")
                 with col_b:
                     other_rooms = [r for r in room_options_all if r != selected_target_room]
                     if other_rooms:
-                        selected_enemy_room = st.selectbox("ターゲットルームを選択", other_rooms, key="battle_enemy_room")
+                        selected_enemy_room = st.selectbox("ターゲットルームを選択:", other_rooms, key="battle_enemy_room")
                     else:
                         selected_enemy_room = None
 
