@@ -747,6 +747,7 @@ def main():
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
+
             
             # --- 戦闘モード！ ---
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
@@ -777,9 +778,8 @@ def main():
                         key="battle_enemy_room"
                     ) if other_rooms else None
 
-                # ポイント差計算
                 if selected_enemy_room:
-                    # 最新ポイントを優先
+                    # ポイントマップを構築
                     points_map = {}
                     if 'df' in locals() and not df.empty:
                         for _, r in df.iterrows():
@@ -798,8 +798,7 @@ def main():
                     diff = target_pt - enemy_pt
                     needed = max(0, enemy_pt - target_pt + 1)
 
-                    # 順位・下位差
-                    target_rank = st.session_state.room_map_data[selected_target_room].get('rank', 'N/A')
+                    # 下位差
                     lower_gap = None
                     if 'df' in locals() and not df.empty:
                         row = df[df['ルーム名'] == selected_target_room]
@@ -807,29 +806,29 @@ def main():
                             lg = row.iloc[0].get('下位とのポイント差')
                             lower_gap = int(lg) if pd.notna(lg) else None
 
-                    # 表示メッセージ
+                    # メッセージ表示（ラベル付き）
                     if diff > 0:
                         st.markdown(
                             f"<div style='font-size:1.1rem;'>"
-                            f"対象<strong>{selected_target_room}</strong>は<strong>{selected_enemy_room}</strong>に "
-                            f"<strong style='font-size:1.3rem;'>{abs(diff):,} pt リード</strong> です "
+                            f"【リード】 <strong style='font-size:1.3rem;'>{abs(diff):,} pt</strong> "
                             f"（対象: <strong>{target_pt:,} pt</strong> / ターゲット: <strong>{enemy_pt:,} pt</strong>）。"
-                            f"※下位とのポイント差: {lower_gap if lower_gap is not None else 'N/A'} pt"
+                            f"※下位とのポイント差: {lower_gap if lower_gap is not None else 'N/A'} pt<br>"
+                            f"ギフト不要です（この差を維持してください）。"
                             f"</div>", unsafe_allow_html=True)
                     elif diff < 0:
                         st.markdown(
                             f"<div style='font-size:1.1rem;'>"
-                            f"対象<strong>{selected_target_room}</strong>は<strong>{selected_enemy_room}</strong>に "
-                            f"<strong style='font-size:1.3rem;'>{abs(diff):,} pt ビハインド</strong> です "
+                            f"【ビハインド】 <strong style='font-size:1.3rem;'>{abs(diff):,} pt</strong> "
                             f"（対象: <strong>{target_pt:,} pt</strong> / ターゲット: <strong>{enemy_pt:,} pt</strong>）。"
                             f"※下位とのポイント差: {lower_gap if lower_gap is not None else 'N/A'} pt"
                             f"</div>", unsafe_allow_html=True)
                     else:
-                        st.info(f"対象 {selected_target_room} と {selected_enemy_room} のポイントは同点です（{target_pt:,} pt）。")
+                        st.info(f"【同点】 対象とターゲットは同点です（{target_pt:,} pt）。")
 
+                    target_rank = st.session_state.room_map_data[selected_target_room].get('rank', 'N/A')
                     st.markdown(f"対象ルームの現在順位: **{target_rank}位**")
 
-                    # ギフト例
+                    # 必要ギフト例
                     st.markdown("**必要なギフト例**")
                     large_sg = [500,1000,3000,10000,20000,100000]
                     small_sg = [1,2,3,5,8,10,50,88,100,200]
