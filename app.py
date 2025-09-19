@@ -652,6 +652,7 @@ def main():
                 .room-container {
                     position: relative; width: 175px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
                     padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px; margin-top: 16px;
+                    margin-bottom: 16px;
                 }
                 .ranking-label {
                     position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 2px 8px;
