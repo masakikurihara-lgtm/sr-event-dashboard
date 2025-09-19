@@ -887,7 +887,7 @@ def main():
                     st.markdown(
                         """
                         <div style='margin-bottom:2px;'>
-                          <span style='font-size:1.4rem; font-weight:bold; display:inline-block; line-height:1;'>
+                          <span style='font-size:1.4rem; font-weight:bold; display:inline-block; line-height:1.6;'>
                             ▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span>
                           </span>
                         </div>
