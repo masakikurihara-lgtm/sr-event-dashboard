@@ -893,13 +893,13 @@ def main():
                                                            f"{(needed / big_rainbow_pt):.2f}" if big_rainbow_pt>0 else "0.00",
                                                            f"{(needed / rainbow_meteor_pt):.2f}" if rainbow_meteor_pt>0 else "0.00"]}
 
-                    st.markdown("**必要なギフト例（連打数倍率は考慮していません）**")
+                    st.markdown("**▼必要なギフト例**")
                     c1, c2 = st.columns(2)
                     with c1:
                         st.markdown("**有償SG（500G以上）**")
                         st.table(pd.DataFrame(large_table))
                     with c2:
-                        st.markdown("**有償SG（500G未満）**")
+                        st.markdown("**有償SG（500G未満）※連打考慮外**")
                         st.table(pd.DataFrame(small_table))
 
                     st.markdown("**レインボースター系**")
