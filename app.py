@@ -677,6 +677,7 @@ def main():
             
             live_rooms_data = []
             if not df.empty and st.session_state.room_map_data:
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 selected_live_room_ids = {
                     int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
                     if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
