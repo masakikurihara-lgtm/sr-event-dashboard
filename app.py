@@ -888,24 +888,29 @@ def main():
                             '<table style="border-collapse:collapse; width:100%;">'
                         )
 
-                    # --- コンテナ枠開始 ---
+                    # --- コンテナ枠開始 + カラム全体を内包 ---
                     st.markdown(
-                        "<div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>",
+                        """
+                        <div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>
+                        """,
                         unsafe_allow_html=True
                     )
 
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
+                    # st.columns を div 内で使用
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
                         st.markdown("**有償SG（500G以上）**")
                         st.markdown(df_to_html_table(pd.DataFrame(large_table)), unsafe_allow_html=True)
-                    with c2:
+
+                    with col2:
                         st.markdown("**有償SG（500G未満）※連打考慮外**")
                         st.markdown(df_to_html_table(pd.DataFrame(small_table)), unsafe_allow_html=True)
-                    with c3:
+
+                    with col3:
                         st.markdown("**レインボースター系**")
                         st.markdown(df_to_html_table(pd.DataFrame(rainbow_table)), unsafe_allow_html=True)
 
-                    # --- コンテナ枠終了 ---
+                    # --- コンテナ枠終了（カラムと表を内包した後に閉じる） ---
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     st.info("ターゲットルームを選択してください。")
