@@ -827,21 +827,21 @@ def main():
 
                     if diff > 0:
                         st.markdown(
-                            f"<div style='background-color:#d4edda; padding:16px; border-radius:8px; margin-bottom:4px;'>"
+                            f"<div style='background-color:#d4edda; padding:16px; border-radius:8px; margin-bottom:5px;'>"
                             f"<span style='font-size:1.4rem; font-weight:bold; color:#155724;'>{abs(diff):,}</span> pt リードしています"
                             f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
                     elif diff < 0:
                         st.markdown(
-                            f"<div style='background-color:#fff3cd; padding:16px; border-radius:8px; margin-bottom:4px;'>"
+                            f"<div style='background-color:#fff3cd; padding:16px; border-radius:8px; margin-bottom:5px;'>"
                             f"<span style='font-size:1.4rem; font-weight:bold; color:#856404;'>{abs(diff):,}</span> pt ビハインドです"
                             f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
                     else:
                         st.markdown(
-                            f"<div style='background-color:#d1ecf1; padding:16px; border-radius:8px; margin-bottom:4px;'>"
+                            f"<div style='background-color:#d1ecf1; padding:16px; border-radius:8px; margin-bottom:5px;'>"
                             f"ポイントは同点です（<span style='font-size:1.4rem; font-weight:bold; color:#0c5460;'>{target_point:,}</span> pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
