@@ -643,8 +643,9 @@ def main():
                 gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
-            gift_container = st.container()
-            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)            
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)    
+
+            gift_container = st.container()        
             css_style = """
                 <style>
                 .container-wrapper { display: flex; flex-wrap: wrap; gap: 15px; }
