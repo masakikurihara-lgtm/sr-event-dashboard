@@ -847,7 +847,8 @@ def main():
                         )
 
                     st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
-
+                    st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
+            
                     # ギフト計算
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
                     small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
@@ -875,7 +876,7 @@ def main():
                     }
 
                     # ▼必要なギフト例（フォントサイズ拡大）
-                    st.markdown("<span style='font-size:1.4rem; font-weight:bold; margin-top:4px;'>▼必要なギフト例</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
 
                     # HTMLテーブル作成関数（インデックス列非表示）
                     def df_to_html_table(df):
