@@ -823,21 +823,25 @@ def main():
 
                     # 表示メッセージ
                     lower_gap_text = f"※下位とのポイント差: {target_lower_gap if target_lower_gap is not None else 'N/A'} pt"
+
                     if diff > 0:
-                        st.success(
-                            f"<span style='font-size:1.3rem; font-weight:bold;'>{abs(diff):,}</span> pt リード しています"
-                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}",
+                        st.markdown(
+                            f"<div style='background-color:#d4edda; padding:8px; border-radius:4px;'>"
+                            f"<span style='font-size:1.3rem; font-weight:bold; color:#155724;'>{abs(diff):,}</span> pt リードしています"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
                     elif diff < 0:
-                        st.warning(
-                            f"<span style='font-size:1.3rem; font-weight:bold;'>{abs(diff):,}</span> pt ビハインド です"
-                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}",
+                        st.markdown(
+                            f"<div style='background-color:#fff3cd; padding:8px; border-radius:4px;'>"
+                            f"<span style='font-size:1.3rem; font-weight:bold; color:#856404;'>{abs(diff):,}</span> pt ビハインドです"
+                            f"（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
                     else:
-                        st.info(
-                            f"<span style='font-size:1.3rem; font-weight:bold;'>{target_point:,}</span> pt 同点です。 {lower_gap_text}",
+                        st.markdown(
+                            f"<div style='background-color:#d1ecf1; padding:8px; border-radius:4px;'>"
+                            f"ポイントは同点です（<span style='font-size:1.3rem; font-weight:bold; color:#0c5460;'>{target_point:,}</span> pt）。 {lower_gap_text}</div>",
                             unsafe_allow_html=True
                         )
 
