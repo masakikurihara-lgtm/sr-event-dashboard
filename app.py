@@ -846,7 +846,7 @@ def main():
 
                     # 表示
                     if diff > 0:
-                        st.success(f"対象 `{selected_target_room}` は `{selected_enemy_room}` より **{abs(diff):,} pt リード** しています（対象の現在ポイント: {target_point:,} / 相手の現在ポイント: {enemy_point:,}）。")
+                        st.success(f"**{abs(diff):,} pt リード** しています（対象の現在ポイント: {target_point:,} / 相手の現在ポイント: {enemy_point:,}）。")
                     elif diff < 0:
                         st.warning(f"対象 `{selected_target_room}` は `{selected_enemy_room}` に **{abs(diff):,} pt ビハインド** です（対象: {target_point:,} / 相手: {enemy_point:,}）。")
                     else:
