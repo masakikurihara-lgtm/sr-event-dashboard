@@ -590,7 +590,7 @@ def main():
                     <style>
                     /* 見出しの下余白を詰める */
                     h3.custom-status-title {
-                        margin-bottom: 2px !important;
+                        margin-bottom: 0px !important;
                     }
                     /* データフレームを囲むコンテナの上余白も詰める */
                     div[data-testid="stDataFrame"] {
