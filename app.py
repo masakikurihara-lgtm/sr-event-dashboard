@@ -618,6 +618,7 @@ def main():
                 else:
                     st.dataframe(df, use_container_width=True, hide_index=True, height=265)
 
+            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             gift_history_title = "🎁 スペシャルギフト履歴"
             if is_event_ended:
                 gift_history_title += " <span style='font-size: 14px;'>（イベントは終了しましたが、現在配信中のルームのみ表示）</span>"
