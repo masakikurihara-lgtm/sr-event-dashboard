@@ -1,6 +1,3 @@
-# (以下はユーザー提供の app.py 全量。既存の機能は触っていません。
-# 変更点は "⚔ 戦闘モード！" 部分の追加のみです。)
-
 import streamlit as st
 import requests
 import pandas as pd
@@ -652,7 +649,7 @@ def main():
                 .room-container {
                     position: relative; width: 175px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
                     padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px; margin-top: 16px;
-                    margin-bottom: 8px;
+                    margin-bottom: 12px;
                 }
                 .ranking-label {
                     position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 2px 8px;
@@ -767,7 +764,7 @@ def main():
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
 
-            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
 
 
             # --- ここから「戦闘モード！」修正版 ---
