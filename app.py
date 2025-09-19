@@ -643,7 +643,7 @@ def main():
                 gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
-            st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+            #st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
             gift_container = st.container()        
             css_style = """
@@ -701,6 +701,7 @@ def main():
             
             room_html_list = []
             if len(live_rooms_data) > 0:
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
