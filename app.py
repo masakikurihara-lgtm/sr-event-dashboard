@@ -701,6 +701,7 @@ def main():
             
             room_html_list = []
             if len(live_rooms_data) > 0:
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
                 for room_data in live_rooms_data:
                     room_name = room_data['room_name']
                     room_id = room_data['room_id']
@@ -763,7 +764,6 @@ def main():
                         room_html_list.append(html_content)
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
                 gift_container.markdown(css_style + html_container_content, unsafe_allow_html=True)
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
             
