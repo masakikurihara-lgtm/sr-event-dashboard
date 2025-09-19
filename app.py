@@ -894,8 +894,8 @@ def main():
 
                     # 3カラムを flexbox で横並びにし、全体を枠で囲う
                     container_html = f"""
-                    <div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>
-                      <div style='display:flex; justify-content:space-between; gap:20px;'>
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:16px; background-color:#fdfdfd;'>
+                      <div style='display:flex; justify-content:space-between; gap:16px;'>
                         <div style='flex:1;'>{large_html}</div>
                         <div style='flex:1;'>{small_html}</div>
                         <div style='flex:1;'>{rainbow_html}</div>
