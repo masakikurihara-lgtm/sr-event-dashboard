@@ -887,10 +887,37 @@ def main():
                     st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span></span>", unsafe_allow_html=True)
 
                     def df_to_html_table(df):
-                        return df.to_html(index=False, justify="center", border=0).replace(
-                            '<table border="0" class="dataframe">',
-                            '<table style="border-collapse:collapse; width:100%;">'
-                        )
+                        # DataFrameをHTMLに変換し、独自のクラスを付与
+                        html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
+                        # カスタムスタイルを挿入
+                        style = """
+                        <style>
+                        table.gift-table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            font-size: 0.9rem;
+                            line-height: 1.3;       /* 行間を狭く */
+                        }
+                        table.gift-table th {
+                            background-color: #f1f3f4; /* ヘッダー背景色 */
+                            color: #333;
+                            padding: 6px 8px;
+                            border-bottom: 1px solid #ccc;
+                            font-weight: 600;
+                        }
+                        table.gift-table td {
+                            padding: 5px 8px;
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        table.gift-table tr:last-child td {
+                            border-bottom: none;
+                        }
+                        table.gift-table tbody tr:nth-child(even) {
+                            background-color: #fafafa; /* 偶数行の薄い背景 */
+                        }
+                        </style>
+                        """
+                        return style + html
 
                     # 各テーブルのHTML生成
                     large_html = f"<h4 style='font-size:1.2em;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
