@@ -245,7 +245,7 @@ def get_rank_color(rank):
     
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
-    st.write("イベント順位やポイント差、スペシャルギフトの履歴などを、リアルタイムで可視化するツールです。")
+    st.write("イベント順位やポイント差、スペシャルギフトの履歴、必要ギフト数などが、リアルタイムで可視化できるツールです。")
 
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
