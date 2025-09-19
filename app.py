@@ -884,8 +884,15 @@ def main():
                     # HTMLテーブル作成関数（インデックス列非表示）
                     def df_to_html_table(df):
                         return df.to_html(index=False, justify="center", border=0).replace(
-                            '<table border="0" class="dataframe">', '<table style="border-collapse:collapse; width:100%;">'
+                            '<table border="0" class="dataframe">',
+                            '<table style="border-collapse:collapse; width:100%;">'
                         )
+
+                    # --- コンテナ枠開始 ---
+                    st.markdown(
+                        "<div style='border:2px solid #ccc; border-radius:12px; padding:20px; background-color:#fdfdfd;'>",
+                        unsafe_allow_html=True
+                    )
 
                     c1, c2, c3 = st.columns(3)
                     with c1:
@@ -897,6 +904,9 @@ def main():
                     with c3:
                         st.markdown("**レインボースター系**")
                         st.markdown(df_to_html_table(pd.DataFrame(rainbow_table)), unsafe_allow_html=True)
+
+                    # --- コンテナ枠終了 ---
+                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     st.info("ターゲットルームを選択してください。")
             # --- ここまで戦闘モード修正版 ---
