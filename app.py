@@ -818,7 +818,7 @@ def main():
                                 if not pd.isna(row.iloc[0].get('現在の順位')):
                                     target_rank = int(row.iloc[0].get('現在の順位'))
                                 if '下位とのポイント差' in row.columns:
-                                    lg = row.iloc[0].get('下位とのポイント差', 0)
+                                    lg = row.iloc[0].get('下位とのポイント差')
                                     if not pd.isna(lg):
                                         target_lower_gap = int(lg)
                     except:
