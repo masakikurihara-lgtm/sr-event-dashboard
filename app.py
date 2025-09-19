@@ -883,20 +883,25 @@ def main():
                         ]
                     }
 
-                    # ▼必要なギフト例（フォントサイズ拡大）
-                    st.markdown("<span style='font-size:1.4rem; font-weight:bold;'>▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span></span>", unsafe_allow_html=True)
+                    # ▼必要なギフト例（フォントサイズ拡大 + 下余白を詰める）
+                    st.markdown(
+                        "<span style='font-size:1.4rem; font-weight:bold; margin-bottom:4px; display:inline-block;'>"
+                        "▼必要なギフト例<span style='font-size: 14px;'>（有償SG&レインボースター）</span>"
+                        "</span>",
+                        unsafe_allow_html=True
+                    )
 
                     def df_to_html_table(df):
                         # DataFrameをHTMLに変換し、独自のクラスを付与
                         html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
-                        # カスタムスタイルを挿入
                         style = """
                         <style>
                         table.gift-table {
                             border-collapse: collapse;
                             width: 100%;
                             font-size: 0.9rem;
-                            line-height: 1.3;       /* 行間を狭く */
+                            line-height: 1.3;
+                            margin-top: 0;             /* 上余白を詰める */
                         }
                         table.gift-table th {
                             background-color: #f1f3f4; /* ヘッダー背景色 */
@@ -909,9 +914,10 @@ def main():
                             padding: 5px 8px;
                             border-bottom: 1px solid #e0e0e0;
                         }
-                        table.gift-table tr:last-child td {
+                        /* 最下行も境界線を表示する → 下記行を削除またはコメントアウト */
+                        /* table.gift-table tr:last-child td {
                             border-bottom: none;
-                        }
+                        } */
                         table.gift-table tbody tr:nth-child(even) {
                             background-color: #fafafa; /* 偶数行の薄い背景 */
                         }
@@ -919,14 +925,14 @@ def main():
                         """
                         return style + html
 
-                    # 各テーブルのHTML生成
-                    large_html = f"<h4 style='font-size:1.2em;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
-                    small_html = f"<h4 style='font-size:1.2em;'>有償SG（500G未満）<span style='font-size: 14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
-                    rainbow_html = f"<h4 style='font-size:1.2em;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
+                    # 各テーブルHTML生成
+                    large_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
+                    small_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G未満）<span style='font-size: 14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
+                    rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
-                    # 3カラムを flexbox で横並びにし、全体を枠で囲う
+                    # 枠（コンテナ）
                     container_html = f"""
-                    <div style='border:2px solid #ccc; border-radius:12px; padding:16px; background-color:#fdfdfd;'>
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
                       <div style='display:flex; justify-content:space-between; gap:16px;'>
                         <div style='flex:1;'>{large_html}</div>
                         <div style='flex:1;'>{small_html}</div>
