@@ -824,11 +824,11 @@ def main():
                     # 表示メッセージ
                     lower_gap_text = f"※下位とのポイント差: {target_lower_gap if target_lower_gap is not None else 'N/A'} pt"
                     if diff > 0:
-                        st.success(f"**{abs(diff):,} pt リード** しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
+                        st.success(f"**<span style='font-size:1.2rem; font-weight:bold;'>{abs(diff):,}</span> pt リード** しています（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
                     elif diff < 0:
-                        st.warning(f"**{abs(diff):,} pt ビハインド** です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
+                        st.warning(f"**<span style='font-size:1.2rem; font-weight:bold;'>{abs(diff):,}</span> pt ビハインド** です（対象: {target_point:,} pt / ターゲット: {enemy_point:,} pt）。 {lower_gap_text}")
                     else:
-                        st.info(f"ポイントは同点です（{target_point:,} pt）。 {lower_gap_text}")
+                        st.info(f"ポイントは同点です（<span style='font-size:1.2rem; font-weight:bold;'>{target_point:,}</span> pt）。 {lower_gap_text}")
 
                     st.markdown(f"- 対象の現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
 
