@@ -764,7 +764,7 @@ def main():
             else:
                 gift_container.info("選択されたルームに現在配信中のルームはありません。")
 
-            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
 
 
             # --- ここから「戦闘モード！」修正版 ---
