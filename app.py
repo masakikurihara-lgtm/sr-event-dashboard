@@ -861,16 +861,22 @@ def main():
                     # ▼必要なギフト例（フォントサイズ拡大）
                     st.markdown("<span style='font-size:1.2rem; font-weight:bold;'>▼必要なギフト例</span>", unsafe_allow_html=True)
 
+                    # HTMLテーブル作成関数（インデックス列非表示）
+                    def df_to_html_table(df):
+                        return df.to_html(index=False, justify="center", border=0).replace(
+                            '<table border="0" class="dataframe">', '<table style="border-collapse:collapse; width:100%;">'
+                        )
+
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         st.markdown("**有償SG（500G以上）**")
-                        st.table(pd.DataFrame(large_table).style.hide(axis='index'))
+                        st.markdown(df_to_html_table(pd.DataFrame(large_table)), unsafe_allow_html=True)
                     with c2:
                         st.markdown("**有償SG（500G未満）※連打考慮外**")
-                        st.table(pd.DataFrame(small_table).style.hide(axis='index'))
+                        st.markdown(df_to_html_table(pd.DataFrame(small_table)), unsafe_allow_html=True)
                     with c3:
                         st.markdown("**レインボースター系**")
-                        st.table(pd.DataFrame(rainbow_table).style.hide(axis='index'))
+                        st.markdown(df_to_html_table(pd.DataFrame(rainbow_table)), unsafe_allow_html=True)
                 else:
                     st.info("ターゲットルームを選択してください。")
             # --- ここまで戦闘モード修正版 ---
