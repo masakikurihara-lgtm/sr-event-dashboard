@@ -35,23 +35,28 @@ if not st.session_state.authenticated:
         key="room_id_input"
     )
 
-    if input_room_id:
-        try:
-            response = requests.get(ROOM_LIST_URL, timeout=5)
-            response.raise_for_status()
-            # 修正: pd.compat.StringIO → io.StringIO
-            room_df = pd.read_csv(io.StringIO(response.text), header=None)
+    # 認証ボタン
+    if st.button("認証する"):
+        if input_room_id:  # 入力が空でない場合のみ
+            try:
+                response = requests.get(ROOM_LIST_URL, timeout=5)
+                response.raise_for_status()
+                room_df = pd.read_csv(io.StringIO(response.text), header=None)
 
-            valid_codes = set(str(x).strip() for x in room_df.iloc[:, 0].dropna())
+                valid_codes = set(str(x).strip() for x in room_df.iloc[:, 0].dropna())
 
-            if input_room_id.strip() in valid_codes:
-                st.session_state.authenticated = True
-                st.success("✅ 認証に成功しました。ツールを利用できます。")
-                st.rerun()  # ← 修正: experimental_rerun → rerun
-            else:
-                st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
-        except Exception as e:
-            st.error(f"ルームリストを取得できませんでした: {e}")
+                if input_room_id.strip() in valid_codes:
+                    st.session_state.authenticated = True
+                    st.success("✅ 認証に成功しました。ツールを利用できます。")
+                    st.rerun()  # 認証成功後に再読み込み
+                else:
+                    st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
+            except Exception as e:
+                st.error(f"ルームリストを取得できませんでした: {e}")
+        else:
+            st.warning("コードを入力してください。")
+
+    # 認証が終わるまで他のUIを描画しない
     st.stop()
 # ▲▲ 認証ステップここまで ▲▲
 
