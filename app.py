@@ -283,7 +283,7 @@ def main():
                 except Exception as e:
                     st.error(f"認証リストを取得できませんでした: {e}")
             else:
-                st.warning("コードを入力してください。")
+                st.warning("認証コードを入力してください。")
 
         # 認証が終わるまで他のUIを描画しない
         st.stop()
