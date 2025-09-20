@@ -259,8 +259,8 @@ def main():
     if not st.session_state.authenticated:
         st.markdown("### 🔑 認証コードを入力してください")
         input_room_id = st.text_input(
-            "対象のルームIDを入力してください:",
-            placeholder="例: 481475",
+            "認証コードを入力してください:",
+            placeholder="例: 154851",
             key="room_id_input"
         )
 
@@ -279,9 +279,9 @@ def main():
                         st.success("✅ 認証に成功しました。ツールを利用できます。")
                         st.rerun()  # 認証成功後に再読み込み
                     else:
-                        st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
+                        st.error("❌ 認証コードが無効です。正しい認証コードを入力してください。")
                 except Exception as e:
-                    st.error(f"ルームリストを取得できませんでした: {e}")
+                    st.error(f"認証リストを取得できませんでした: {e}")
             else:
                 st.warning("コードを入力してください。")
 
