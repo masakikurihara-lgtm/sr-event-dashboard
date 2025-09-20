@@ -775,18 +775,27 @@ def main():
             if not room_options_all:
                 st.info("イベント参加ルーム情報が取得できません。")
             else:
-                # df_rank_mapの作成
+                # 📌 比較対象ルームのステータスの df から順位を優先して取得し、なければ room_map_data を使用
+                room_rank_map = {}
+
+                # df が存在し、'ルーム名'・'現在の順位'列がある場合はマッピングを作成
                 df_rank_map = {}
                 if 'df' in locals() and not df.empty and 'ルーム名' in df.columns and '現在の順位' in df.columns:
                     for _, row in df.iterrows():
-                        rank_val = row['現在の順位']
-                        if pd.notna(rank_val):
-                            try:
-                                rank_int = int(rank_val)
-                                if rank_int > 0:              # 0位は無効として除外
-                                    df_rank_map[row['ルーム名']] = rank_int
-                            except:
-                                pass
+                        if pd.notna(row['現在の順位']):
+                            df_rank_map[row['ルーム名']] = int(row['現在の順位'])
+
+                for rn, info in st.session_state.room_map_data.items():
+                    if rn in df_rank_map:  # df の順位を優先
+                        rank_display = f"{df_rank_map[rn]}位"
+                    else:
+                        raw_rank = info.get("rank")
+                        try:
+                            rank_int = int(raw_rank)
+                            rank_display = f"{rank_int}位" if rank_int > 0 else "N/A"
+                        except:
+                            rank_display = "N/A"
+                    room_rank_map[rn] = f"{rank_display}：{rn}"
 
                 col_a, col_b = st.columns([1, 1])
                 with col_a:
