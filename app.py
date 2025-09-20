@@ -47,7 +47,7 @@ if not st.session_state.authenticated:
             if input_room_id.strip() in valid_codes:
                 st.session_state.authenticated = True
                 st.success("✅ 認証に成功しました。ツールを利用できます。")
-                st.experimental_rerun()
+                st.rerun()  # ← 修正: experimental_rerun → rerun
             else:
                 st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
         except Exception as e:
