@@ -252,7 +252,7 @@ def get_rank_color(rank):
     
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
-    st.write("イベント順位やポイント差、スペシャルギフトの履歴、必要ギフト数などが、リアルタイムで可視化できるツールです。")
+    st.write("イベント順位やポイント、ポイント差、スペシャルギフトの履歴、必要ギフト数などが、リアルタイムで可視化できるツールです。")
 
 
     # ▼▼ 認証ステップ ▼▼
