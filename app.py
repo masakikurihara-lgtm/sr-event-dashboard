@@ -812,28 +812,30 @@ def main():
 
 
             # --- ここから「戦闘モード！」修正版 ---
-            #st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("### ⚔ 必要ギフト数簡易算出", unsafe_allow_html=True)
 
-            room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
-            if not room_options_all:
-                st.info("イベント参加ルーム情報が取得できません。")
+            # 📌 プルダウンに表示するルームを「比較対象ルームのステータス」df から抽出
+            if 'df' in locals() and not df.empty and 'ルーム名' in df.columns:
+                room_options_all = df['ルーム名'].tolist()
             else:
-                # 📌 比較対象ルームのステータスの df から順位を優先して取得し、なければ room_map_data を使用
-                room_rank_map = {}
+                room_options_all = list(st.session_state.room_map_data.keys()) if st.session_state.room_map_data else []
 
-                # df が存在し、'ルーム名'・'現在の順位'列がある場合はマッピングを作成
+            if not room_options_all:
+                st.info("比較対象ルームが見つかりません。")
+            else:
+                # 順位ラベル付き表示を作成
+                room_rank_map = {}
                 df_rank_map = {}
                 if 'df' in locals() and not df.empty and 'ルーム名' in df.columns and '現在の順位' in df.columns:
                     for _, row in df.iterrows():
                         if pd.notna(row['現在の順位']):
                             df_rank_map[row['ルーム名']] = int(row['現在の順位'])
 
-                for rn, info in st.session_state.room_map_data.items():
+                for rn in room_options_all:
                     if rn in df_rank_map:  # df の順位を優先
                         rank_display = f"{df_rank_map[rn]}位"
                     else:
-                        raw_rank = info.get("rank")
+                        raw_rank = st.session_state.room_map_data.get(rn, {}).get("rank")
                         try:
                             rank_int = int(raw_rank)
                             rank_display = f"{rank_int}位" if rank_int > 0 else "N/A"
