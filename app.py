@@ -260,7 +260,7 @@ def main():
         st.markdown("### 🔑 認証コードを入力してください")
         input_room_id = st.text_input(
             "認証コードを入力してください:",
-            placeholder="例: 154851",
+            placeholder="",
             type="password",
             key="room_id_input"
         )
