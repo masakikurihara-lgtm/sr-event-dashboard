@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import io  # ← 追加
 import time
 import datetime
 import plotly.express as px
@@ -36,12 +37,11 @@ if not st.session_state.authenticated:
 
     if input_room_id:
         try:
-            # CSVを取得
             response = requests.get(ROOM_LIST_URL, timeout=5)
             response.raise_for_status()
-            room_df = pd.read_csv(pd.compat.StringIO(response.text), header=None)
+            # 修正: pd.compat.StringIO → io.StringIO
+            room_df = pd.read_csv(io.StringIO(response.text), header=None)
 
-            # A列（0列目）に認証コードがあると仮定
             valid_codes = set(str(x).strip() for x in room_df.iloc[:, 0].dropna())
 
             if input_room_id.strip() in valid_codes:
@@ -52,7 +52,7 @@ if not st.session_state.authenticated:
                 st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
         except Exception as e:
             st.error(f"ルームリストを取得できませんでした: {e}")
-    st.stop()  # 認証されるまで以降のUIを描画しない
+    st.stop()
 # ▲▲ 認証ステップここまで ▲▲
 
 
