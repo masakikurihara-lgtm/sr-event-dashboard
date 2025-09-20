@@ -10,6 +10,7 @@ from datetime import timedelta
 import logging
 
 
+
 # Set page configuration
 st.set_page_config(
     page_title="SHOWROOM Event Dashboard",
@@ -19,6 +20,41 @@ st.set_page_config(
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
+ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# ▼▼ 認証ステップ ▼▼
+if not st.session_state.authenticated:
+    st.markdown("### 🔑 認証コードを入力してください")
+    input_room_id = st.text_input(
+        "対象のルームIDを入力してください:",
+        placeholder="例: 481475",
+        key="room_id_input"
+    )
+
+    if input_room_id:
+        try:
+            # CSVを取得
+            response = requests.get(ROOM_LIST_URL, timeout=5)
+            response.raise_for_status()
+            room_df = pd.read_csv(pd.compat.StringIO(response.text), header=None)
+
+            # A列（0列目）に認証コードがあると仮定
+            valid_codes = set(str(x).strip() for x in room_df.iloc[:, 0].dropna())
+
+            if input_room_id.strip() in valid_codes:
+                st.session_state.authenticated = True
+                st.success("✅ 認証に成功しました。ツールを利用できます。")
+                st.experimental_rerun()
+            else:
+                st.error("❌ 認証コードが無効です。正しいルームIDを入力してください。")
+        except Exception as e:
+            st.error(f"ルームリストを取得できませんでした: {e}")
+    st.stop()  # 認証されるまで以降のUIを描画しない
+# ▲▲ 認証ステップここまで ▲▲
+
 
 @st.cache_data(ttl=3600)
 def get_events():
