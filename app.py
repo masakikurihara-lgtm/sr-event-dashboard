@@ -21,10 +21,10 @@ st.set_page_config(
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
-ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"
+ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"  #認証用
 
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
+if "authenticated" not in st.session_state:  #認証用
+    st.session_state.authenticated = False  #認証用
 
 # ▼▼ 認証ステップ ▼▼
 if not st.session_state.authenticated:
