@@ -261,6 +261,7 @@ def main():
         input_room_id = st.text_input(
             "認証コードを入力してください:",
             placeholder="例: 154851",
+            type="password",
             key="room_id_input"
         )
 
