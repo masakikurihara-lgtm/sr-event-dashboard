@@ -28,12 +28,13 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_events():
     """
     開催中および終了済みのイベントリストを取得する。
     終了済みイベントには "＜終了＞" という接頭辞を付ける。
     """
+    st.write("DEBUG: get_events() 開始")  # ← 関数に入った瞬間を表示
     all_events = []
     # status=1 (開催中) と status=4 (終了済み) の両方を取得
     for status in [1, 4]:
@@ -41,6 +42,7 @@ def get_events():
         # 各ステータスで最大10ページまで取得
         for _ in range(10):
             url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
+            st.write(f"DEBUG: リクエスト開始 {url}")  # ← ここでも表示
             try:
                 response = requests.get(url, headers=HEADERS, timeout=5)
                 response.raise_for_status()
