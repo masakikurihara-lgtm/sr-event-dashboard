@@ -58,10 +58,10 @@ def get_events():
                     break  # イベントがなくなったらループを抜ける
 
                 # 既存のフィルタリングロジックを適用
-                filtered_page_events = [
-                    event for event in page_events 
-                    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
-                ]
+                #filtered_page_events = [
+                #    event for event in page_events 
+                #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
+                #]
                 
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
