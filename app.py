@@ -28,13 +28,12 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
-#@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600)
 def get_events():
     """
     開催中および終了済みのイベントリストを取得する。
     終了済みイベントには "＜終了＞" という接頭辞を付ける。
     """
-    st.write("DEBUG: get_events() 開始")  # ← 関数に入った瞬間を表示
     all_events = []
     # status=1 (開催中) と status=4 (終了済み) の両方を取得
     for status in [1, 4]:
@@ -42,21 +41,9 @@ def get_events():
         # 各ステータスで最大10ページまで取得
         for _ in range(10):
             url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
-            st.write(f"DEBUG: リクエスト開始 {url}")  # ← ここでも表示
             try:
                 response = requests.get(url, headers=HEADERS, timeout=5)
                 response.raise_for_status()
-
-
-                # 🔍 APIレスポンスの生データをデバッグ表示
-                st.write(f"DEBUG: status={status}, page={page}")
-                st.text(response.text[:1000])  # 先頭1000文字だけ表示（長すぎ防止）
-
-                # 💾 ファイルとして保存して確認したい場合（任意）
-                with open(f"debug_response_status{status}_page{page}.json", "w", encoding="utf-8") as f:
-                    f.write(response.text)
-
-
                 data = response.json()
                 
                 page_events = []
@@ -77,8 +64,6 @@ def get_events():
                 #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
                 #]
 
-                # ← ここでデバッグ（APIレスポンスを表示）
-                st.write(f"DEBUG: status={status}, page={page}", data)
 
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
@@ -97,10 +82,6 @@ def get_events():
                 break
     return all_events
 
-# --- メイン側 ---
-st.write("デバッグ開始")
-events = get_events()   # ← ここで初めて呼び出す
-st.write("get_events 完了。件数:", len(events))
 
 RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
