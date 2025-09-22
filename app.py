@@ -9,7 +9,6 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from datetime import timedelta
 import logging
-import random
 
 
 
