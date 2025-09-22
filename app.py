@@ -523,7 +523,7 @@ def main():
                         upper_gap = room_info.get('upper_gap', 0)
                         lower_gap = room_info.get('lower_gap', 0)
                         rank = 'N/A'
-                        
+
                         is_live = int(room_id) in onlives_rooms
                         is_premium_live = False
                         if is_live:
@@ -578,6 +578,7 @@ def main():
                     except Exception as e:
                         st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                         continue
+
 
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
