@@ -60,7 +60,7 @@ def get_events():
                 # 既存のフィルタリングロジックを適用
                 filtered_page_events = [
                     event for event in page_events 
-                    if event.get("show_ranking") is not False #and event.get("is_event_block") is not True
+                    if event.get("show_ranking") is not False or event.get("type_name") is "ランキング" #and event.get("is_event_block") is not True
                 ]
 
 
