@@ -63,11 +63,6 @@ def get_events():
                 #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
                 #]
 
-                # --- デバッグ用 ---
-                st.write("デバッグ開始")
-                events = get_events()  # ← 必ず呼ぶ
-                st.write("get_events 完了")
-
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
                     #for event in filtered_page_events:
@@ -85,6 +80,10 @@ def get_events():
                 break
     return all_events
 
+# --- メイン側 ---
+st.write("デバッグ開始")
+events = get_events()   # ← ここで初めて呼び出す
+st.write("get_events 完了。件数:", len(events))
 
 RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
@@ -316,12 +315,6 @@ def main():
     if not events:
         st.warning("表示可能なイベントが見つかりませんでした。")
         return
-
-
-    # --- デバッグ用 ---
-    st.write("デバッグ開始")
-    events = get_events()  # ← 必ず呼ぶ
-    st.write("get_events 完了")
 
 
     event_options = {event['event_name']: event for event in events}
