@@ -483,6 +483,18 @@ def main():
             onlives_rooms = get_onlives_rooms()
 
             data_to_display = []
+
+            # ▼ブロック型イベントの順位取得
+            if selected_event_data.get('is_event_block'):
+                block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+                for room_name in st.session_state.selected_room_names:
+                    room_info = st.session_state.room_map_data.get(room_name)
+                    if not room_info:
+                        continue
+                    room_id = room_info['room_id']
+                    if room_id in block_ranking_map:
+                        st.session_state.room_map_data[room_name]['rank'] = block_ranking_map[room_id].get('rank', 'N/A')
+
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
                     name for name in st.session_state.selected_room_names
