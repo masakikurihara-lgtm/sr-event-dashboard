@@ -343,6 +343,15 @@ def main():
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+            # ▼▼▼ 修正箇所: ブロック型イベントの順位を ranking API から取得
+            if selected_event_data.get('is_event_block'):
+                block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
+                for room_name, room_info in st.session_state.room_map_data.items():
+                    room_id = room_info['room_id']
+                    if room_id in block_ranking_map:
+                        # API から取得した順位で上書き
+                        st.session_state.room_map_data[room_name]['rank'] = block_ranking_map[room_id].get('rank')
+            # ▲▲▲ 修正箇所ここまで
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
