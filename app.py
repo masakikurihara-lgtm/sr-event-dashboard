@@ -63,7 +63,10 @@ def get_events():
                 #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
                 #]
 
-                st.write("DEBUG: APIレスポンス", data)
+                # --- デバッグ用 ---
+                st.write("デバッグ開始")
+                events = get_events()  # ← 必ず呼ぶ
+                st.write("get_events 完了")
 
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
