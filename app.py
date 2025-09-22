@@ -69,7 +69,8 @@ def get_events():
                     for event in page_events:
                         event['event_name'] = f"＜終了＞ {event['event_name']}"
 
-                all_events.extend(filtered_page_events)
+                #all_events.extend(filtered_page_events)
+                all_events.extend(page_events)
                 page += 1
             except requests.exceptions.RequestException as e:
                 st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
