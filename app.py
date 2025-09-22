@@ -9,6 +9,7 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from datetime import timedelta
 import logging
+import random
 
 
 
@@ -43,6 +44,17 @@ def get_events():
             try:
                 response = requests.get(url, headers=HEADERS, timeout=5)
                 response.raise_for_status()
+
+
+                # 🔍 APIレスポンスの生データをデバッグ表示
+                st.write(f"DEBUG: status={status}, page={page}")
+                st.text(response.text[:1000])  # 先頭1000文字だけ表示（長すぎ防止）
+
+                # 💾 ファイルとして保存して確認したい場合（任意）
+                with open(f"debug_response_status{status}_page{page}.json", "w", encoding="utf-8") as f:
+                    f.write(response.text)
+
+
                 data = response.json()
                 
                 page_events = []
