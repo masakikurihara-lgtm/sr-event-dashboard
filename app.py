@@ -317,6 +317,13 @@ def main():
         st.warning("表示可能なイベントが見つかりませんでした。")
         return
 
+
+    # --- デバッグ用 ---
+    st.write("デバッグ開始")
+    events = get_events()  # ← 必ず呼ぶ
+    st.write("get_events 完了")
+
+
     event_options = {event['event_name']: event for event in events}
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
