@@ -343,21 +343,6 @@ def main():
     if st.session_state.selected_event_name != selected_event_name or st.session_state.room_map_data is None:
         with st.spinner('イベント参加者情報を取得中...'):
             st.session_state.room_map_data = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
-            # ▼▼▼ 修正箇所: ブロック型イベントの順位を ranking API から取得
-            if selected_event_data.get('is_event_block'):
-                # ブロック型イベントは順位のみ ranking API から取得
-                block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
-                for room_name, room_info in st.session_state.room_map_data.items():
-                    try:
-                        room_id_int = int(room_info['room_id'])  # int に変換して key 照合
-                        if room_id_int in block_ranking_map:
-                            rank_from_api = block_ranking_map[room_id_int].get('rank')
-                            if rank_from_api is not None:
-                                # API から取得した順位で上書き（ポイントは変更しない）
-                                st.session_state.room_map_data[room_name]['rank'] = rank_from_api
-                    except Exception as e:
-                        st.error(f"ブロック型イベント順位取得でエラー（ルーム名: {room_name}）: {e}")
-            # ▲▲▲ 修正箇所ここまで
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
         st.session_state.multiselect_default_value = []
@@ -498,7 +483,6 @@ def main():
             onlives_rooms = get_onlives_rooms()
 
             data_to_display = []
-
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
                     name for name in st.session_state.selected_room_names
@@ -511,24 +495,15 @@ def main():
                     room_names_str = '、'.join([f"'{name}'" for name in premium_live_rooms])
                     st.info(f"{room_names_str} は、プレミアムライブのため、ポイントおよびスペシャルギフト履歴情報は取得できません。")
 
-                # ★ ブロック型イベント判定用にランキング取得（必要に応じて1回だけ）
-                block_ranking_map = {}
-                if selected_event_data.get('is_event_block'):
-                    block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
-
                 for room_name in st.session_state.selected_room_names:
                     try:
-                        room_info = st.session_state.room_map_data.get(room_name)
-                        if not room_info:
-                            st.error(f"選択されたルーム名 '{room_name}' が見つかりません。")
+                        if room_name not in st.session_state.room_map_data:
+                            st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
                             continue
-
-                        room_id = room_info['room_id']
-                        point = room_info.get('point', 'N/A')
-                        upper_gap = room_info.get('upper_gap', 0)
-                        lower_gap = room_info.get('lower_gap', 0)
-                        rank = 'N/A'
-
+                        
+                        room_id = st.session_state.room_map_data[room_name]['room_id']
+                        rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
+                        
                         is_live = int(room_id) in onlives_rooms
                         is_premium_live = False
                         if is_live:
@@ -536,6 +511,62 @@ def main():
                             if live_info and live_info.get('premium_room_type') == 1:
                                 is_premium_live = True
 
+                        if is_premium_live:
+                            rank = st.session_state.room_map_data[room_name].get('rank')
+
+                            started_at_str = ""
+                            if is_live:
+                                started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
+                                if started_at_ts:
+                                    started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
+                                    started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
+
+                            data_to_display.append({
+                                "配信中": "🔴",
+                                "ルーム名": room_name,
+                                "現在の順位": rank,
+                                "現在のポイント": "N/A",
+                                "上位とのポイント差": "N/A",
+                                "下位とのポイント差": "N/A",
+                                "配信開始時間": started_at_str
+                            })
+                            continue
+                        
+                        if is_event_ended:
+                            if room_id in final_ranking_data:
+                                rank = final_ranking_data[room_id].get('rank', 'N/A')
+                                point = final_ranking_data[room_id].get('point', 'N/A')
+                                upper_gap, lower_gap = 0, 0
+                            else:
+                                st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
+                                continue
+                        else:
+                            room_info = get_room_event_info(room_id)
+                            if not isinstance(room_info, dict):
+                                st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
+                                continue
+                            
+                            rank_info = None
+                            if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
+                                rank_info = room_info['ranking']
+                            elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
+                                event_info = room_info['event_and_support_info']
+                                if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
+                                    rank_info = event_info['ranking']
+                            elif 'event' in room_info and isinstance(room_info['event'], dict):
+                                event_data = room_info['event']
+                                if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
+                                    rank_info = event_data['ranking']
+
+                            if rank_info and 'point' in rank_info:
+                                rank = rank_info.get('rank', 'N/A')
+                                point = rank_info.get('point', 'N/A')
+                                upper_gap = rank_info.get('upper_gap', 'N/A')
+                                lower_gap = rank_info.get('lower_gap', 'N/A')
+                            else:
+                                st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
+                                continue
+                        
                         started_at_str = ""
                         if is_live:
                             started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
@@ -543,47 +574,15 @@ def main():
                                 started_at_dt = datetime.datetime.fromtimestamp(started_at_ts, JST)
                                 started_at_str = started_at_dt.strftime("%Y/%m/%d %H:%M")
 
-                        # ★ ブロック型イベントの場合はランキングAPIから順位のみ取得
-                        if selected_event_data.get('is_event_block'):
-                            if room_id in block_ranking_map:
-                                rank = block_ranking_map[room_id].get('rank', 'N/A')
-                            # ポイントや上下差は room_map_data の値を使用
-                        else:
-                            # 非ブロック型イベントの既存処理
-                            room_api_info = get_room_event_info(room_id)
-                            if isinstance(room_api_info, dict):
-                                rank_info = None
-                                if 'ranking' in room_api_info and isinstance(room_api_info['ranking'], dict):
-                                    rank_info = room_api_info['ranking']
-                                elif 'event_and_support_info' in room_api_info and isinstance(room_api_info['event_and_support_info'], dict):
-                                    event_info = room_api_info['event_and_support_info']
-                                    if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
-                                        rank_info = event_info['ranking']
-                                elif 'event' in room_api_info and isinstance(room_api_info['event'], dict):
-                                    event_data = room_api_info['event']
-                                    if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
-                                        rank_info = event_data['ranking']
-
-                                if rank_info and 'point' in rank_info:
-                                    rank = rank_info.get('rank', 'N/A')
-                                    point = rank_info.get('point', point)
-                                    upper_gap = rank_info.get('upper_gap', upper_gap)
-                                    lower_gap = rank_info.get('lower_gap', lower_gap)
-
                         data_to_display.append({
-                            "配信中": "🔴" if is_live else "",
-                            "ルーム名": room_name,
-                            "現在の順位": rank,
-                            "現在のポイント": point,
-                            "上位とのポイント差": upper_gap,
-                            "下位とのポイント差": lower_gap,
+                            "配信中": "🔴" if is_live else "", "ルーム名": room_name,
+                            "現在の順位": rank, "現在のポイント": point,
+                            "上位とのポイント差": upper_gap, "下位とのポイント差": lower_gap,
                             "配信開始時間": started_at_str
                         })
-
                     except Exception as e:
                         st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                         continue
-
 
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
