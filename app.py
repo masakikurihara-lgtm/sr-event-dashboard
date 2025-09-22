@@ -63,6 +63,9 @@ def get_events():
                 #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
                 #]
 
+                # ← ここでデバッグ（APIレスポンスを表示）
+                st.write(f"DEBUG: status={status}, page={page}", data)
+
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
                     #for event in filtered_page_events:
