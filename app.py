@@ -515,8 +515,10 @@ def main():
                             continue
 
                         room_id = st.session_state.room_map_data[room_name]['room_id']
-                        rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
-                        
+                        point = st.session_state.room_map_data[room_name].get('point', 'N/A')
+                        rank = st.session_state.room_map_data[room_name].get('rank', 'N/A')
+                        upper_gap = lower_gap = 0
+
                         is_live = int(room_id) in onlives_rooms
                         is_premium_live = False
                         if is_live:
@@ -525,7 +527,6 @@ def main():
                                 is_premium_live = True
 
                         if is_premium_live:
-                            rank = st.session_state.room_map_data[room_name].get('rank')
                             started_at_str = ""
                             if is_live:
                                 started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
@@ -543,56 +544,11 @@ def main():
                             })
                             continue
 
-                        # ▼ここを修正：ブロック型イベントの場合は df から順位・ポイント取得
-                        if is_block_event and 'df' in locals() and not df.empty:
-                            row = df[df['ルーム名'] == room_name]
-                            if not row.empty:
-                                rank = row.iloc[0].get('現在の順位', 'N/A')
-                                point = row.iloc[0].get('現在のポイント', 'N/A')
-                                upper_gap = row.iloc[0].get('上位とのポイント差', 'N/A')
-                                lower_gap = row.iloc[0].get('下位とのポイント差', 'N/A')
-                            else:
-                                # df に無ければ従来通り
-                                rank = st.session_state.room_map_data.get(room_name, {}).get('rank', 'N/A')
-                                point = st.session_state.room_map_data.get(room_name, {}).get('point', 'N/A')
-                                upper_gap, lower_gap = 0, 0
-                        else:
-                            # 通常イベント／非ブロック型
-                            if is_event_ended:
-                                if room_id in final_ranking_data:
-                                    rank = final_ranking_data[room_id].get('rank', 'N/A')
-                                    point = final_ranking_data[room_id].get('point', 'N/A')
-                                    upper_gap, lower_gap = 0, 0
-                                else:
-                                    st.warning(f"ルーム名 '{room_name}' の最終ランキング情報が見つかりませんでした。")
-                                    continue
-                            else:
-                                room_info = get_room_event_info(room_id)
-                                if not isinstance(room_info, dict):
-                                    st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
-                                    continue
-                                
-                                rank_info = None
-                                if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
-                                    rank_info = room_info['ranking']
-                                elif 'event_and_support_info' in room_info and isinstance(room_info['event_and_support_info'], dict):
-                                    event_info = room_info['event_and_support_info']
-                                    if 'ranking' in event_info and isinstance(event_info['ranking'], dict):
-                                        rank_info = event_info['ranking']
-                                elif 'event' in room_info and isinstance(room_info['event'], dict):
-                                    event_data = room_info['event']
-                                    if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
-                                        rank_info = event_data['ranking']
+                        # ▼ブロック型イベントの場合は順位のみ block_event_rank_map から取得
+                        if is_block_event and int(room_id) in block_event_rank_map:
+                            rank = block_event_rank_map[int(room_id)]
 
-                                if rank_info and 'point' in rank_info:
-                                    rank = rank_info.get('rank', 'N/A')
-                                    point = rank_info.get('point', 'N/A')
-                                    upper_gap = rank_info.get('upper_gap', 'N/A')
-                                    lower_gap = rank_info.get('lower_gap', 'N/A')
-                                else:
-                                    st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
-                                    continue
-
+                        # 配信開始時間
                         started_at_str = ""
                         if is_live:
                             started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
@@ -609,9 +565,11 @@ def main():
                             "下位とのポイント差": lower_gap,
                             "配信開始時間": started_at_str
                         })
+
                     except Exception as e:
                         st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                         continue
+
 
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
