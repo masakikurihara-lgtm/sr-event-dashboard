@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
-import io  # ← 追加
+import io
 import time
 import datetime
 import plotly.express as px
@@ -60,18 +60,16 @@ def get_events():
                 # 既存のフィルタリングロジックを適用
                 filtered_page_events = [
                     event for event in page_events 
-                    if event.get("show_ranking") is not False or event.get("type_name") == "ランキング" #and event.get("is_event_block") is not True
+                    if event.get("show_ranking") is not False or event.get("type_name") == "ランキング"
                 ]
 
 
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
                     for event in filtered_page_events:
-                    #for event in page_events:
                         event['event_name'] = f"＜終了＞ {event['event_name']}"
 
                 all_events.extend(filtered_page_events)
-                #all_events.extend(page_events)
                 page += 1
             except requests.exceptions.RequestException as e:
                 st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
@@ -136,9 +134,37 @@ def get_room_event_info(room_id):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        # このエラーはmain()でキャッチし、よりユーザーフレンドリーなメッセージを表示する
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
+
+# ▼▼▼ 追加箇所1: ブロックイベントの全体順位を取得する新関数 ▼▼▼
+@st.cache_data(ttl=60)
+def get_block_event_overall_ranking(event_url_key, max_pages=30):
+    """
+    ブロックイベント全体のランキング（順位情報のみ）を取得する。
+    """
+    rank_map = {}
+    base_url = "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}"
+    try:
+        for page in range(1, max_pages + 1):
+            url = base_url.format(event_url_key=event_url_key, page=page)
+            response = requests.get(url, headers=HEADERS, timeout=10)
+            if response.status_code == 404:
+                break
+            response.raise_for_status()
+            data = response.json()
+            ranking_list = data.get('ranking', [])
+            if not ranking_list:
+                break
+            for rank_info in ranking_list:
+                room_id = rank_info.get('room_id')
+                rank = rank_info.get('rank')
+                if room_id is not None and rank is not None:
+                    rank_map[room_id] = rank
+    except requests.exceptions.RequestException as e:
+        st.warning(f"ブロックイベントの全体ランキング取得中にエラーが発生しました: {e}")
+    return rank_map
+# ▲▲▲ 追加箇所1 ここまで ▲▲▲
 
 @st.cache_data(ttl=30)
 def get_gift_list(room_id):
@@ -484,6 +510,15 @@ def main():
 
             data_to_display = []
 
+            # ▼▼▼ 追加箇所2: ブロックイベントの判定と全体順位の事前取得 ▼▼▼
+            is_block_event = selected_event_data.get("is_event_block", False)
+            block_event_ranks = {}
+            if is_block_event and not is_event_ended:
+                # 開催中のブロックイベントの場合のみ、全体ランキングを取得
+                with st.spinner('ブロックイベントの全体順位を取得中...'):
+                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'))
+            # ▲▲▲ 追加箇所2 ここまで ▲▲▲
+
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
                     name for name in st.session_state.selected_room_names
@@ -559,14 +594,24 @@ def main():
                                 if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                                     rank_info = event_data['ranking']
 
+                            # ▼▼▼ 修正箇所3: 順位の取得ロジックを修正 ▼▼▼
                             if rank_info and 'point' in rank_info:
-                                rank = rank_info.get('rank', 'N/A')
+                                # ポイントとポイント差は常に event_and_support から取得
                                 point = rank_info.get('point', 'N/A')
                                 upper_gap = rank_info.get('upper_gap', 'N/A')
                                 lower_gap = rank_info.get('lower_gap', 'N/A')
+                                
+                                # ブロックイベントかどうかで順位の取得元を切り替える
+                                if is_block_event:
+                                    # ブロックイベントの場合、事前に取得した全体ランキングから順位を取得
+                                    rank = block_event_ranks.get(room_id, 'N/A')
+                                else:
+                                    # 通常イベントの場合、従来通り event_and_support から順位を取得
+                                    rank = rank_info.get('rank', 'N/A')
                             else:
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
+                            # ▲▲▲ 修正箇所3 ここまで ▲▲▲
                         
                         started_at_str = ""
                         if is_live:
@@ -589,28 +634,23 @@ def main():
                 df = pd.DataFrame(data_to_display)
                 
                 if is_aggregating:
-                    # 集計中の場合はポイントを「集計中」とし、差の計算は行わない
                     df['現在のポイント'] = '集計中'
                     df['上位とのポイント差'] = 'N/A'
                     df['下位とのポイント差'] = 'N/A'
                     df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                     
-                    # ▼▼▼ 修正箇所 ▼▼▼
-                    # 順位が0より大きいルームを優先してソートするロジックを適用
                     df['has_valid_rank'] = df['現在の順位'] > 0
                     df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
                     df = df.drop(columns=['has_valid_rank'])
-                    # ▲▲▲ 修正箇所 ▲▲▲
                     
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
                 else:
-                    # 通常時の処理
                     df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                     df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
                     
-                    if is_event_ended:
+                    if is_event_ended or is_block_event: # ブロックイベントも順位でソート
                         df['has_valid_rank'] = df['現在の順位'] > 0
                         df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
                         df = df.drop(columns=['has_valid_rank'])
@@ -620,10 +660,14 @@ def main():
                     live_status = df['配信中']
                     df = df.drop(columns=['配信中'])
                     
-                    df['上位とのポイント差'] = (df['現在のポイント'].shift(1) - df['現在のポイント']).abs().fillna(0).astype(int)
-                    if not df.empty:
-                        df.at[0, '上位とのポイント差'] = 0
-                    df['下位とのポイント差'] = (df['現在のポイント'].shift(-1) - df['現在のポイント']).abs().fillna(0).astype(int)
+                    # ポイント差の再計算
+                    df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
+                    df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
+                    df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
+                    
+                    # 元の順位ソート順に戻すためにマージ
+                    df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
+
                     df.insert(0, '配信中', live_status)
                     
                     started_at_column = df['配信開始時間']
@@ -633,11 +677,10 @@ def main():
                 st.markdown(
                     """
                     <style>
-                    /* 独自クラスで padding を上書き */
                     h3.custom-status-title {
                         padding-top: 0 !important;
-                        padding-bottom: 0px !important; /* 好みの値に調整 */
-                        margin: 0 !important;           /* 必要に応じてマージンも詰める */
+                        padding-bottom: 0px !important;
+                        margin: 0 !important;
                     }
                     </style>
                     """,
@@ -689,8 +732,6 @@ def main():
                 gift_history_title += " <span style='font-size: 14px;'>（現在配信中のルームのみ表示）</span>"
             st.markdown(f"### {gift_history_title}", unsafe_allow_html=True)
 
-            #st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
-
             gift_container = st.container()        
             css_style = """
                 <style>
@@ -723,7 +764,7 @@ def main():
             """
             
             live_rooms_data = []
-            if not df.empty and st.session_state.room_map_data:
+            if 'df' in locals() and not df.empty and st.session_state.room_map_data:
                 selected_live_room_ids = {
                     int(st.session_state.room_map_data[row['ルーム名']]['room_id']) for index, row in df.iterrows() 
                     if '配信中' in row and row['配信中'] == '🔴' and onlives_rooms.get(int(st.session_state.room_map_data[row['ルーム名']]['room_id']), {}).get('premium_room_type') != 1
@@ -819,7 +860,6 @@ def main():
             # --- ここから「戦闘モード！」修正版 ---
             st.markdown("### ⚔ 必要ギフト数簡易算出", unsafe_allow_html=True)
 
-            # 📌 プルダウンに表示するルームを「比較対象ルームのステータス」df から抽出
             if 'df' in locals() and not df.empty and 'ルーム名' in df.columns:
                 room_options_all = df['ルーム名'].tolist()
             else:
@@ -828,7 +868,6 @@ def main():
             if not room_options_all:
                 st.info("比較対象ルームが見つかりません。")
             else:
-                # 順位ラベル付き表示を作成
                 room_rank_map = {}
                 df_rank_map = {}
                 if 'df' in locals() and not df.empty and 'ルーム名' in df.columns and '現在の順位' in df.columns:
@@ -837,7 +876,7 @@ def main():
                             df_rank_map[row['ルーム名']] = int(row['現在の順位'])
 
                 for rn in room_options_all:
-                    if rn in df_rank_map:  # df の順位を優先
+                    if rn in df_rank_map:
                         rank_display = f"{df_rank_map[rn]}位"
                     else:
                         raw_rank = st.session_state.room_map_data.get(rn, {}).get("rank")
@@ -865,7 +904,6 @@ def main():
                         key="battle_enemy_room"
                     ) if other_rooms else None
 
-                # ポイント計算
                 points_map = {}
                 try:
                     if 'df' in locals() and not df.empty:
@@ -887,14 +925,12 @@ def main():
                     target_point = points_map.get(selected_target_room, 0)
                     enemy_point = points_map.get(selected_enemy_room, 0)
                     diff = target_point - enemy_point
-                    # 同点なら必要ポイントは0にする
                     if enemy_point == target_point:
                         needed = 0
                     else:
                         needed_points_to_overtake = max(0, enemy_point - target_point + 1)
                         needed = max(0, needed_points_to_overtake)
 
-                    # 順位・下位差取得
                     target_rank = None
                     target_lower_gap = None
                     try:
@@ -912,7 +948,6 @@ def main():
                     if target_rank is None:
                         target_rank = st.session_state.room_map_data.get(selected_target_room, {}).get('rank')
 
-                    # 表示メッセージ
                     lower_gap_text = (
                         f"※下位とのポイント差: {target_lower_gap:,} pt"
                         if target_lower_gap is not None
@@ -941,16 +976,13 @@ def main():
                         )
 
                     st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
-                    #st.markdown("<div style='margin-top: 0px;'></div>", unsafe_allow_html=True)
             
-                    # ギフト計算
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
                     small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
                     rainbow_pt = 100 * 2.5
                     big_rainbow_pt = 1250 * 1.20 * 2.5
                     rainbow_meteor_pt = 2500 * 1.20 * 2.5
 
-                    # 同点なら必要ポイントは0にする
                     if enemy_point == target_point:
                         needed = 0
                     else:
@@ -974,7 +1006,6 @@ def main():
                         ]
                     }
 
-                    # ▼必要なギフト例（フォントサイズ拡大 + 下余白調整）
                     st.markdown(
                         """
                         <div style='margin-bottom:2px;'>
@@ -987,7 +1018,6 @@ def main():
                     )
 
                     def df_to_html_table(df):
-                        # DataFrameをHTMLに変換し、独自のクラスを付与
                         html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
                         style = """
                         <style>
@@ -996,10 +1026,10 @@ def main():
                             width: 100%;
                             font-size: 0.9rem;
                             line-height: 1.3;
-                            margin-top: 0;             /* 上余白を詰める */
+                            margin-top: 0;
                         }
                         table.gift-table th {
-                            background-color: #f1f3f4; /* ヘッダー背景色 */
+                            background-color: #f1f3f4;
                             color: #333;
                             padding: 6px 8px;
                             border-bottom: 1px solid #ccc;
@@ -1009,23 +1039,17 @@ def main():
                             padding: 5px 8px;
                             border-bottom: 1px solid #e0e0e0;
                         }
-                        /* 最下行も境界線を表示する → 下記行を削除またはコメントアウト */
-                        /* table.gift-table tr:last-child td {
-                            border-bottom: none;
-                        } */
                         table.gift-table tbody tr:nth-child(even) {
-                            background-color: #fafafa; /* 偶数行の薄い背景 */
+                            background-color: #fafafa;
                         }
                         </style>
                         """
                         return style + html
 
-                    # 各テーブルHTML生成
                     large_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
                     small_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G未満）<span style='font-size: 14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
                     rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
-                    # 枠（コンテナ）
                     container_html = f"""
                     <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
                       <div style='display:flex; justify-content:space-between; gap:16px;'>
@@ -1048,11 +1072,10 @@ def main():
             st.markdown(
                 """
                 <style>
-                /* 独自クラスで padding を上書き */
                 h3.custom-status-title2 {
                     padding-top: 0 !important;
-                    padding-bottom: 0px !important; /* 好みの値に調整 */
-                    margin: 0 !important;           /* 必要に応じてマージンも詰める */
+                    padding-bottom: 0px !important;
+                    margin: 0 !important;
                 }
                 </style>
                 """,
@@ -1062,10 +1085,8 @@ def main():
                 "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
                 unsafe_allow_html=True
             )
-
-            #st.subheader("📈 ポイントと順位の比較")
             
-            if not is_aggregating:
+            if not is_aggregating and 'df' in locals() and not df.empty:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
                 points_container = st.container()
 
