@@ -65,7 +65,8 @@ def get_events():
                 
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
-                    for event in filtered_page_events:
+                    #for event in filtered_page_events:
+                    for event in page_events:
                         event['event_name'] = f"＜終了＞ {event['event_name']}"
 
                 all_events.extend(filtered_page_events)
