@@ -62,7 +62,9 @@ def get_events():
                 #    event for event in page_events 
                 #    if event.get("show_ranking") is not False and event.get("is_event_block") is not True
                 #]
-                
+
+                st.write(data)
+
                 # 終了済みイベントの場合、イベント名に接頭辞を追加
                 if status == 4:
                     #for event in filtered_page_events:
