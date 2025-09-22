@@ -348,10 +348,15 @@ def main():
                 # ブロック型イベントは順位のみ ranking API から取得
                 block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
                 for room_name, room_info in st.session_state.room_map_data.items():
-                    room_id = room_info['room_id']
-                    if room_id in block_ranking_map:
-                        # API から取得した順位で上書き（ポイントは変更しない）
-                        st.session_state.room_map_data[room_name]['rank'] = block_ranking_map[room_id].get('rank')
+                    try:
+                        room_id_int = int(room_info['room_id'])  # int に変換して key 照合
+                        if room_id_int in block_ranking_map:
+                            rank_from_api = block_ranking_map[room_id_int].get('rank')
+                            if rank_from_api is not None:
+                                # API から取得した順位で上書き（ポイントは変更しない）
+                                st.session_state.room_map_data[room_name]['rank'] = rank_from_api
+                    except Exception as e:
+                        st.error(f"ブロック型イベント順位取得でエラー（ルーム名: {room_name}）: {e}")
             # ▲▲▲ 修正箇所ここまで
         st.session_state.selected_event_name = selected_event_name
         st.session_state.selected_room_names = []
