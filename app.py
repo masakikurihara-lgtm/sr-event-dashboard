@@ -482,20 +482,6 @@ def main():
 
             onlives_rooms = get_onlives_rooms()
 
-
-            # ▼▼▼ 修正箇所: ブロック型イベントの順位のみを取得して room_map_data に上書き
-            if selected_event_data.get('is_event_block'):
-                # ranking API から順位を取得
-                block_ranking_map = get_event_ranking_with_room_id(selected_event_key, selected_event_id)
-
-                # room_map_data の rank キーだけ上書き
-                for room_name, room_info in st.session_state.room_map_data.items():
-                    room_id = room_info['room_id']
-                    if room_id in block_ranking_map:
-                        st.session_state.room_map_data[room_name]['rank'] = block_ranking_map[room_id].get('rank', 'N/A')
-            # ▲▲▲ 修正箇所ここまで
-
-
             data_to_display = []
 
             if st.session_state.selected_room_names:
