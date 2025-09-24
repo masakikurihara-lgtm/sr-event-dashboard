@@ -1451,11 +1451,11 @@ def main():
                 """,
                 unsafe_allow_html=True
             )
-            #st.markdown(
-            #    "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
-            #    unsafe_allow_html=True
-            #)
-            st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
+            st.markdown(
+                "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
+                unsafe_allow_html=True
+            )
+            #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
             
             if not is_aggregating and 'df' in locals() and not df.empty:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
