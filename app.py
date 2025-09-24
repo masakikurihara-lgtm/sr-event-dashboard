@@ -263,7 +263,9 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
             room_map[room_name] = {
                 'room_id': room_id,
                 'rank': room_info.get('rank'),
-                'point': room_info.get('point')
+                # 変更後（フォールバックを追加）
+                'point': room_info.get('point') or room_info.get('event_point') or \
+                          (room_info.get('event_entry', {}) or {}).get('event_point', 0)
             }
     return room_map
 # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
