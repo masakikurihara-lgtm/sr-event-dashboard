@@ -7,7 +7,7 @@ import datetime
 import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
-from datetime import timedelta
+from datetime import timedelta, date
 import logging
 
 
@@ -22,67 +22,204 @@ st.set_page_config(
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
 ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"  #認証用
+BACKUP_INDEX_URL = "https://mksoul-pro.com/showroom/file/sr-event-archive-list-index.txt" # バックアップインデックスURL
 
 if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
+# ▼▼▼ ここから修正・追加した関数群 ▼▼▼
+
+def normalize_event_id(val):
+    """
+    event_idを統一された文字列形式に正規化します。
+    (例: 123, 123.0, "123", "123.0" -> "123")
+    """
+    if val is None:
+        return None
+    try:
+        # 数値や数値形式の文字列を float -> int -> str の順で変換
+        return str(int(float(val)))
+    except (ValueError, TypeError):
+        # 変換に失敗した場合は、そのままの文字列として扱う
+        return str(val).strip()
+
 @st.cache_data(ttl=3600)
-def get_events():
+def get_api_events(status, pages=10):
     """
-    開催中および終了済みのイベントリストを取得する。
-    終了済みイベントには "＜終了＞" という接頭辞を付ける。
+    APIから指定されたステータスのイベントを取得する汎用関数
     """
-    all_events = []
-    # status=1 (開催中) と status=4 (終了済み) の両方を取得
-    for status in [1, 4]:
-        page = 1
-        # 各ステータスで最大10ページまで取得
-        for _ in range(10):
-            url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
-            try:
-                response = requests.get(url, headers=HEADERS, timeout=5)
-                response.raise_for_status()
-                data = response.json()
-                
-                page_events = []
-                if isinstance(data, dict):
-                    if 'events' in data:
-                        page_events = data['events']
-                    elif 'event_list' in data:
-                        page_events = data['event_list']
-                elif isinstance(data, list):
-                    page_events = data
+    api_events = []
+    page = 1
+    for _ in range(pages):
+        url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            
+            page_events = []
+            if isinstance(data, dict):
+                if 'events' in data:
+                    page_events = data['events']
+                elif 'event_list' in data:
+                    page_events = data['event_list']
+            elif isinstance(data, list):
+                page_events = data
 
-                if not page_events:
-                    break  # イベントがなくなったらループを抜ける
-
-                # 既存のフィルタリングロジックを適用
-                filtered_page_events = [
-                    event for event in page_events 
-                    if event.get("show_ranking") is not False or event.get("type_name") == "ランキング"
-                ]
-
-
-                # 終了済みイベントの場合、イベント名に接頭辞を追加
-                if status == 4:
-                    for event in filtered_page_events:
-                        event['event_name'] = f"＜終了＞ {event['event_name']}"
-
-                all_events.extend(filtered_page_events)
-                page += 1
-            except requests.exceptions.RequestException as e:
-                st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
+            if not page_events:
                 break
-            except ValueError:
-                st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
-                break
-    return all_events
+
+            filtered_page_events = [
+                event for event in page_events 
+                if event.get("show_ranking") is not False or event.get("type_name") == "ランキング"
+            ]
+            api_events.extend(filtered_page_events)
+            page += 1
+        except requests.exceptions.RequestException as e:
+            st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
+            break
+        except ValueError:
+            st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
+            break
+    return api_events
 
 
+@st.cache_data(ttl=3600)
+def get_backup_events(start_date, end_date):
+    """
+    バックアップファイルから指定された期間の終了イベントを取得する関数
+    """
+    try:
+        res_index = requests.get(BACKUP_INDEX_URL, headers=HEADERS, timeout=10)
+        res_index.raise_for_status()
+        backup_files = res_index.text.strip().splitlines()
+    except requests.exceptions.RequestException as e:
+        st.error(f"バックアップインデックスの取得に失敗しました: {e}")
+        return []
+
+    all_backup_data = []
+    columns = [
+        'event_id', 'is_event_block', 'is_entry_scope_inner', 'event_name',
+        'image_m', 'started_at', 'ended_at', 'event_url_key', 'show_ranking'
+    ]
+    for file_url in backup_files:
+        try:
+            df = pd.read_csv(file_url, header=None, names=columns)
+            all_backup_data.append(df)
+        except Exception as e:
+            st.warning(f"バックアップファイル {file_url} の読み込みに失敗しました: {e}")
+            continue
+    
+    if not all_backup_data:
+        return []
+
+    combined_df = pd.concat(all_backup_data, ignore_index=True)
+    # started_atとended_atを数値に変換し、エラー時は0で補完
+    combined_df['started_at'] = pd.to_numeric(combined_df['started_at'], errors='coerce').fillna(0)
+    combined_df['ended_at'] = pd.to_numeric(combined_df['ended_at'], errors='coerce').fillna(0)
+    combined_df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
+    
+    start_datetime = JST.localize(datetime.datetime.combine(start_date, datetime.time.min))
+    end_datetime = JST.localize(datetime.datetime.combine(end_date, datetime.time.max))
+
+    combined_df['ended_at_dt'] = pd.to_datetime(combined_df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
+    combined_df = combined_df[(combined_df['ended_at_dt'] >= start_datetime) & (combined_df['ended_at_dt'] <= end_datetime)]
+
+    return combined_df.to_dict('records')
+
+
+@st.cache_data(ttl=600)
+def get_ongoing_events():
+    """
+    開催中のイベントを取得する
+    """
+    events = get_api_events(status=1)
+    now_ts = datetime.datetime.now(JST).timestamp()
+    
+    # 念のため、本当に開催中のものだけをフィルタリング
+    ongoing_events = [e for e in events if e.get('ended_at', 0) > now_ts]
+
+    for event in ongoing_events:
+        try:
+            event['started_at'] = int(float(event.get('started_at', 0)))
+            event['ended_at'] = int(float(event.get('ended_at', 0)))
+        except (ValueError, TypeError):
+            event['started_at'] = 0
+            event['ended_at'] = 0
+    return ongoing_events
+
+
+@st.cache_data(ttl=3600)
+def get_finished_events(start_date, end_date):
+    """
+    終了したイベントをAPIとバックアップから取得し、マージして返す
+    """
+    api_events_raw = get_api_events(status=4)
+    backup_events_raw = get_backup_events(start_date, end_date)
+
+    now_ts = datetime.datetime.now(JST).timestamp()
+    start_ts = JST.localize(datetime.datetime.combine(start_date, datetime.time.min)).timestamp()
+    end_ts = JST.localize(datetime.datetime.combine(end_date, datetime.time.max)).timestamp()
+
+    # APIから取得したイベントをフィルタリング＆サニタイズ
+    api_events = []
+    for event in api_events_raw:
+        ended_at = event.get('ended_at', 0)
+        # 日付範囲内で、かつ現在時刻より前に終了していることを確認
+        if not (start_ts <= ended_at <= end_ts and ended_at < now_ts):
+            continue
+        try:
+            event['started_at'] = int(float(event.get('started_at', 0)))
+            event['ended_at'] = int(float(ended_at))
+            api_events.append(event)
+        except (ValueError, TypeError):
+            continue
+
+    # バックアップから取得したイベントをフィルタリング＆サニタイズ
+    backup_events = []
+    for event in backup_events_raw:
+        ended_at = event.get('ended_at', 0)
+        # 現在時刻より前に終了していることを確認 (バグ修正)
+        if ended_at >= now_ts:
+            continue
+        try:
+            event['started_at'] = int(float(event.get('started_at', 0)))
+            event['ended_at'] = int(float(ended_at))
+            backup_events.append(event)
+        except (ValueError, TypeError):
+            continue
+
+    # 正規化されたevent_idを使ってマージ
+    merged_events_map = {}
+    for event in backup_events:
+        event_id = normalize_event_id(event.get('event_id'))
+        if event_id:
+            merged_events_map[event_id] = event
+    
+    for event in api_events:
+        event_id = normalize_event_id(event.get('event_id'))
+        if event_id:
+            merged_events_map[event_id] = event # APIデータが優先される
+
+    all_finished_events = list(merged_events_map.values())
+    all_finished_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
+    
+    for event in all_finished_events:
+        event_name_str = str(event.get('event_name', ''))
+        event['event_name'] = f"＜終了＞ {event_name_str.replace('＜終了＞ ', '').strip()}"
+        
+    return all_finished_events
+
+
+# ▲▲▲ ここまで修正・追加した関数群 ▲▲▲
+
+
+# --- ▼▼▼ 修正箇所 ▼▼▼ ---
+# APIの優先順位を変更
 RANKING_API_CANDIDATES = [
+    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
-    "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
 ]
 
 @st.cache_data(ttl=300)
@@ -99,7 +236,10 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 response.raise_for_status()
                 data = response.json()
                 ranking_list = None
-                if isinstance(data, dict) and 'ranking' in data:
+                # room_listからの取得を追加
+                if isinstance(data, dict) and 'room_list' in data:
+                    ranking_list = data['room_list']
+                elif isinstance(data, dict) and 'ranking' in data:
                     ranking_list = data['ranking']
                 elif isinstance(data, dict) and 'event_list' in data:
                     ranking_list = data['event_list']
@@ -126,6 +266,8 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 'point': room_info.get('point')
             }
     return room_map
+# --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
+
 
 def get_room_event_info(room_id):
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -137,7 +279,6 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# ▼▼▼ 追加箇所1: ブロックイベントの全体順位を取得する新関数 ▼▼▼
 @st.cache_data(ttl=60)
 def get_block_event_overall_ranking(event_url_key, max_pages=30):
     """
@@ -164,7 +305,6 @@ def get_block_event_overall_ranking(event_url_key, max_pages=30):
     except requests.exceptions.RequestException as e:
         st.warning(f"ブロックイベントの全体ランキング取得中にエラーが発生しました: {e}")
     return rank_map
-# ▲▲▲ 追加箇所1 ここまで ▲▲▲
 
 @st.cache_data(ttl=30)
 def get_gift_list(room_id):
@@ -319,6 +459,11 @@ def main():
         st.stop()
     # ▲▲ 認証ステップここまで ▲▲
 
+    # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+    # セッションステートの初期化
+    if "autorefresh_enabled" not in st.session_state:
+        st.session_state.autorefresh_enabled = True
+    # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
 
     if "room_map_data" not in st.session_state:
         st.session_state.room_map_data = None
@@ -334,7 +479,46 @@ def main():
         st.session_state.show_dashboard = False
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
-    events = get_events()
+    
+    event_status = st.radio(
+        "イベント種別を選択してください:",
+        ("開催中", "終了"),
+        horizontal=True,
+        key="event_status_selector"
+    )
+
+    events = []
+    if event_status == "開催中":
+        with st.spinner('開催中のイベントを取得中...'):
+            events = get_ongoing_events()
+            # 開催中イベントは終了日時が近い順（昇順）でソート
+            events.sort(key=lambda x: x.get('ended_at', float('inf')))
+    else: # "終了"
+        st.write("表示するイベントの**終了期間**をカレンダーで選択してください:")
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        selected_date_range = st.date_input(
+            "イベント終了期間",
+            (thirty_days_ago, today),
+            min_value=date(2020, 1, 1),
+            max_value=today,
+            key="date_range_selector"
+        )
+        
+        if len(selected_date_range) == 2:
+            start_date, end_date = selected_date_range
+            if start_date > end_date:
+                st.error("エラー: 期間の開始日は終了日以前の日付を選択してください。")
+                st.stop()
+            else:
+                with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
+                    events = get_finished_events(start_date, end_date)
+        else:
+            st.warning("有効な期間（開始日と終了日）を選択してください。")
+            st.stop()
+
+
     if not events:
         st.warning("表示可能なイベントが見つかりませんでした。")
         return
@@ -356,8 +540,8 @@ def main():
 
     selected_event_data = event_options.get(selected_event_name)
     event_url = f"https://www.showroom-live.com/event/{selected_event_data.get('event_url_key')}"
-    started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at'), JST)
-    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
+    started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at', 0), JST)
+    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at', 0), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
@@ -420,7 +604,18 @@ def main():
                 return
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-            st.info("7秒ごとに自動更新されます。")
+            
+            # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+            st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
+            if st.session_state.autorefresh_enabled:
+                if st.button("自動更新を停止"):
+                    st.session_state.autorefresh_enabled = False
+                    st.rerun()
+            else:
+                if st.button("自動更新を再開"):
+                    st.session_state.autorefresh_enabled = True
+                    st.rerun()
+            # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
@@ -510,14 +705,11 @@ def main():
 
             data_to_display = []
 
-            # ▼▼▼ 追加箇所2: ブロックイベントの判定と全体順位の事前取得 ▼▼▼
             is_block_event = selected_event_data.get("is_event_block", False)
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
-                # 開催中のブロックイベントの場合のみ、全体ランキングを取得
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
                     block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'))
-            # ▲▲▲ 追加箇所2 ここまで ▲▲▲
 
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
@@ -594,24 +786,18 @@ def main():
                                 if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                                     rank_info = event_data['ranking']
 
-                            # ▼▼▼ 修正箇所3: 順位の取得ロジックを修正 ▼▼▼
                             if rank_info and 'point' in rank_info:
-                                # ポイントとポイント差は常に event_and_support から取得
                                 point = rank_info.get('point', 'N/A')
                                 upper_gap = rank_info.get('upper_gap', 'N/A')
                                 lower_gap = rank_info.get('lower_gap', 'N/A')
                                 
-                                # ブロックイベントかどうかで順位の取得元を切り替える
                                 if is_block_event:
-                                    # ブロックイベントの場合、事前に取得した全体ランキングから順位を取得
                                     rank = block_event_ranks.get(room_id, 'N/A')
                                 else:
-                                    # 通常イベントの場合、従来通り event_and_support から順位を取得
                                     rank = rank_info.get('rank', 'N/A')
                             else:
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
-                            # ▲▲▲ 修正箇所3 ここまで ▲▲▲
                         
                         started_at_str = ""
                         if is_live:
@@ -633,19 +819,27 @@ def main():
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
                 
+                # --- ▼▼▼ 修正箇所 ▼▼▼ ---
                 if is_aggregating:
-                    df['現在のポイント'] = '集計中'
-                    df['上位とのポイント差'] = 'N/A'
-                    df['下位とのポイント差'] = 'N/A'
                     df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+                    df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
                     
                     df['has_valid_rank'] = df['現在の順位'] > 0
                     df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
                     df = df.drop(columns=['has_valid_rank'])
+
+                    df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
+                    df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
+                    df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
+                    
+                    df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
+                    
+                    df['現在のポイント'] = df['現在のポイント'].apply(lambda x: f"{int(x):,} pt（※集計中）" if pd.notna(x) else '集計中')
                     
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
+                # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
                 else:
                     df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
                     df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
@@ -660,12 +854,10 @@ def main():
                     live_status = df['配信中']
                     df = df.drop(columns=['配信中'])
                     
-                    # ポイント差の再計算
                     df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
                     df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     
-                    # 元の順位ソート順に戻すためにマージ
                     df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
 
                     df.insert(0, '配信中', live_status)
@@ -711,7 +903,10 @@ def main():
                             styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                                 {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                         else:
-                             styled_df = df_to_format.style.apply(highlight_rows, axis=1)
+                             # is_aggregatingがTrueの場合、ポイントは文字列なのでフォーマットは不要
+                             df_to_format['上位とのポイント差'] = pd.to_numeric(df_to_format['上位とのポイント差'], errors='coerce').fillna(0).astype(int)
+                             df_to_format['下位とのポイント差'] = pd.to_numeric(df_to_format['下位とのポイント差'], errors='coerce').fillna(0).astype(int)
+                             styled_df = df_to_format.style.apply(highlight_rows, axis=1).format({'上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                         
                         table_height_css = """
                         <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
@@ -1121,9 +1316,13 @@ def main():
                         fig_lower_gap.update_layout(uirevision="const")
             else:
                 st.info("イベントポイント集計中のため、グラフは表示されません。")
-                    
-            st_autorefresh(interval=7000, limit=None, key="data_refresh")
+            
+            # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+            if st.session_state.autorefresh_enabled:
+                st_autorefresh(interval=7000, limit=None, key="data_refresh")
+            # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
         
     
 if __name__ == "__main__":
     main()
+
