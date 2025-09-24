@@ -1065,6 +1065,22 @@ def main():
                             # 数値部分を抽出（既存の numeric 列を使用）
                             df_to_format['現在のポイント（※集計中）'] = df['現在のポイント_numeric'].apply(lambda x: int(x) if pd.notnull(x) else 0)
 
+                            # ★ ここでCSSを追加：列ヘッダーの「（※集計中）」を赤色＆太字に
+                            st.markdown(
+                                """
+                                <style>
+                                th.col_heading.level0 {
+                                    font-weight: normal;  /* デフォルトを一旦ノーマルに */
+                                }
+                                th.col_heading.level0:contains("（※集計中）") {
+                                    color: red !important;
+                                    font-weight: bold !important;
+                                }
+                                </style>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
                             styled_df = (
                                 df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
                                 .style.apply(highlight_rows, axis=1)
