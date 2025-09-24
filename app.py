@@ -259,6 +259,26 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
     for room_info in all_ranking_data:
         room_id = room_info.get('room_id')
         room_name = room_info.get('room_name') or room_info.get('user_name')
+
+        # ★ デバッグ表示（後で削除可）
+        print(room_info)  # または st.write(room_info)
+
+        point_val = (
+            room_info.get('point')
+            or room_info.get('event_point')
+            or (room_info.get('event_entry', {}) or {}).get('event_point')
+            or room_info.get('score')  # 追加: scoreキーも確認
+            or room_info.get('total_point')  # 追加: total_pointキーも確認
+            or 0
+        )
+
+        if room_id and room_name:
+            room_map[room_name] = {
+                'room_id': room_id,
+                'rank': room_info.get('rank'),
+                'point': point_val,
+            }
+
         if room_id and room_name:
             room_map[room_name] = {
                 'room_id': room_id,
