@@ -7,7 +7,7 @@ import datetime
 import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
-from datetime import timedelta, date
+from datetime import timedelta
 import logging
 
 
@@ -29,20 +29,6 @@ if "authenticated" not in st.session_state:  #認証用
 
 
 # ▼▼▼ ここから修正・追加した関数群 ▼▼▼
-
-def normalize_event_id(val):
-    """
-    event_idを統一された文字列形式に正規化します。
-    (例: 123, 123.0, "123", "123.0" -> "123")
-    """
-    if val is None:
-        return None
-    try:
-        # 数値や数値形式の文字列を float -> int -> str の順で変換
-        return str(int(float(val)))
-    except (ValueError, TypeError):
-        # 変換に失敗した場合は、そのままの文字列として扱う
-        return str(val).strip()
 
 @st.cache_data(ttl=3600)
 def get_api_events(status, pages=10):
@@ -115,8 +101,6 @@ def get_backup_events(start_date, end_date):
         return []
 
     combined_df = pd.concat(all_backup_data, ignore_index=True)
-    # started_atとended_atを数値に変換し、エラー時は0で補完
-    combined_df['started_at'] = pd.to_numeric(combined_df['started_at'], errors='coerce').fillna(0)
     combined_df['ended_at'] = pd.to_numeric(combined_df['ended_at'], errors='coerce').fillna(0)
     combined_df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
     
@@ -134,20 +118,7 @@ def get_ongoing_events():
     """
     開催中のイベントを取得する
     """
-    events = get_api_events(status=1)
-    now_ts = datetime.datetime.now(JST).timestamp()
-    
-    # 念のため、本当に開催中のものだけをフィルタリング
-    ongoing_events = [e for e in events if e.get('ended_at', 0) > now_ts]
-
-    for event in ongoing_events:
-        try:
-            event['started_at'] = int(float(event.get('started_at', 0)))
-            event['ended_at'] = int(float(event.get('ended_at', 0)))
-        except (ValueError, TypeError):
-            event['started_at'] = 0
-            event['ended_at'] = 0
-    return ongoing_events
+    return get_api_events(status=1)
 
 
 @st.cache_data(ttl=3600)
@@ -156,57 +127,36 @@ def get_finished_events(start_date, end_date):
     終了したイベントをAPIとバックアップから取得し、マージして返す
     """
     api_events_raw = get_api_events(status=4)
-    backup_events_raw = get_backup_events(start_date, end_date)
+    backup_events = get_backup_events(start_date, end_date)
 
-    now_ts = datetime.datetime.now(JST).timestamp()
+    # APIから取得したイベントも日付でフィルタリング
     start_ts = JST.localize(datetime.datetime.combine(start_date, datetime.time.min)).timestamp()
     end_ts = JST.localize(datetime.datetime.combine(end_date, datetime.time.max)).timestamp()
-
-    # APIから取得したイベントをフィルタリング＆サニタイズ
-    api_events = []
-    for event in api_events_raw:
-        ended_at = event.get('ended_at', 0)
-        # 日付範囲内で、かつ現在時刻より前に終了していることを確認
-        if not (start_ts <= ended_at <= end_ts and ended_at < now_ts):
-            continue
-        try:
-            event['started_at'] = int(float(event.get('started_at', 0)))
-            event['ended_at'] = int(float(ended_at))
-            api_events.append(event)
-        except (ValueError, TypeError):
-            continue
-
-    # バックアップから取得したイベントをフィルタリング＆サニタイズ
-    backup_events = []
-    for event in backup_events_raw:
-        ended_at = event.get('ended_at', 0)
-        # 現在時刻より前に終了していることを確認 (バグ修正)
-        if ended_at >= now_ts:
-            continue
-        try:
-            event['started_at'] = int(float(event.get('started_at', 0)))
-            event['ended_at'] = int(float(ended_at))
-            backup_events.append(event)
-        except (ValueError, TypeError):
-            continue
-
-    # 正規化されたevent_idを使ってマージ
-    merged_events_map = {}
-    for event in backup_events:
-        event_id = normalize_event_id(event.get('event_id'))
-        if event_id:
-            merged_events_map[event_id] = event
     
-    for event in api_events:
-        event_id = normalize_event_id(event.get('event_id'))
-        if event_id:
-            merged_events_map[event_id] = event # APIデータが優先される
+    api_events = [
+        e for e in api_events_raw if start_ts <= e.get('ended_at', 0) <= end_ts
+    ]
 
+    # TypeErrorを回避するため、ended_atをintに統一
+    for event in backup_events:
+        try:
+            event['ended_at'] = int(float(event.get('ended_at', 0)))
+        except (ValueError, TypeError):
+            event['ended_at'] = 0
+    for event in api_events:
+         try:
+            event['ended_at'] = int(float(event.get('ended_at', 0)))
+         except (ValueError, TypeError):
+            event['ended_at'] = 0
+
+    merged_events_map = {event['event_id']: event for event in backup_events}
+    merged_events_map.update({event['event_id']: event for event in api_events})
+    
     all_finished_events = list(merged_events_map.values())
     all_finished_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
     
     for event in all_finished_events:
-        event_name_str = str(event.get('event_name', ''))
+        event_name_str = str(event.get('event_name', '')) # Cast to string for safety
         event['event_name'] = f"＜終了＞ {event_name_str.replace('＜終了＞ ', '').strip()}"
         
     return all_finished_events
@@ -485,30 +435,22 @@ def main():
             # 開催中イベントは終了日時が近い順（昇順）でソート
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
     else: # "終了"
-        st.write("表示するイベントの**終了期間**をカレンダーで選択してください:")
-        today = date.today()
+        st.write("表示する終了イベントの期間をカレンダーで選択してください:")
+        col1, col2 = st.columns(2)
+        today = datetime.datetime.now(JST).date()
         thirty_days_ago = today - timedelta(days=30)
         
-        selected_date_range = st.date_input(
-            "イベント終了期間",
-            (thirty_days_ago, today),
-            min_value=date(2020, 1, 1),
-            max_value=today,
-            key="date_range_selector"
-        )
+        with col1:
+            start_date = st.date_input("開始日", value=thirty_days_ago, max_value=today, key="start_date")
+        with col2:
+            end_date = st.date_input("終了日", value=today, max_value=today, key="end_date")
         
-        if len(selected_date_range) == 2:
-            start_date, end_date = selected_date_range
-            if start_date > end_date:
-                st.error("エラー: 期間の開始日は終了日以前の日付を選択してください。")
-                st.stop()
-            else:
-                with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
-                    events = get_finished_events(start_date, end_date)
-        else:
-            st.warning("有効な期間（開始日と終了日）を選択してください。")
+        if start_date > end_date:
+            st.error("エラー: 終了日は開始日以降の日付を選択してください。")
             st.stop()
-
+        else:
+            with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
+                events = get_finished_events(start_date, end_date)
     # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
 
@@ -533,8 +475,8 @@ def main():
 
     selected_event_data = event_options.get(selected_event_name)
     event_url = f"https://www.showroom-live.com/event/{selected_event_data.get('event_url_key')}"
-    started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at', 0), JST)
-    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at', 0), JST)
+    started_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('started_at'), JST)
+    ended_at_dt = datetime.datetime.fromtimestamp(selected_event_data.get('ended_at'), JST)
     event_period_str = f"{started_at_dt.strftime('%Y/%m/%d %H:%M')} - {ended_at_dt.strftime('%Y/%m/%d %H:%M')}"
     st.info(f"選択されたイベント: **{selected_event_name}**")
 
