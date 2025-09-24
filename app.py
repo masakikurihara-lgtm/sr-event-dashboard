@@ -1025,6 +1025,21 @@ def main():
 
                         df_to_format = df.copy()
 
+                        # 集計中ポイントも右寄せを強制
+                        st.markdown(
+                            """
+                            <style>
+                            div[data-testid="stDataFrame"] td {
+                                text-align: right !important;
+                            }
+                            div[data-testid="stDataFrame"] th {
+                                text-align: center !important;
+                            }
+                            </style>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                         if not is_aggregating:
                             # ✅ 通常時: ヘッダーはそのまま、セルは数値＋カンマ区切り
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
@@ -1044,7 +1059,7 @@ def main():
 
                         else:
                             st.markdown("<span style='color:red; font-weight:bold;'>※ポイントは集計中です</span>", unsafe_allow_html=True)
-                            # ✅ 集計中: 
+                            # ✅ 集計中: ヘッダーを「現在のポイント（※集計中）」に変更し、セルには数値のみを表示
                             df_to_format = df.copy()
                             df_to_format.rename(columns={'現在のポイント': '現在のポイント'}, inplace=True)
 
