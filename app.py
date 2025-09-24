@@ -1011,7 +1011,10 @@ def main():
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
+                        # 表示用: numeric列は削除
                         display_df = df.drop(columns=['現在のポイント_numeric'], errors='ignore')
+
+                        # 行の背景色ハイライト関数
                         def highlight_rows(row):
                             if row['配信中'] == '🔴':
                                 return ['background-color: #e6fff2'] * len(row)
@@ -1019,30 +1022,38 @@ def main():
                                 return ['background-color: #fcfcfc'] * len(row)
                             else:
                                 return [''] * len(row)
-                        
+
                         df_to_format = df.copy()
-                        
+
                         if not is_aggregating:
-                            # 通常時：数値はカンマ区切りにする
+                            # ✅ 通常時: 数値→カンマ区切り、右寄せ
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
                                 df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
-                            
-                            styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
-                                {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
+                            styled_df = (
+                                df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
+                                .style.apply(highlight_rows, axis=1)
+                                .format({
+                                    '現在のポイント': '{:,}',
+                                    '上位とのポイント差': '{:,}',
+                                    '下位とのポイント差': '{:,}'
+                                })
+                                .set_properties(subset=['現在のポイント','上位とのポイント差','下位とのポイント差'],
+                                                **{'text-align': 'right'})
+                            )
                         else:
-                            # 集計中：'現在のポイント' は文字列（「xxxx（※集計中）」）。差分のみ数値フォーマット。
-                            # 差分列は数値にしておく（上で保証済み）
-                            styled_df = df_to_format.style.apply(highlight_rows, axis=1).format(
-                                {'上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
-                        
-                        table_height_css = """
-                        <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
-                        """
-                        st.markdown(table_height_css, unsafe_allow_html=True)
-                        styled_df = display_df.style.apply(highlight_rows, axis=1) \
-                            .set_properties(subset=['現在のポイント'], **{'text-align': 'right'}) \
-                            .set_properties(subset=['上位とのポイント差','下位とのポイント差'], **{'text-align': 'right'})
+                            # ✅ 集計中: '現在のポイント' は文字列「xxxx（※集計中）」、差分はカンマ区切り、右寄せ
+                            styled_df = (
+                                display_df.style.apply(highlight_rows, axis=1)
+                                .format({
+                                    '上位とのポイント差': '{:,}',
+                                    '下位とのポイント差': '{:,}'
+                                })
+                                .set_properties(subset=['現在のポイント','上位とのポイント差','下位とのポイント差'],
+                                                **{'text-align': 'right'})
+                            )
+
                         st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
+
                     except Exception as e:
                         st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
                         st.dataframe(df, use_container_width=True, hide_index=True, height=265)
