@@ -72,9 +72,9 @@ def get_api_events(status, pages=10):
 
 
 @st.cache_data(ttl=3600)
-def get_backup_events(period_option):
+def get_backup_events(start_date, end_date):
     """
-    バックアップファイルから終了イベントを取得する関数
+    バックアップファイルから指定された期間の終了イベントを取得する関数
     """
     try:
         res_index = requests.get(BACKUP_INDEX_URL, headers=HEADERS, timeout=10)
@@ -101,18 +101,14 @@ def get_backup_events(period_option):
         return []
 
     combined_df = pd.concat(all_backup_data, ignore_index=True)
+    combined_df['ended_at'] = pd.to_numeric(combined_df['ended_at'], errors='coerce').fillna(0)
     combined_df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
     
-    if period_option != "指定なし":
-        now = datetime.datetime.now(JST)
-        days_map = {
-            "1ヶ月以内": 30, "3ヶ月以内": 90, 
-            "6ヶ月以内": 180, "1年以内": 365
-        }
-        if period_option in days_map:
-            cutoff_date = now - timedelta(days=days_map[period_option])
-            combined_df['ended_at_dt'] = pd.to_datetime(combined_df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
-            combined_df = combined_df[combined_df['ended_at_dt'] >= cutoff_date]
+    start_datetime = JST.localize(datetime.datetime.combine(start_date, datetime.time.min))
+    end_datetime = JST.localize(datetime.datetime.combine(end_date, datetime.time.max))
+
+    combined_df['ended_at_dt'] = pd.to_datetime(combined_df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
+    combined_df = combined_df[(combined_df['ended_at_dt'] >= start_datetime) & (combined_df['ended_at_dt'] <= end_datetime)]
 
     return combined_df.to_dict('records')
 
@@ -126,12 +122,32 @@ def get_ongoing_events():
 
 
 @st.cache_data(ttl=3600)
-def get_finished_events(period_option):
+def get_finished_events(start_date, end_date):
     """
     終了したイベントをAPIとバックアップから取得し、マージして返す
     """
-    api_events = get_api_events(status=4)
-    backup_events = get_backup_events(period_option)
+    api_events_raw = get_api_events(status=4)
+    backup_events = get_backup_events(start_date, end_date)
+
+    # APIから取得したイベントも日付でフィルタリング
+    start_ts = JST.localize(datetime.datetime.combine(start_date, datetime.time.min)).timestamp()
+    end_ts = JST.localize(datetime.datetime.combine(end_date, datetime.time.max)).timestamp()
+    
+    api_events = [
+        e for e in api_events_raw if start_ts <= e.get('ended_at', 0) <= end_ts
+    ]
+
+    # TypeErrorを回避するため、ended_atをintに統一
+    for event in backup_events:
+        try:
+            event['ended_at'] = int(float(event.get('ended_at', 0)))
+        except (ValueError, TypeError):
+            event['ended_at'] = 0
+    for event in api_events:
+         try:
+            event['ended_at'] = int(float(event.get('ended_at', 0)))
+         except (ValueError, TypeError):
+            event['ended_at'] = 0
 
     merged_events_map = {event['event_id']: event for event in backup_events}
     merged_events_map.update({event['event_id']: event for event in api_events})
@@ -140,7 +156,8 @@ def get_finished_events(period_option):
     all_finished_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
     
     for event in all_finished_events:
-        event['event_name'] = f"＜終了＞ {event['event_name'].replace('＜終了＞ ', '').strip()}"
+        event_name_str = str(event.get('event_name', '')) # Cast to string for safety
+        event['event_name'] = f"＜終了＞ {event_name_str.replace('＜終了＞ ', '').strip()}"
         
     return all_finished_events
 
@@ -418,13 +435,22 @@ def main():
             # 開催中イベントは終了日時が近い順（昇順）でソート
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
     else: # "終了"
-        period_option = st.selectbox(
-            "表示する終了イベントの期間を選択してください:",
-            ("指定なし", "1ヶ月以内", "3ヶ月以内", "6ヶ月以内", "1年以内"),
-            key="period_selector"
-        )
-        with st.spinner(f'終了したイベント ({period_option}) を取得中...'):
-            events = get_finished_events(period_option)
+        st.write("表示する終了イベントの期間をカレンダーで選択してください:")
+        col1, col2 = st.columns(2)
+        today = datetime.datetime.now(JST).date()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        with col1:
+            start_date = st.date_input("開始日", value=thirty_days_ago, max_value=today, key="start_date")
+        with col2:
+            end_date = st.date_input("終了日", value=today, max_value=today, key="end_date")
+        
+        if start_date > end_date:
+            st.error("エラー: 終了日は開始日以降の日付を選択してください。")
+            st.stop()
+        else:
+            with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
+                events = get_finished_events(start_date, end_date)
     # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
 
@@ -1209,3 +1235,4 @@ def main():
     
 if __name__ == "__main__":
     main()
+
