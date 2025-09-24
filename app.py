@@ -1041,9 +1041,10 @@ def main():
                         )
 
                         if not is_aggregating:
-                            # ✅ 通常時: 数値→カンマ区切り、右寄せ
+                            # ✅ 通常時: ヘッダーはそのまま、セルは数値＋カンマ区切り
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
                                 df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
+
                             styled_df = (
                                 df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
                                 .style.apply(highlight_rows, axis=1)
@@ -1055,15 +1056,24 @@ def main():
                                 .set_properties(subset=['現在のポイント','上位とのポイント差','下位とのポイント差'],
                                                 **{'text-align': 'right'})
                             )
+
                         else:
-                            # ✅ 集計中: '現在のポイント' は文字列「xxxx（※集計中）」、差分はカンマ区切り、右寄せ
+                            # ✅ 集計中: ヘッダーを「現在のポイント（※集計中）」に変更し、セルには数値のみを表示
+                            df_to_format = df.copy()
+                            df_to_format.rename(columns={'現在のポイント': '現在のポイント（※集計中）'}, inplace=True)
+
+                            # 数値部分を抽出（既存の numeric 列を使用）
+                            df_to_format['現在のポイント（※集計中）'] = df['現在のポイント_numeric'].apply(lambda x: int(x) if pd.notnull(x) else 0)
+
                             styled_df = (
-                                display_df.style.apply(highlight_rows, axis=1)
+                                df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
+                                .style.apply(highlight_rows, axis=1)
                                 .format({
+                                    '現在のポイント（集計中）': '{:,}',
                                     '上位とのポイント差': '{:,}',
                                     '下位とのポイント差': '{:,}'
                                 })
-                                .set_properties(subset=['現在のポイント','上位とのポイント差','下位とのポイント差'],
+                                .set_properties(subset=['現在のポイント（※集計中）','上位とのポイント差','下位とのポイント差'],
                                                 **{'text-align': 'right'})
                             )
 
