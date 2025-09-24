@@ -1058,6 +1058,7 @@ def main():
                             )
 
                         else:
+                            st.markdown("<span style='color:red; font-weight:bold;'>※集計中のポイントです</span>", unsafe_allow_html=True)
                             # ✅ 集計中: ヘッダーを「現在のポイント（※集計中）」に変更し、セルには数値のみを表示
                             df_to_format = df.copy()
                             df_to_format.rename(columns={'現在のポイント': '現在のポイント（※集計中）'}, inplace=True)
@@ -1077,7 +1078,7 @@ def main():
                                                 **{'text-align': 'right'})
                             )
 
-                        st.markdown("<span style='color:red; font-weight:bold;'>※集計中のポイントです</span>", unsafe_allow_html=True)
+                        #st.markdown("<span style='color:red; font-weight:bold;'>※集計中のポイントです</span>", unsafe_allow_html=True)
                         st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
 
                     except Exception as e:
