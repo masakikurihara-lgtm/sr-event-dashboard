@@ -1058,37 +1058,26 @@ def main():
                             )
 
                         else:
-                            # ✅ 集計中: ヘッダーをHTMLで赤字・太字にしてしまう
+                            # ✅ 集計中: ヘッダーを「現在のポイント（※集計中）」に変更し、セルには数値のみを表示
                             df_to_format = df.copy()
-                            df_to_format.rename(
-                                columns={
-                                    '現在のポイント': '<span style="color:red; font-weight:bold;">現在のポイント（※集計中）</span>'
-                                },
-                                inplace=True
-                            )
+                            df_to_format.rename(columns={'現在のポイント': '現在のポイント（※集計中）'}, inplace=True)
 
                             # 数値部分を抽出（既存の numeric 列を使用）
-                            df_to_format['<span style="color:red; font-weight:bold;">現在のポイント（※集計中）</span>'] = \
-                                df['現在のポイント_numeric'].apply(lambda x: int(x) if pd.notnull(x) else 0)
+                            df_to_format['現在のポイント（※集計中）'] = df['現在のポイント_numeric'].apply(lambda x: int(x) if pd.notnull(x) else 0)
 
                             styled_df = (
                                 df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
                                 .style.apply(highlight_rows, axis=1)
                                 .format({
-                                    '<span style="color:red; font-weight:bold;">現在のポイント（※集計中）</span>': '{:,}',
+                                    '現在のポイント（※集計中）': '{:,}',
                                     '上位とのポイント差': '{:,}',
                                     '下位とのポイント差': '{:,}'
                                 })
-                                .set_properties(
-                                    subset=[
-                                        '<span style="color:red; font-weight:bold;">現在のポイント（※集計中）</span>',
-                                        '上位とのポイント差',
-                                        '下位とのポイント差'
-                                    ],
-                                    **{'text-align': 'right'}
-                                )
+                                .set_properties(subset=['現在のポイント（※集計中）','上位とのポイント差','下位とのポイント差'],
+                                                **{'text-align': 'right'})
                             )
 
+                        st.markdown("<span style='color:red; font-weight:bold;'>※集計中のポイントです</span>", unsafe_allow_html=True)
                         st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
 
                     except Exception as e:
