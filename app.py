@@ -22,63 +22,133 @@ st.set_page_config(
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
 ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"  #認証用
+BACKUP_INDEX_URL = "https://mksoul-pro.com/showroom/file/sr-event-archive-list-index.txt" # バックアップインデックスURL
 
 if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
+# ▼▼▼ ここから修正・追加した関数群 ▼▼▼
+
 @st.cache_data(ttl=3600)
-def get_events():
+def get_api_events(status, pages=10):
     """
-    開催中および終了済みのイベントリストを取得する。
-    終了済みイベントには "＜終了＞" という接頭辞を付ける。
+    APIから指定されたステータスのイベントを取得する汎用関数
     """
-    all_events = []
-    # status=1 (開催中) と status=4 (終了済み) の両方を取得
-    for status in [1, 4]:
-        page = 1
-        # 各ステータスで最大10ページまで取得
-        for _ in range(10):
-            url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
-            try:
-                response = requests.get(url, headers=HEADERS, timeout=5)
-                response.raise_for_status()
-                data = response.json()
-                
-                page_events = []
-                if isinstance(data, dict):
-                    if 'events' in data:
-                        page_events = data['events']
-                    elif 'event_list' in data:
-                        page_events = data['event_list']
-                elif isinstance(data, list):
-                    page_events = data
+    api_events = []
+    page = 1
+    for _ in range(pages):
+        url = f"https://www.showroom-live.com/api/event/search?status={status}&page={page}"
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            
+            page_events = []
+            if isinstance(data, dict):
+                if 'events' in data:
+                    page_events = data['events']
+                elif 'event_list' in data:
+                    page_events = data['event_list']
+            elif isinstance(data, list):
+                page_events = data
 
-                if not page_events:
-                    break  # イベントがなくなったらループを抜ける
-
-                # 既存のフィルタリングロジックを適用
-                filtered_page_events = [
-                    event for event in page_events 
-                    if event.get("show_ranking") is not False or event.get("type_name") == "ランキング"
-                ]
-
-
-                # 終了済みイベントの場合、イベント名に接頭辞を追加
-                if status == 4:
-                    for event in filtered_page_events:
-                        event['event_name'] = f"＜終了＞ {event['event_name']}"
-
-                all_events.extend(filtered_page_events)
-                page += 1
-            except requests.exceptions.RequestException as e:
-                st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
+            if not page_events:
                 break
-            except ValueError:
-                st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
-                break
-    return all_events
 
+            filtered_page_events = [
+                event for event in page_events 
+                if event.get("show_ranking") is not False or event.get("type_name") == "ランキング"
+            ]
+            api_events.extend(filtered_page_events)
+            page += 1
+        except requests.exceptions.RequestException as e:
+            st.error(f"イベントデータ取得中にエラーが発生しました (status={status}): {e}")
+            break
+        except ValueError:
+            st.error(f"APIからのJSONデコードに失敗しました: {response.text}")
+            break
+    return api_events
+
+
+@st.cache_data(ttl=3600)
+def get_backup_events(period_option):
+    """
+    バックアップファイルから終了イベントを取得する関数
+    """
+    try:
+        res_index = requests.get(BACKUP_INDEX_URL, headers=HEADERS, timeout=10)
+        res_index.raise_for_status()
+        backup_files = res_index.text.strip().splitlines()
+    except requests.exceptions.RequestException as e:
+        st.error(f"バックアップインデックスの取得に失敗しました: {e}")
+        return []
+
+    all_backup_data = []
+    columns = [
+        'event_id', 'is_event_block', 'is_entry_scope_inner', 'event_name',
+        'image_m', 'started_at', 'ended_at', 'event_url_key', 'show_ranking'
+    ]
+    for file_url in backup_files:
+        try:
+            df = pd.read_csv(file_url, header=None, names=columns)
+            all_backup_data.append(df)
+        except Exception as e:
+            st.warning(f"バックアップファイル {file_url} の読み込みに失敗しました: {e}")
+            continue
+    
+    if not all_backup_data:
+        return []
+
+    combined_df = pd.concat(all_backup_data, ignore_index=True)
+    combined_df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
+    
+    if period_option != "指定なし":
+        now = datetime.datetime.now(JST)
+        days_map = {
+            "1ヶ月以内": 30, "3ヶ月以内": 90, 
+            "6ヶ月以内": 180, "1年以内": 365
+        }
+        if period_option in days_map:
+            cutoff_date = now - timedelta(days=days_map[period_option])
+            combined_df['ended_at_dt'] = pd.to_datetime(combined_df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
+            combined_df = combined_df[combined_df['ended_at_dt'] >= cutoff_date]
+
+    return combined_df.to_dict('records')
+
+
+@st.cache_data(ttl=600)
+def get_ongoing_events():
+    """
+    開催中のイベントを取得する
+    """
+    return get_api_events(status=1)
+
+
+@st.cache_data(ttl=3600)
+def get_finished_events(period_option):
+    """
+    終了したイベントをAPIとバックアップから取得し、マージして返す
+    """
+    api_events = get_api_events(status=4)
+    backup_events = get_backup_events(period_option)
+
+    merged_events_map = {event['event_id']: event for event in backup_events}
+    merged_events_map.update({event['event_id']: event for event in api_events})
+    
+    all_finished_events = list(merged_events_map.values())
+    all_finished_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
+    
+    for event in all_finished_events:
+        event['event_name'] = f"＜終了＞ {event['event_name'].replace('＜終了＞ ', '').strip()}"
+        
+    return all_finished_events
+
+
+# ▲▲▲ ここまで修正・追加した関数群 ▲▲▲
+
+
+# --- 以下、既存の関数は変更なし ---
 
 RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
@@ -137,7 +207,6 @@ def get_room_event_info(room_id):
         st.error(f"ルームID {room_id} のデータ取得中にエラーが発生しました: {e}")
         return None
 
-# ▼▼▼ 追加箇所1: ブロックイベントの全体順位を取得する新関数 ▼▼▼
 @st.cache_data(ttl=60)
 def get_block_event_overall_ranking(event_url_key, max_pages=30):
     """
@@ -164,7 +233,6 @@ def get_block_event_overall_ranking(event_url_key, max_pages=30):
     except requests.exceptions.RequestException as e:
         st.warning(f"ブロックイベントの全体ランキング取得中にエラーが発生しました: {e}")
     return rank_map
-# ▲▲▲ 追加箇所1 ここまで ▲▲▲
 
 @st.cache_data(ttl=30)
 def get_gift_list(room_id):
@@ -334,7 +402,32 @@ def main():
         st.session_state.show_dashboard = False
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
-    events = get_events()
+    
+    # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
+    event_status = st.radio(
+        "イベント種別を選択してください:",
+        ("開催中", "終了"),
+        horizontal=True,
+        key="event_status_selector"
+    )
+
+    events = []
+    if event_status == "開催中":
+        with st.spinner('開催中のイベントを取得中...'):
+            events = get_ongoing_events()
+            # 開催中イベントは終了日時が近い順（昇順）でソート
+            events.sort(key=lambda x: x.get('ended_at', float('inf')))
+    else: # "終了"
+        period_option = st.selectbox(
+            "表示する終了イベントの期間を選択してください:",
+            ("指定なし", "1ヶ月以内", "3ヶ月以内", "6ヶ月以内", "1年以内"),
+            key="period_selector"
+        )
+        with st.spinner(f'終了したイベント ({period_option}) を取得中...'):
+            events = get_finished_events(period_option)
+    # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
+
+
     if not events:
         st.warning("表示可能なイベントが見つかりませんでした。")
         return
@@ -510,14 +603,11 @@ def main():
 
             data_to_display = []
 
-            # ▼▼▼ 追加箇所2: ブロックイベントの判定と全体順位の事前取得 ▼▼▼
             is_block_event = selected_event_data.get("is_event_block", False)
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
-                # 開催中のブロックイベントの場合のみ、全体ランキングを取得
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
                     block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'))
-            # ▲▲▲ 追加箇所2 ここまで ▲▲▲
 
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
@@ -594,24 +684,18 @@ def main():
                                 if 'ranking' in event_data and isinstance(event_data['ranking'], dict):
                                     rank_info = event_data['ranking']
 
-                            # ▼▼▼ 修正箇所3: 順位の取得ロジックを修正 ▼▼▼
                             if rank_info and 'point' in rank_info:
-                                # ポイントとポイント差は常に event_and_support から取得
                                 point = rank_info.get('point', 'N/A')
                                 upper_gap = rank_info.get('upper_gap', 'N/A')
                                 lower_gap = rank_info.get('lower_gap', 'N/A')
                                 
-                                # ブロックイベントかどうかで順位の取得元を切り替える
                                 if is_block_event:
-                                    # ブロックイベントの場合、事前に取得した全体ランキングから順位を取得
                                     rank = block_event_ranks.get(room_id, 'N/A')
                                 else:
-                                    # 通常イベントの場合、従来通り event_and_support から順位を取得
                                     rank = rank_info.get('rank', 'N/A')
                             else:
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
-                            # ▲▲▲ 修正箇所3 ここまで ▲▲▲
                         
                         started_at_str = ""
                         if is_live:
@@ -660,12 +744,10 @@ def main():
                     live_status = df['配信中']
                     df = df.drop(columns=['配信中'])
                     
-                    # ポイント差の再計算
                     df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
                     df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     
-                    # 元の順位ソート順に戻すためにマージ
                     df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
 
                     df.insert(0, '配信中', live_status)
