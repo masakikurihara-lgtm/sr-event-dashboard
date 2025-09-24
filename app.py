@@ -225,6 +225,7 @@ RANKING_API_CANDIDATES = [
 @st.cache_data(ttl=300)
 def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
 
+    all_ranking_data = []
     st.write("get_event_ranking_with_room_id が呼ばれました")
     if all_ranking_data:
         st.write("取得した最初のroom_info:", all_ranking_data[0])
