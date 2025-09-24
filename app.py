@@ -1491,7 +1491,7 @@ def main():
                         st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                         fig_lower_gap.update_layout(uirevision="const")
             else:
-                st.info("ポイント集計中のため、グラフは表示されません。")
+                st.info("ポイント集計中のためグラフは表示されません。")
                     
             # 自動更新はセッション状態で制御（追加）
             if st.session_state.auto_refresh_enabled:
