@@ -9,8 +9,7 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from datetime import timedelta, date
 import logging
-
-
+import re  # 追加：表示文字列から数値を抽出するため
 
 # Set page configuration
 st.set_page_config(
@@ -215,15 +214,22 @@ def get_finished_events(start_date, end_date):
 # ▲▲▲ ここまで修正・追加した関数群 ▲▲▲
 
 
-# --- 以下、既存の関数は変更なし ---
+# --- 以下、既存の関数は変更なし（一部上書き・改良あり） ---
 
+# ※ 取得API候補の順序を、要望どおり room_list -> ranking の順に変更
 RANKING_API_CANDIDATES = [
+    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
-    "https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={page}",
 ]
 
 @st.cache_data(ttl=300)
 def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
+    """
+    終了後の最終順位取得用関数を堅牢化
+    - まず room_list?event_id=xxxxx を試し、そこから取れなければ /{event_url_key}/ranking を試す
+    - 各APIレスポンスの構造差（'list', 'ranking', 'event_list' など）に対応
+    戻り値: { room_name: { 'room_id': ..., 'rank': ..., 'point': ... }, ... } または None
+    """
     all_ranking_data = []
     for base_url in RANKING_API_CANDIDATES:
         try:
@@ -235,33 +241,112 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                     break
                 response.raise_for_status()
                 data = response.json()
+
                 ranking_list = None
-                if isinstance(data, dict) and 'ranking' in data:
-                    ranking_list = data['ranking']
-                elif isinstance(data, dict) and 'event_list' in data:
-                    ranking_list = data['event_list']
+                # room_list の場合は 'list'
+                if isinstance(data, dict):
+                    if 'list' in data and isinstance(data['list'], list):
+                        ranking_list = data['list']
+                    elif 'ranking' in data and isinstance(data['ranking'], list):
+                        ranking_list = data['ranking']
+                    elif 'event_list' in data and isinstance(data['event_list'], list):
+                        ranking_list = data['event_list']
+                    elif 'data' in data and isinstance(data['data'], list):
+                        ranking_list = data['data']
                 elif isinstance(data, list):
                     ranking_list = data
+
                 if not ranking_list:
+                    # ページが空なら次のページは無いとみなしてループを抜ける
                     break
                 temp_ranking_data.extend(ranking_list)
-            if temp_ranking_data and any('room_id' in r for r in temp_ranking_data):
+            # 取得したデータに room_id を含むものがあれば成功とみなす
+            if temp_ranking_data and any(isinstance(r, dict) and ('room_id' in r or 'id' in r) for r in temp_ranking_data):
                 all_ranking_data = temp_ranking_data
                 break
         except requests.exceptions.RequestException:
+            # この候補は失敗。次の候補へ
             continue
     if not all_ranking_data:
         return None
+
     room_map = {}
     for room_info in all_ranking_data:
-        room_id = room_info.get('room_id')
-        room_name = room_info.get('room_name') or room_info.get('user_name')
-        if room_id and room_name:
-            room_map[room_name] = {
-                'room_id': room_id,
-                'rank': room_info.get('rank'),
-                'point': room_info.get('point')
-            }
+        if not isinstance(room_info, dict):
+            continue
+        # room_id 抽出（文字列にして保存）
+        room_id = room_info.get('room_id') or room_info.get('id')
+        if room_id is None and 'room' in room_info and isinstance(room_info['room'], dict):
+            room_id = room_info['room'].get('room_id') or room_info['room'].get('id')
+
+        if room_id is None:
+            # どうしてもroom_idがない場合スキップ
+            continue
+        room_id_str = str(room_id)
+
+        # ルーム名の抽出（キー名はAPIでブレるため複数候補をチェック）
+        room_name = (
+            room_info.get('room_name') or room_info.get('name') or room_info.get('performer_name') 
+            or room_info.get('user_name') or room_info.get('room_title')
+        )
+        if not room_name:
+            # room_info のネストに存在する可能性をチェック
+            if 'room' in room_info and isinstance(room_info['room'], dict):
+                room_name = room_info['room'].get('room_name') or room_info['room'].get('name')
+        if not room_name:
+            # 名前が取れなければIDをキー名にして格納する（呼び出し側が探せるように）
+            room_name = f"room_{room_id_str}"
+
+        # ポイントの抽出（いくつかの候補フィールド）
+        point = None
+        for k in ('point', 'event_point', 'popularity_point', 'total_point'):
+            if k in room_info and room_info.get(k) is not None:
+                try:
+                    point = int(float(room_info.get(k)))
+                except Exception:
+                    try:
+                        point = int(re.sub(r'[^\d\-]', '', str(room_info.get(k)) or '0') or 0)
+                    except:
+                        point = 0
+                break
+        # event_entry 内に入っている場合
+        if point is None and 'event_entry' in room_info and isinstance(room_info['event_entry'], dict):
+            evp = room_info['event_entry'].get('event_point') or room_info['event_entry'].get('point')
+            try:
+                point = int(float(evp)) if evp is not None else 0
+            except:
+                point = 0
+        if point is None:
+            # fallback: 0
+            point = 0
+
+        # 順位の抽出
+        rank = None
+        for k in ('rank', 'position'):
+            if k in room_info and room_info.get(k) is not None:
+                try:
+                    rank = int(float(room_info.get(k)))
+                except:
+                    try:
+                        rank = int(re.sub(r'[^\d\-]', '', str(room_info.get(k)) or '0') or 0)
+                    except:
+                        rank = None
+                break
+        # event_entry に rank 情報がある場合
+        if rank is None and 'event_entry' in room_info and isinstance(room_info['event_entry'], dict):
+            rnk = room_info['event_entry'].get('rank')
+            try:
+                rank = int(float(rnk)) if rnk is not None else None
+            except:
+                rank = None
+
+        # 最終的に room_map に登録
+        room_map[str(room_name)] = {
+            'room_id': room_id_str,
+            'rank': rank,
+            'point': point
+        }
+
     return room_map
 
 def get_room_event_info(room_id):
@@ -413,7 +498,29 @@ def get_rank_color(rank):
         return colors[(rank_int - 1) % len(colors)]
     except (ValueError, TypeError):
         return "#A9A9A9"
-    
+
+# ヘルパー：表示文字列から数値を抽出（"1,234（※集計中）" -> 1234）
+def extract_int_from_mixed(val):
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except:
+        pass
+    s = str(val)
+    # 数字とマイナスだけ残す
+    digits = re.sub(r"[^\d\-]", "", s)
+    if digits == "":
+        return None
+    try:
+        return int(digits)
+    except:
+        try:
+            return int(float(digits))
+        except:
+            return None
+
 def main():
     st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント、ポイント差、スペシャルギフトの履歴、必要ギフト数などが、リアルタイムで可視化できるツールです。")
@@ -467,10 +574,12 @@ def main():
         st.session_state.multiselect_key_counter = 0
     if "show_dashboard" not in st.session_state:
         st.session_state.show_dashboard = False
+    if "auto_refresh_enabled" not in st.session_state:
+        st.session_state.auto_refresh_enabled = True  # 自動更新デフォルト：有効
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     
-    # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
+    # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
     event_status = st.radio(
         "イベント種別を選択してください:",
         ("開催中", "終了"),
@@ -597,7 +706,14 @@ def main():
                 return
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-            st.info("7秒ごとに自動更新されます。")
+
+            # 自動更新コントロール（追加）
+            st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
+            toggle_label = "自動更新を停止" if st.session_state.auto_refresh_enabled else "自動更新を再開"
+            if st.button(toggle_label, key="toggle_auto_refresh"):
+                st.session_state.auto_refresh_enabled = not st.session_state.auto_refresh_enabled
+                # 切り替えたら即再描画
+                st.experimental_rerun()
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
@@ -800,22 +916,57 @@ def main():
 
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
-                
+
+                # --- 新：数値列の準備（ポイントの数値列を保持して計算に使用） ---
+                # 元のポイント列は混在するため数値抽出を行う
+                df['現在のポイント_numeric'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
+                # NaN を 0 にしないでそのままにする（差分計算時は fillna で扱う）
+                # 現在の順位は数値化
+                df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+
+                # ブロックイベントか否かでソート方針は従来どおり
                 if is_aggregating:
-                    df['現在のポイント'] = '集計中'
-                    df['上位とのポイント差'] = 'N/A'
-                    df['下位とのポイント差'] = 'N/A'
-                    df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
-                    
-                    df['has_valid_rank'] = df['現在の順位'] > 0
-                    df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
-                    df = df.drop(columns=['has_valid_rank'])
-                    
+                    # イベント終了後の集計中表示だが、ポイント自体は表示する（xxxxxxx（※集計中））
+                    # 順位ソート（ブロックイベントは has_valid_rank 優先）
+                    if is_block_event:
+                        df['has_valid_rank'] = df['現在の順位'] > 0
+                        df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
+                        df = df.drop(columns=['has_valid_rank'])
+                    else:
+                        df = df.sort_values(by='現在の順位', ascending=True, na_position='last').reset_index(drop=True)
+
+                    # ポイント差を算出（数値列を用いる）
+                    df_sorted_by_points = df.sort_values(by='現在のポイント_numeric', ascending=False, na_position='last').reset_index(drop=True)
+                    df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント_numeric'].shift(1) - df_sorted_by_points['現在のポイント_numeric']).abs().fillna(0).astype(int)
+                    df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント_numeric'].shift(-1) - df_sorted_by_points['現在のポイント_numeric']).abs().fillna(0).astype(int)
+
+                    # merge して差分列を戻す
+                    df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差'], errors='ignore'), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
+
+                    # 表示用ポイント列を作成（カンマ区切り + 集計中注記）
+                    def fmt_agg(x):
+                        try:
+                            if pd.isna(x):
+                                return "（※集計中）"
+                            return f"{int(x):,}（※集計中）"
+                        except:
+                            return "（※集計中）"
+                    df['現在のポイント_display'] = df['現在のポイント_numeric'].apply(fmt_agg)
+                    # UI 表示列に置き換え（計算用の numeric 列は残す）
+                    df['現在のポイント'] = df['現在のポイント_display']
+                    df = df.drop(columns=['現在のポイント_display'])
+
+                    # 差分は数値列のままにしておく（後でスタイルで桁区切り）
+                    df['上位とのポイント差'] = df['上位とのポイント差'].fillna(0).astype(int)
+                    df['下位とのポイント差'] = df['下位とのポイント差'].fillna(0).astype(int)
+
+                    # 配信開始時間のカラム位置調整（従来どおり）
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
+
                 else:
-                    df['現在の順位'] = pd.to_numeric(df['現在の順位'], errors='coerce')
+                    # 集計前（通常表示）: 数値化してソート・差分算出（従来のロジック）
                     df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
                     
                     if is_event_ended or is_block_event: # ブロックイベントも順位でソート
@@ -827,12 +978,12 @@ def main():
 
                     live_status = df['配信中']
                     df = df.drop(columns=['配信中'])
-                    
+
                     df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
                     df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     
-                    df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
+                    df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差'], errors='ignore'), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
 
                     df.insert(0, '配信中', live_status)
                     
@@ -840,6 +991,7 @@ def main():
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
 
+                # ---- 表示（スタイル適用） ----
                 st.markdown(
                     """
                     <style>
@@ -871,13 +1023,17 @@ def main():
                         df_to_format = df.copy()
                         
                         if not is_aggregating:
+                            # 通常時：数値はカンマ区切りにする
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
                                 df_to_format[col] = pd.to_numeric(df_to_format[col], errors='coerce').fillna(0).astype(int)
                             
                             styled_df = df_to_format.style.apply(highlight_rows, axis=1).highlight_max(axis=0, subset=['現在のポイント']).format(
                                 {'現在のポイント': '{:,}', '上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                         else:
-                             styled_df = df_to_format.style.apply(highlight_rows, axis=1)
+                            # 集計中：'現在のポイント' は文字列（「xxxx（※集計中）」）。差分のみ数値フォーマット。
+                            # 差分列は数値にしておく（上で保証済み）
+                            styled_df = df_to_format.style.apply(highlight_rows, axis=1).format(
+                                {'上位とのポイント差': '{:,}', '下位とのポイント差': '{:,}'})
                         
                         table_height_css = """
                         <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
@@ -1023,7 +1179,7 @@ def main():
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
 
 
-            # --- ここから「戦闘モード！」修正版 ---
+            # --- ここから「戦闘モード！」修正版（変更点：ポイント取得時に表示文字列→数値を抽出する耐性を付与） ---
             st.markdown("### ⚔ 必要ギフト数簡易算出", unsafe_allow_html=True)
 
             if 'df' in locals() and not df.empty and 'ルーム名' in df.columns:
@@ -1039,7 +1195,10 @@ def main():
                 if 'df' in locals() and not df.empty and 'ルーム名' in df.columns and '現在の順位' in df.columns:
                     for _, row in df.iterrows():
                         if pd.notna(row['現在の順位']):
-                            df_rank_map[row['ルーム名']] = int(row['現在の順位'])
+                            try:
+                                df_rank_map[row['ルーム名']] = int(row['現在の順位'])
+                            except:
+                                df_rank_map[row['ルーム名']] = row['現在の順位']
 
                 for rn in room_options_all:
                     if rn in df_rank_map:
@@ -1076,10 +1235,15 @@ def main():
                         for _, r in df.iterrows():
                             rn = r.get('ルーム名')
                             pval = r.get('現在のポイント')
-                            try:
-                                points_map[rn] = int(pval)
-                            except:
-                                points_map[rn] = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
+                            parsed = extract_int_from_mixed(pval)
+                            if parsed is not None:
+                                points_map[rn] = int(parsed)
+                            else:
+                                # fallback
+                                try:
+                                    points_map[rn] = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
+                                except:
+                                    points_map[rn] = 0
                     else:
                         for rn, info in st.session_state.room_map_data.items():
                             points_map[rn] = int(info.get('point', 0) or 0)
@@ -1231,7 +1395,6 @@ def main():
                     st.info("ターゲットルームを選択してください。")
             # --- ここまで戦闘モード修正版 ---
 
-
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
 
@@ -1288,9 +1451,10 @@ def main():
             else:
                 st.info("イベントポイント集計中のため、グラフは表示されません。")
                     
-            st_autorefresh(interval=7000, limit=None, key="data_refresh")
+            # 自動更新はセッション状態で制御（追加）
+            if st.session_state.auto_refresh_enabled:
+                st_autorefresh(interval=7000, limit=None, key="data_refresh")
         
     
 if __name__ == "__main__":
     main()
-
