@@ -176,12 +176,16 @@ def get_finished_events(start_date, end_date):
         except (ValueError, TypeError):
             continue
 
-    # バックアップから取得したイベントをサニタイズ
+    # バックアップから取得したイベントをフィルタリング＆サニタイズ
     backup_events = []
     for event in backup_events_raw:
+        ended_at = event.get('ended_at', 0)
+        # 現在時刻より前に終了していることを確認 (バグ修正)
+        if ended_at >= now_ts:
+            continue
         try:
             event['started_at'] = int(float(event.get('started_at', 0)))
-            event['ended_at'] = int(float(event.get('ended_at', 0)))
+            event['ended_at'] = int(float(ended_at))
             backup_events.append(event)
         except (ValueError, TypeError):
             continue
@@ -481,12 +485,12 @@ def main():
             # 開催中イベントは終了日時が近い順（昇順）でソート
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
     else: # "終了"
-        st.write("表示する終了イベントの期間をカレンダーで選択してください:")
+        st.write("表示するイベントの**終了期間**をカレンダーで選択してください:")
         today = date.today()
         thirty_days_ago = today - timedelta(days=30)
         
         selected_date_range = st.date_input(
-            "イベント終了日",
+            "イベント終了期間",
             (thirty_days_ago, today),
             min_value=date(2020, 1, 1),
             max_value=today,
@@ -496,7 +500,7 @@ def main():
         if len(selected_date_range) == 2:
             start_date, end_date = selected_date_range
             if start_date > end_date:
-                st.error("エラー: 終了日は開始日以降の日付を選択してください。")
+                st.error("エラー: 期間の開始日は終了日以前の日付を選択してください。")
                 st.stop()
             else:
                 with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
