@@ -597,7 +597,18 @@ def main():
                 return
 
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
-            st.info("7秒ごとに自動更新されます。")
+            
+            # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+            st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
+            if st.session_state.autorefresh_enabled:
+                if st.button("自動更新を停止"):
+                    st.session_state.autorefresh_enabled = False
+                    st.rerun()
+            else:
+                if st.button("自動更新を再開"):
+                    st.session_state.autorefresh_enabled = True
+                    st.rerun()
+            # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
@@ -1288,7 +1299,10 @@ def main():
             else:
                 st.info("イベントポイント集計中のため、グラフは表示されません。")
                     
-            st_autorefresh(interval=7000, limit=None, key="data_refresh")
+            # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+            if st.session_state.autorefresh_enabled:
+                st_autorefresh(interval=7000, limit=None, key="data_refresh")
+            # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
         
     
 if __name__ == "__main__":
