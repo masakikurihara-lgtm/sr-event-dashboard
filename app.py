@@ -710,10 +710,9 @@ def main():
             # 自動更新コントロール（追加）
             st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
             toggle_label = "自動更新を停止" if st.session_state.auto_refresh_enabled else "自動更新を再開"
-            if st.button(toggle_label, key="toggle_auto_refresh"):
+            if st.button(toggle_label):
                 st.session_state.auto_refresh_enabled = not st.session_state.auto_refresh_enabled
-                # 切り替えたら即再描画
-                st.experimental_rerun()
+                st.rerun()  # ← experimental_rerunではなくrerun
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
@@ -1012,6 +1011,7 @@ def main():
                 required_cols = ['現在のポイント', '上位とのポイント差', '下位とのポイント差']
                 if all(col in df.columns for col in required_cols):
                     try:
+                        display_df = df.drop(columns=['現在のポイント_numeric'], errors='ignore')
                         def highlight_rows(row):
                             if row['配信中'] == '🔴':
                                 return ['background-color: #e6fff2'] * len(row)
@@ -1039,6 +1039,9 @@ def main():
                         <style> .st-emotion-cache-1r7r34u { height: 265px; overflow-y: auto; } </style>
                         """
                         st.markdown(table_height_css, unsafe_allow_html=True)
+                        styled_df = display_df.style.apply(highlight_rows, axis=1) \
+                            .set_properties(subset=['現在のポイント'], **{'text-align': 'right'}) \
+                            .set_properties(subset=['上位とのポイント差','下位とのポイント差'], **{'text-align': 'right'})
                         st.dataframe(styled_df, use_container_width=True, hide_index=True, height=265)
                     except Exception as e:
                         st.error(f"データフレームのスタイル適用中にエラーが発生しました: {e}")
@@ -1453,7 +1456,7 @@ def main():
                     
             # 自動更新はセッション状態で制御（追加）
             if st.session_state.auto_refresh_enabled:
-                st_autorefresh(interval=7000, limit=None, key="data_refresh")
+                st_autorefresh(interval=7000, limit=None, key="refresh")
         
     
 if __name__ == "__main__":
