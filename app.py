@@ -229,7 +229,15 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
         try:
             temp_ranking_data = []
             for page in range(1, max_pages + 1):
+                # NOTE: API candidate 1 uses event_id, while candidate 2 uses event_url_key.
                 url = base_url.format(event_url_key=event_url_key, event_id=event_id, page=page)
+                
+                # Check if the URL is correctly formed for the first API candidate
+                if "room_list" in base_url and not event_id:
+                    continue
+                if "ranking" in base_url and not event_url_key:
+                    continue
+
                 response = requests.get(url, headers=HEADERS, timeout=10)
                 if response.status_code == 404:
                     break
@@ -260,10 +268,20 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
         room_id = room_info.get('room_id')
         room_name = room_info.get('room_name') or room_info.get('user_name')
         if room_id and room_name:
+            # BUG FIX: Get point from 'event_entry' if 'point' is not directly available
+            point_val = room_info.get('point')
+            if point_val is None and isinstance(room_info.get('event_entry'), dict):
+                point_val = room_info['event_entry'].get('event_point')
+            
+            # BUG FIX: Get rank from 'event_entry' if 'rank' is not directly available
+            rank_val = room_info.get('rank')
+            if rank_val is None and isinstance(room_info.get('event_entry'), dict):
+                rank_val = room_info['event_entry'].get('rank')
+
             room_map[room_name] = {
                 'room_id': room_id,
-                'rank': room_info.get('rank'),
-                'point': room_info.get('point')
+                'rank': rank_val,
+                'point': point_val
             }
     return room_map
 # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
@@ -763,6 +781,7 @@ def main():
                         if is_event_ended:
                             if room_id in final_ranking_data:
                                 rank = final_ranking_data[room_id].get('rank', 'N/A')
+                                # BUG FIX: Get point correctly for finished events
                                 point = final_ranking_data[room_id].get('point', 'N/A')
                                 upper_gap, lower_gap = 0, 0
                             else:
@@ -834,6 +853,7 @@ def main():
                     
                     df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差']), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
                     
+                    # BUG FIX: Format point as string here to prevent the .format() call from failing
                     df['現在のポイント'] = df['現在のポイント'].apply(lambda x: f"{int(x):,} pt（※集計中）" if pd.notna(x) else '集計中')
                     
                     started_at_column = df['配信開始時間']
@@ -1105,10 +1125,12 @@ def main():
                         for _, r in df.iterrows():
                             rn = r.get('ルーム名')
                             pval = r.get('現在のポイント')
-                            try:
+                            # BUG FIX: Handle the '集計中' string and extract the point
+                            if isinstance(pval, str) and '（※集計中）' in pval:
+                                pval = pval.replace(' pt（※集計中）', '').replace(',', '')
                                 points_map[rn] = int(pval)
-                            except:
-                                points_map[rn] = int(st.session_state.room_map_data.get(rn, {}).get('point', 0) or 0)
+                            else:
+                                points_map[rn] = int(pval) if pd.notna(pval) else 0
                     else:
                         for rn, info in st.session_state.room_map_data.items():
                             points_map[rn] = int(info.get('point', 0) or 0)
@@ -1325,4 +1347,3 @@ def main():
     
 if __name__ == "__main__":
     main()
-
