@@ -1069,7 +1069,7 @@ def main():
                                 df_to_format.drop(columns=['現在のポイント_numeric'], errors='ignore')
                                 .style.apply(highlight_rows, axis=1)
                                 .format({
-                                    '現在のポイント（集計中）': '{:,}',
+                                    '現在のポイント（※集計中）': '{:,}',
                                     '上位とのポイント差': '{:,}',
                                     '下位とのポイント差': '{:,}'
                                 })
