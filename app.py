@@ -1451,10 +1451,11 @@ def main():
                 """,
                 unsafe_allow_html=True
             )
-            st.markdown(
-                "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
-                unsafe_allow_html=True
-            )
+            #st.markdown(
+            #    "<h3 class='custom-status-title2'>📈 ポイントと順位の比較</h3>",
+            #    unsafe_allow_html=True
+            #)
+            st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
             
             if not is_aggregating and 'df' in locals() and not df.empty:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
@@ -1490,7 +1491,7 @@ def main():
                         st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                         fig_lower_gap.update_layout(uirevision="const")
             else:
-                st.info("イベントポイント集計中のため、グラフは表示されません。")
+                st.info("ポイント集計中のため、グラフは表示されません。")
                     
             # 自動更新はセッション状態で制御（追加）
             if st.session_state.auto_refresh_enabled:
