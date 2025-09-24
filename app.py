@@ -1025,6 +1025,21 @@ def main():
 
                         df_to_format = df.copy()
 
+                        # 集計中ポイントも右寄せを強制
+                        st.markdown(
+                            """
+                            <style>
+                            div[data-testid="stDataFrame"] td {
+                                text-align: right !important;
+                            }
+                            div[data-testid="stDataFrame"] th {
+                                text-align: center !important;
+                            }
+                            </style>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                         if not is_aggregating:
                             # ✅ 通常時: 数値→カンマ区切り、右寄せ
                             for col in ['現在のポイント', '上位とのポイント差', '下位とのポイント差']:
