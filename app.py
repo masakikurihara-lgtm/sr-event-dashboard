@@ -741,8 +741,21 @@ def main():
 
     room_count_text = ""
     if st.session_state.room_map_data:
-        room_count = len(st.session_state.room_map_data)
-        room_count_text = f" （現在{room_count}ルーム参加）"
+        # total_entries を優先取得（room_list -> ranking のフォールバック）
+        try:
+            participant_count = get_event_participant_count(selected_event_key, selected_event_id, max_pages=30)
+        except Exception:
+            participant_count = None
+
+        if participant_count is not None:
+            room_count_text = f" （現在{int(participant_count)}ルーム参加）"
+        else:
+            # フォールバック: 既に取得した room_map の件数
+            try:
+                room_count = len(st.session_state.room_map_data)
+                room_count_text = f" （現在{room_count}ルーム参加）"
+            except Exception:
+                room_count_text = ""
     st.markdown(f"**▶ [イベントページへ移動する]({event_url})**{room_count_text}", unsafe_allow_html=True)
 
     if not st.session_state.room_map_data:
