@@ -1464,6 +1464,8 @@ def main():
 
                 with points_container:
                     if '現在のポイント' in df.columns:
+                        # ✅ 集計中かどうかで使う列を切り替える
+                        y_col = "現在のポイント_numeric" if is_aggregating else "現在のポイント"
                         fig_points = px.bar(
                             df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
                             color_discrete_map=color_map, hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
