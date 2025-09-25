@@ -599,7 +599,7 @@ def main():
             # 開催中イベントは終了日時が近い順（昇順）でソート
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
     else: # "終了"
-        st.write("表示するイベントの**終了日\（期間\）**をカレンダーで選択してください。")
+        st.write("表示するイベントの**終了日**（期間）をカレンダーで選択してください。")
         today = date.today()
         thirty_days_ago = today - timedelta(days=30)
         
