@@ -1457,7 +1457,8 @@ def main():
             )
             #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
             
-            if not is_aggregating and 'df' in locals() and not df.empty:
+            #if not is_aggregating and 'df' in locals() and not df.empty:
+            if 'df' in locals() and not df.empty:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
                 points_container = st.container()
 
@@ -1491,8 +1492,9 @@ def main():
                         st.plotly_chart(fig_lower_gap, use_container_width=True, key="lower_gap_chart")
                         fig_lower_gap.update_layout(uirevision="const")
             else:
-                st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-                st.info("ポイント集計中のためグラフは表示されません。")
+                #st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+                #st.info("ポイント集計中のためグラフは表示されません。")
+                pass
                     
             # 自動更新はセッション状態で制御（追加）
             if st.session_state.auto_refresh_enabled:
