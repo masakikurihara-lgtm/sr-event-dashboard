@@ -599,12 +599,12 @@ def main():
             # 開催中イベントは終了日時が近い順（昇順）でソート
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
     else: # "終了"
-        st.write("表示するイベントの**終了期間**をカレンダーで選択してください:")
+        st.write("表示するイベントの**終了日（期間）**をカレンダーで選択してください。")
         today = date.today()
         thirty_days_ago = today - timedelta(days=30)
         
         selected_date_range = st.date_input(
-            "イベント終了期間",
+            "イベント終了日（期間）:",
             (thirty_days_ago, today),
             min_value=date(2020, 1, 1),
             max_value=today,
@@ -637,7 +637,7 @@ def main():
         options=list(event_options.keys()), key="event_selector")
     
     st.markdown(
-        "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型イベントはポイントのみで順位表示（総合ランキング表示）しています（ブロック分けされた表示とはなっていません）。<br />※終了済みイベントのポイント表示は、イベント終了日の翌日12:00頃までは「集計中」となり、その後ポイントが表示され、24時間経過するとクリアされます（0表示になります）。<br />※終了済みイベントは、イベント終了日の約1ヶ月後を目処にイベント一覧の選択対象から削除されます。</p>",
+        "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型イベントはポイントのみで順位表示（総合ランキング表示）しています（ブロック分けされた表示とはなっていません）。<!--<br />※終了済みイベントのポイント表示は、イベント終了日の翌日12:00頃までは「集計中」となり、その後ポイントが表示され、24時間経過するとクリアされます（0表示になります）。<br />※終了済みイベントは、イベント終了日の約1ヶ月後を目処にイベント一覧の選択対象から削除されます。--></p>",
         unsafe_allow_html=True
     )
 
