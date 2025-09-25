@@ -688,6 +688,9 @@ def main():
             default=st.session_state.multiselect_default_value,
             key=f"multiselect_{st.session_state.multiselect_key_counter}")
         submit_button = st.form_submit_button("表示する")
+        if submit_button:
+        # ✅ 表示ボタンを押したら自動更新を必ずONに戻す
+        st.session_state.auto_refresh_enabled = True
 
     if submit_button:
         if st.session_state.select_top_10_checkbox:
