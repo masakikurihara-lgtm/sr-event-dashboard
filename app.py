@@ -577,10 +577,10 @@ def main():
     if "auto_refresh_enabled" not in st.session_state:
         st.session_state.auto_refresh_enabled = True  # 自動更新デフォルト：有効
     # ▼ 対象/敵ルームの前回値を保存する変数を初期化
-    if "prev_battle_target_room" not in st.session_state:
-        st.session_state.prev_battle_target_room = None
-    if "prev_battle_enemy_room" not in st.session_state:
-        st.session_state.prev_battle_enemy_room = None        
+    #if "prev_battle_target_room" not in st.session_state:
+    #    st.session_state.prev_battle_target_room = None
+    #if "prev_battle_enemy_room" not in st.session_state:
+    #    st.session_state.prev_battle_enemy_room = None        
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     
