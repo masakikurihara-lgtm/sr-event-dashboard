@@ -1266,10 +1266,7 @@ def main():
                         room_options_all,
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_target_room"
-                    )
-                    if st.session_state.prev_battle_target_room != selected_target_room:
-                        st.session_state.auto_refresh_enabled = True
-                    st.session_state.prev_battle_target_room = selected_target_room                    
+                    )                
                 with col_b:
                     other_rooms = [r for r in room_options_all if r != selected_target_room]
                     selected_enemy_room = st.selectbox(
@@ -1279,10 +1276,6 @@ def main():
                         key="battle_enemy_room"
                     ) if other_rooms else None
                     if selected_enemy_room is not None:
-                        if st.session_state.prev_battle_enemy_room != selected_enemy_room:
-                            st.session_state.auto_refresh_enabled = True
-                        st.session_state.prev_battle_enemy_room = selected_enemy_room
-
                 points_map = {}
                 try:
                     if 'df' in locals() and not df.empty:
