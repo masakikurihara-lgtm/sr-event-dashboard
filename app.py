@@ -1503,9 +1503,9 @@ def main():
                 #st.info("ポイント集計中のためグラフは表示されません。")
                 pass
                     
-            # 自動更新はセッション状態で制御（追加）
-            if st.session_state.auto_refresh_enabled:
-                st_autorefresh(interval=7000, limit=None, key="refresh")
+
+            # 自動更新（7秒ごと）
+            st_autorefresh(interval=7000, limit=None, key="refresh")
         
     
 if __name__ == "__main__":
