@@ -695,7 +695,7 @@ def main():
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
-        st.session_state.auto_refresh_enabled = True
+        #st.session_state.auto_refresh_enabled = True
         if st.session_state.select_top_10_checkbox:
             st.session_state.selected_room_names = top_10_rooms
             st.session_state.multiselect_default_value = top_10_rooms
@@ -714,11 +714,11 @@ def main():
             st.markdown("<h2 style='font-size:2em;'>3. リアルタイムダッシュボード</h2>", unsafe_allow_html=True)
 
             # 自動更新コントロール（追加）
-            st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
-            toggle_label = "自動更新を停止" if st.session_state.auto_refresh_enabled else "自動更新を再開"
-            if st.button(toggle_label):
-                st.session_state.auto_refresh_enabled = not st.session_state.auto_refresh_enabled
-                st.rerun()  # ← experimental_rerunではなくrerun
+            #st.info("7秒ごとに自動更新されます。※停止ボタン押下時は停止します。")
+            #toggle_label = "自動更新を停止" if st.session_state.auto_refresh_enabled else "自動更新を再開"
+            #if st.button(toggle_label):
+            #    st.session_state.auto_refresh_enabled = not st.session_state.auto_refresh_enabled
+            #    st.rerun()  # ← experimental_rerunではなくrerun
 
             with st.container(border=True):
                         col1, col2 = st.columns([1, 1])
