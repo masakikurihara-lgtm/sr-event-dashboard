@@ -349,6 +349,70 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
 
     return room_map
 
+@st.cache_data(ttl=300)
+def get_event_participant_count(event_url_key, event_id, max_pages=30):
+    """
+    イベント参加ルーム数を取得する（優先順）
+    1) room_list?event_id=... の total_entries を優先
+    2) list があれば len(list)
+    3) フォールバックで ranking API をページめくりして合計件数を算出
+    戻り値: int (参加ルーム数) または None (取得失敗)
+    """
+    # 1) room_list に問い合わせて total_entries を見る
+    try:
+        url_room_list = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}"
+        resp = requests.get(url_room_list, headers=HEADERS, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            if isinstance(data, dict):
+                # server が用意した total_entries があればそれを優先
+                te = data.get("total_entries")
+                if te is not None:
+                    try:
+                        return int(te)
+                    except:
+                        pass
+                # なければ list の長さを返す（1ページ分）
+                if isinstance(data.get("list"), list):
+                    return len(data.get("list"))
+    except requests.exceptions.RequestException:
+        # room_list が使えない場合はフォールバックへ
+        pass
+
+    # 2) フォールバック: ranking API をページめくりして合計を算出
+    total_count = 0
+    try:
+        base_url_candidates = [
+            f"https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={{page}}",
+            f"https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={{page}}"
+        ]
+        for base_url in base_url_candidates:
+            total_count = 0
+            for page in range(1, max_pages + 1):
+                url = base_url.format(page=page)
+                r = requests.get(url, headers=HEADERS, timeout=8)
+                if r.status_code == 404:
+                    break
+                r.raise_for_status()
+                d = r.json()
+                # ranking や event_list など候補を探す
+                if isinstance(d, dict):
+                    arr = d.get("ranking") or d.get("event_list") or d.get("list") or d.get("data")
+                elif isinstance(d, list):
+                    arr = d
+                else:
+                    arr = None
+
+                if not arr:
+                    break
+                total_count += len(arr)
+            if total_count > 0:
+                return int(total_count)
+    except requests.exceptions.RequestException:
+        pass
+
+    return None    
+
 def get_room_event_info(room_id):
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
     try:
