@@ -576,6 +576,11 @@ def main():
         st.session_state.show_dashboard = False
     if "auto_refresh_enabled" not in st.session_state:
         st.session_state.auto_refresh_enabled = True  # 自動更新デフォルト：有効
+    # ▼ 対象/敵ルームの前回値を保存する変数を初期化
+    if "prev_battle_target_room" not in st.session_state:
+        st.session_state.prev_battle_target_room = None
+    if "prev_battle_enemy_room" not in st.session_state:
+        st.session_state.prev_battle_enemy_room = None        
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     
@@ -1262,6 +1267,9 @@ def main():
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_target_room"
                     )
+                    if st.session_state.prev_battle_target_room != selected_target_room:
+                        st.session_state.auto_refresh_enabled = True
+                    st.session_state.prev_battle_target_room = selected_target_room                    
                 with col_b:
                     other_rooms = [r for r in room_options_all if r != selected_target_room]
                     selected_enemy_room = st.selectbox(
@@ -1270,6 +1278,10 @@ def main():
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_enemy_room"
                     ) if other_rooms else None
+                    if selected_enemy_room is not None:
+                        if st.session_state.prev_battle_enemy_room != selected_enemy_room:
+                            st.session_state.auto_refresh_enabled = True
+                        st.session_state.prev_battle_enemy_room = selected_enemy_room
 
                 points_map = {}
                 try:
