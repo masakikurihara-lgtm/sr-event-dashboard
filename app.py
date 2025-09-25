@@ -604,7 +604,7 @@ def main():
         thirty_days_ago = today - timedelta(days=30)
         
         selected_date_range = st.date_input(
-            "イベント終了日（期間）:",
+            "イベント**終了日**（期間）をカレンダーで選択してください:",
             (thirty_days_ago, today),
             min_value=date(2020, 1, 1),
             max_value=today,
@@ -614,13 +614,13 @@ def main():
         if len(selected_date_range) == 2:
             start_date, end_date = selected_date_range
             if start_date > end_date:
-                st.error("エラー: 期間の開始日は終了日以前の日付を選択してください。")
+                st.error("エラー: 期間を指定する場合、開始日は終了日以前の日付を選択してください。")
                 st.stop()
             else:
                 with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
                     events = get_finished_events(start_date, end_date)
         else:
-            st.warning("有効な期間（開始日と終了日）を選択してください。")
+            st.warning("有効な終了日（期間）を選択してください。")
             st.stop()
 
     # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
