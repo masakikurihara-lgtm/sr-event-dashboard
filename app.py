@@ -1275,7 +1275,6 @@ def main():
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_enemy_room"
                     ) if other_rooms else None
-                    if selected_enemy_room is not None:
                 points_map = {}
                 try:
                     if 'df' in locals() and not df.empty:
