@@ -586,7 +586,7 @@ def main():
     
     # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
     event_status = st.radio(
-        "イベント種別を選択してください:",
+        "イベントステータスを選択してください:",
         ("開催中", "終了"),
         horizontal=True,
         key="event_status_selector"
