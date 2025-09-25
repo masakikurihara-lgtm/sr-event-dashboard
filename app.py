@@ -1467,9 +1467,9 @@ def main():
                         # ✅ 集計中かどうかで使う列を切り替える
                         y_col = "現在のポイント_numeric" if is_aggregating else "現在のポイント"
                         fig_points = px.bar(
-                            df, x="ルーム名", y="現在のポイント", title="各ルームの現在のポイント", color="ルーム名",
+                            df, x="ルーム名", y=y_col, title="各ルームの現在のポイント", color="ルーム名",
                             color_discrete_map=color_map, hover_data=["現在の順位", "上位とのポイント差", "下位とのポイント差"],
-                            labels={"現在のポイント": "ポイント", "ルーム名": "ルーム名"}
+                            labels={y_col: "ポイント", "ルーム名": "ルーム名"}
                         )
                         st.plotly_chart(fig_points, use_container_width=True, key="points_chart")
                         fig_points.update_layout(uirevision="const")
