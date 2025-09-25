@@ -411,7 +411,7 @@ def get_event_participant_count(event_url_key, event_id, max_pages=30):
     except requests.exceptions.RequestException:
         pass
 
-    return None    
+    return None
 
 def get_room_event_info(room_id):
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -427,6 +427,7 @@ def get_room_event_info(room_id):
 def get_block_event_overall_ranking(event_url_key, max_pages=30):
     """
     ブロックイベント全体のランキング（順位情報のみ）を取得する。
+    返却マップは room_id を文字列にしたものをキーにする（呼び出し側はroom_idを文字列で扱うため）
     """
     rank_map = {}
     base_url = "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}"
@@ -445,7 +446,11 @@ def get_block_event_overall_ranking(event_url_key, max_pages=30):
                 room_id = rank_info.get('room_id')
                 rank = rank_info.get('rank')
                 if room_id is not None and rank is not None:
-                    rank_map[room_id] = rank
+                    # キーを文字列に統一して保存
+                    try:
+                        rank_map[str(room_id)] = int(rank)
+                    except:
+                        rank_map[str(room_id)] = rank
     except requests.exceptions.RequestException as e:
         st.warning(f"ブロックイベントの全体ランキング取得中にエラーが発生しました: {e}")
     return rank_map
