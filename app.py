@@ -618,23 +618,51 @@ def main():
     
 
     # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
-    # イベント種別の選択
-    status_choice = st.radio(
-        "イベントステータスを選択",
+    event_status = st.radio(
+        "イベントステータスを選択してください:",
         ("開催中", "終了", "終了(BU)"),
-        horizontal=True
+        horizontal=True,
+        key="event_status_selector"
     )
 
-    if status_choice == "開催中":
-        events = get_ongoing_events()
-    elif status_choice == "終了":
-        start_date = st.date_input("開始日", date.today() - timedelta(days=30))
-        end_date = st.date_input("終了日", date.today())
-        events = get_finished_events(start_date, end_date)
-    elif status_choice == "終了(BU)":
-        start_date = st.date_input("開始日", date(2020, 1, 1))
-        end_date = st.date_input("終了日", date.today())
-        events = get_backup_events(start_date, end_date)
+    events = []
+    if event_status == "開催中":
+        with st.spinner('開催中のイベントを取得中...'):
+            events = get_ongoing_events()
+            # 開催中イベントは終了日時が近い順（昇順）
+            events.sort(key=lambda x: x.get('ended_at', float('inf')))
+
+    else:
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
+
+        selected_date_range = st.date_input(
+            "イベント**終了日**（期間）をカレンダーで選択してください:",
+            (thirty_days_ago, today),
+            min_value=date(2020, 1, 1),
+            max_value=today,
+            key="date_range_selector"
+        )
+
+        if len(selected_date_range) == 2:
+            start_date, end_date = selected_date_range
+            if start_date > end_date:
+                st.error("エラー: 開始日は終了日以前を選択してください。")
+                st.stop()
+            else:
+                if event_status == "終了":
+                    with st.spinner(f'終了イベント ({start_date}〜{end_date}) を取得中...'):
+                        events = get_finished_events(start_date, end_date)
+
+                elif event_status == "終了(BU)":
+                    with st.spinner(f'バックアップイベント ({start_date}〜{end_date}) を取得中...'):
+                        events = get_backup_events(start_date, end_date)
+                        # 「終了(BU)」は終了日が新しいもの順（降順）で並べる
+                        events.sort(key=lambda x: x.get("ended_at", 0), reverse=True)
+
+        else:
+            st.warning("有効な終了日（期間）を選択してください。")
+            st.stop()
 
 
     # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
