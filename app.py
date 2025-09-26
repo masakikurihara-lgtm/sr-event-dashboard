@@ -1369,22 +1369,45 @@ def main():
                             rank_display = "N/A"
                     room_rank_map[rn] = f"{rank_display}：{rn}"
 
-                col_a, col_b = st.columns([1, 1])
-                with col_a:
-                    selected_target_room = st.selectbox(
-                        "対象ルームを選択:",
+                    # 🔽 現在のルーム順位情報をもとに並び替え（昇順＝上位が先）
+                    sorted_rooms = sorted(
                         room_options_all,
-                        format_func=lambda x: room_rank_map.get(x, x),
-                        key="battle_target_room"
-                    )                
-                with col_b:
-                    other_rooms = [r for r in room_options_all if r != selected_target_room]
-                    selected_enemy_room = st.selectbox(
-                        "ターゲットルームを選択:",
-                        other_rooms,
-                        format_func=lambda x: room_rank_map.get(x, x),
-                        key="battle_enemy_room"
-                    ) if other_rooms else None
+                        key=lambda r: df_rank_map.get(r, float('inf'))
+                    )
+
+                    # ▼ デフォルト対象・ターゲット設定
+                    default_target_room = None
+                    default_enemy_room = None
+
+                    if len(sorted_rooms) >= 2:
+                        # 対象: 上位から2番目
+                        default_target_room = sorted_rooms[1]
+                        # ターゲット: 上位から2番目を除く上位ルーム群（上位ルームを先に表示）
+                        default_enemy_room = sorted_rooms[0]
+                    elif len(sorted_rooms) == 1:
+                        default_target_room = sorted_rooms[0]
+                        default_enemy_room = None
+
+                    col_a, col_b = st.columns([1, 1])
+                    with col_a:
+                        selected_target_room = st.selectbox(
+                            "対象ルームを選択:",
+                            room_options_all,
+                            index=room_options_all.index(default_target_room) if default_target_room in room_options_all else 0,
+                            format_func=lambda x: room_rank_map.get(x, x),
+                            key="battle_target_room"
+                        )
+
+                    with col_b:
+                        other_rooms = [r for r in room_options_all if r != selected_target_room]
+                        selected_enemy_room = st.selectbox(
+                            "ターゲットルームを選択:",
+                            other_rooms,
+                            index=other_rooms.index(default_enemy_room) if default_enemy_room in other_rooms else 0,
+                            format_func=lambda x: room_rank_map.get(x, x),
+                            key="battle_enemy_room"
+                        ) if other_rooms else None
+
                 points_map = {}
                 try:
                     if 'df' in locals() and not df.empty:
