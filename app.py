@@ -22,6 +22,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 JST = pytz.timezone('Asia/Tokyo')
 ROOM_LIST_URL = "https://mksoul-pro.com/showroom/file/room_list.csv"  #認証用
 BACKUP_INDEX_URL = "https://mksoul-pro.com/showroom/file/sr-event-archive-list-index.txt" # バックアップインデックスURL
+# 固定ファイルURLを定義
+BACKUP_FILE_URL = "https://mksoul-pro.com/showroom/file/sr-event-archive.csv"
 
 if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
@@ -87,45 +89,36 @@ def get_api_events(status, pages=10):
 @st.cache_data(ttl=3600)
 def get_backup_events(start_date, end_date):
     """
-    バックアップファイルから指定された期間の終了イベントを取得する関数
+    固定バックアップファイルから指定された期間の終了イベントを取得する関数
     """
-    try:
-        res_index = requests.get(BACKUP_INDEX_URL, headers=HEADERS, timeout=10)
-        res_index.raise_for_status()
-        backup_files = res_index.text.strip().splitlines()
-    except requests.exceptions.RequestException as e:
-        st.error(f"バックアップインデックスの取得に失敗しました: {e}")
-        return []
-
-    all_backup_data = []
     columns = [
         'event_id', 'is_event_block', 'is_entry_scope_inner', 'event_name',
         'image_m', 'started_at', 'ended_at', 'event_url_key', 'show_ranking'
     ]
-    for file_url in backup_files:
-        try:
-            df = pd.read_csv(file_url, header=None, names=columns)
-            all_backup_data.append(df)
-        except Exception as e:
-            st.warning(f"バックアップファイル {file_url} の読み込みに失敗しました: {e}")
-            continue
-    
-    if not all_backup_data:
+
+    try:
+        # ✅ 固定ファイル1つだけを読み込む（高速・安定）
+        response = requests.get(BACKUP_FILE_URL, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        csv_data = response.content.decode("utf-8-sig")
+        df = pd.read_csv(io.StringIO(csv_data), dtype=str)
+    except Exception as e:
+        st.error(f"バックアップファイルの取得に失敗しました: {e}")
         return []
 
-    combined_df = pd.concat(all_backup_data, ignore_index=True)
-    # started_atとended_atを数値に変換し、エラー時は0で補完
-    combined_df['started_at'] = pd.to_numeric(combined_df['started_at'], errors='coerce').fillna(0)
-    combined_df['ended_at'] = pd.to_numeric(combined_df['ended_at'], errors='coerce').fillna(0)
-    combined_df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
-    
+    # 列の整形
+    df = df[columns]
+    df['started_at'] = pd.to_numeric(df['started_at'], errors='coerce').fillna(0)
+    df['ended_at'] = pd.to_numeric(df['ended_at'], errors='coerce').fillna(0)
+    df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
+
+    # 日付範囲フィルタ
     start_datetime = JST.localize(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = JST.localize(datetime.datetime.combine(end_date, datetime.time.max))
+    df['ended_at_dt'] = pd.to_datetime(df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
+    df = df[(df['ended_at_dt'] >= start_datetime) & (df['ended_at_dt'] <= end_datetime)]
 
-    combined_df['ended_at_dt'] = pd.to_datetime(combined_df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
-    combined_df = combined_df[(combined_df['ended_at_dt'] >= start_datetime) & (combined_df['ended_at_dt'] <= end_datetime)]
-
-    return combined_df.to_dict('records')
+    return df.to_dict('records')
 
 
 @st.cache_data(ttl=600)
