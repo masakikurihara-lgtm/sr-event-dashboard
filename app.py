@@ -145,20 +145,17 @@ def get_ongoing_events():
 @st.cache_data(ttl=3600)
 def get_finished_events(start_date, end_date):
     """
-    終了したイベントをAPIとバックアップから取得し、マージして返す
+    終了したイベントをAPIから取得して返す
+    （終了1ヶ月以内が対象）
     """
     api_events_raw = get_api_events(status=4)
-    backup_events_raw = get_backup_events(start_date, end_date)
-
     now_ts = datetime.datetime.now(JST).timestamp()
     start_ts = JST.localize(datetime.datetime.combine(start_date, datetime.time.min)).timestamp()
     end_ts = JST.localize(datetime.datetime.combine(end_date, datetime.time.max)).timestamp()
 
-    # APIから取得したイベントをフィルタリング＆サニタイズ
     api_events = []
     for event in api_events_raw:
         ended_at = event.get('ended_at', 0)
-        # 日付範囲内で、かつ現在時刻より前に終了していることを確認
         if not (start_ts <= ended_at <= end_ts and ended_at < now_ts):
             continue
         try:
@@ -168,40 +165,13 @@ def get_finished_events(start_date, end_date):
         except (ValueError, TypeError):
             continue
 
-    # バックアップから取得したイベントをフィルタリング＆サニタイズ
-    backup_events = []
-    for event in backup_events_raw:
-        ended_at = event.get('ended_at', 0)
-        # 現在時刻より前に終了していることを確認 (バグ修正)
-        if ended_at >= now_ts:
-            continue
-        try:
-            event['started_at'] = int(float(event.get('started_at', 0)))
-            event['ended_at'] = int(float(ended_at))
-            backup_events.append(event)
-        except (ValueError, TypeError):
-            continue
+    # 新しいものが上に来るようにソート
+    api_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
 
-    # 正規化されたevent_idを使ってマージ
-    merged_events_map = {}
-    for event in backup_events:
-        event_id = normalize_event_id(event.get('event_id'))
-        if event_id:
-            merged_events_map[event_id] = event
-    
-    for event in api_events:
-        event_id = normalize_event_id(event.get('event_id'))
-        if event_id:
-            merged_events_map[event_id] = event # APIデータが優先される
+    for e in api_events:
+        e['event_name'] = f"＜終了＞ {str(e.get('event_name', '')).replace('＜終了＞ ', '').strip()}"
 
-    all_finished_events = list(merged_events_map.values())
-    all_finished_events.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
-    
-    for event in all_finished_events:
-        event_name_str = str(event.get('event_name', ''))
-        event['event_name'] = f"＜終了＞ {event_name_str.replace('＜終了＞ ', '').strip()}"
-        
-    return all_finished_events
+    return api_events
 
 
 # ▲▲▲ ここまで修正・追加した関数群 ▲▲▲
@@ -646,44 +616,26 @@ def main():
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
     
+
     # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
-    event_status = st.radio(
-        "イベントステータスを選択してください:",
-        ("開催中", "終了"),
-        horizontal=True,
-        key="event_status_selector"
+    # イベント種別の選択
+    status_choice = st.radio(
+        "イベントステータスを選択",
+        ("開催中", "終了", "終了(BU)"),
+        horizontal=True
     )
 
-    events = []
-    if event_status == "開催中":
-        with st.spinner('開催中のイベントを取得中...'):
-            events = get_ongoing_events()
-            # 開催中イベントは終了日時が近い順（昇順）でソート
-            events.sort(key=lambda x: x.get('ended_at', float('inf')))
-    else: # "終了"
-        #st.write("表示するイベントの**終了日**（期間）をカレンダーで選択してください。")
-        today = date.today()
-        thirty_days_ago = today - timedelta(days=30)
-        
-        selected_date_range = st.date_input(
-            "イベント**終了日**（期間）をカレンダーで選択してください:",
-            (thirty_days_ago, today),
-            min_value=date(2020, 1, 1),
-            max_value=today,
-            key="date_range_selector"
-        )
-        
-        if len(selected_date_range) == 2:
-            start_date, end_date = selected_date_range
-            if start_date > end_date:
-                st.error("エラー: 期間を指定する場合、開始日は終了日以前の日付を選択してください。")
-                st.stop()
-            else:
-                with st.spinner(f'終了したイベント ({start_date}〜{end_date}) を取得中...'):
-                    events = get_finished_events(start_date, end_date)
-        else:
-            st.warning("有効な終了日（期間）を選択してください。")
-            st.stop()
+    if status_choice == "開催中":
+        events = get_ongoing_events()
+    elif status_choice == "終了":
+        start_date = st.date_input("開始日", date.today() - timedelta(days=30))
+        end_date = st.date_input("終了日", date.today())
+        events = get_finished_events(start_date, end_date)
+    elif status_choice == "終了(BU)":
+        start_date = st.date_input("開始日", date(2020, 1, 1))
+        end_date = st.date_input("終了日", date.today())
+        events = get_backup_events(start_date, end_date)
+
 
     # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
