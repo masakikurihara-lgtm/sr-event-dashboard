@@ -1373,8 +1373,7 @@ def main():
                 with col_a:
                     selected_target_room = st.selectbox(
                         "対象ルームを選択:",
-#                        room_options_all,
-                        other_rooms,
+                        room_options_all,
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_target_room"
                     )                
@@ -1382,8 +1381,7 @@ def main():
                     other_rooms = [r for r in room_options_all if r != selected_target_room]
                     selected_enemy_room = st.selectbox(
                         "ターゲットルームを選択:",
-#                        other_rooms,
-                        room_options_all,
+                        other_rooms,
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_enemy_room"
                     ) if other_rooms else None
