@@ -774,6 +774,7 @@ def main():
             "比較したいルームを選択 (複数選択可):", options=room_options,
             default=st.session_state.multiselect_default_value,
             key=f"multiselect_{st.session_state.multiselect_key_counter}")
+        st.caption("※上位30ルームまで表示されます。下位ルームは非表示となります。")
         submit_button = st.form_submit_button("表示する")
 
     if submit_button:
