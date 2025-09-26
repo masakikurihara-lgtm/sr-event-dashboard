@@ -90,6 +90,9 @@ def get_api_events(status, pages=10):
 def get_backup_events(start_date, end_date):
     """
     固定バックアップファイルから指定された期間の終了イベントを取得する関数
+    - API側のフィルタ (show_ranking is not False OR type_name == 'ランキング') を適用
+    - event_name の接頭辞を「＜終了(BU)＞ 」に変更
+    - 終了日 (ended_at) が新しいものほど上に並べて返す（降順）
     """
     columns = [
         'event_id', 'is_event_block', 'is_entry_scope_inner', 'event_name',
@@ -97,7 +100,6 @@ def get_backup_events(start_date, end_date):
     ]
 
     try:
-        # ✅ 固定ファイル1つだけを読み込む（高速・安定）
         response = requests.get(BACKUP_FILE_URL, headers=HEADERS, timeout=10)
         response.raise_for_status()
         csv_data = response.content.decode("utf-8-sig")
@@ -106,19 +108,71 @@ def get_backup_events(start_date, end_date):
         st.error(f"バックアップファイルの取得に失敗しました: {e}")
         return []
 
-    # 列の整形
-    df = df[columns]
+    # --- 列の補完（不足カラムがあれば追加） ---
+    # API側のフィルタで type_name も参照する可能性があるため補完しておく
+    expected_extra = ['type_name']
+    for col in columns + expected_extra:
+        if col not in df.columns:
+            df[col] = None
+
+    # 必要列のみ取り出す（type_name は最後に付ける）
+    use_cols = columns + expected_extra
+    df = df[use_cols]
+
+    # 数値変換
     df['started_at'] = pd.to_numeric(df['started_at'], errors='coerce').fillna(0)
     df['ended_at'] = pd.to_numeric(df['ended_at'], errors='coerce').fillna(0)
+
+    # 重複除去（event_id ベース。上書き方針は keep='first' を維持）
     df.drop_duplicates(subset=['event_id'], keep='first', inplace=True)
 
-    # 日付範囲フィルタ
+    # 日付範囲フィルタ（JST）
     start_datetime = JST.localize(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = JST.localize(datetime.datetime.combine(end_date, datetime.time.max))
     df['ended_at_dt'] = pd.to_datetime(df['ended_at'], unit='s', utc=True).dt.tz_convert(JST)
     df = df[(df['ended_at_dt'] >= start_datetime) & (df['ended_at_dt'] <= end_datetime)]
 
-    return df.to_dict('records')
+    # --- show_ranking を適切にパース（文字列 'False' 等に対応） ---
+    def _parse_show_ranking(v):
+        if pd.isna(v):
+            return None
+        s = str(v).strip().lower()
+        if s in ('false', '0', 'no', 'n', 'none', 'nan', ''):
+            return False
+        if s in ('true', '1', 'yes', 'y'):
+            return True
+        try:
+            fv = float(s)
+            return bool(int(fv))
+        except Exception:
+            return None
+
+    df['show_ranking'] = df['show_ranking'].apply(_parse_show_ranking)
+
+    # レコード化
+    records = df.to_dict(orient='records')
+
+    # --- API と同じフィルタを適用 ---
+    # API側の条件: event.get("show_ranking") is not False OR event.get("type_name") == "ランキング"
+    filtered = []
+    for r in records:
+        sr_val = r.get('show_ranking')          # bool or None
+        tname = (r.get('type_name') or '').strip()
+        if (sr_val is not False) or (tname == "ランキング"):
+            filtered.append(r)
+
+    # --- event_name の接頭辞を「＜終了(BU)＞」に整形（重複付与避ける） ---
+    for r in filtered:
+        name = str(r.get('event_name', '') or '')
+        # 既に付いている可能性のある接頭辞を削除してから付ける
+        name = name.replace('＜終了(BU)＞ ', '').replace('＜終了＞ ', '').strip()
+        r['event_name'] = f"＜終了(BU)＞ {name}"
+
+    # --- 終了日が新しいもの順（降順）にソートして返す ---
+    filtered.sort(key=lambda x: x.get('ended_at', 0), reverse=True)
+
+    return filtered
+
 
 
 @st.cache_data(ttl=600)
