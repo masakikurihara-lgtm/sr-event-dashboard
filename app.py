@@ -921,12 +921,21 @@ def main():
                 with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
                     event_url_key = selected_event_data.get('event_url_key')
                     event_id = selected_event_data.get('event_id')
-                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
+
+                    # ✅ 修正版
+                    final_ranking_map = get_event_ranking_with_room_id(
+                        event_url_key,
+                        event_id,
+                        max_pages=30,
+                        is_event_block=selected_event_data.get("is_event_block", False)
+                    )
+
                     if final_ranking_map:
                         for name, data in final_ranking_map.items():
                             if 'room_id' in data:
                                 final_ranking_data[data['room_id']] = {
-                                    'rank': data.get('rank'), 'point': data.get('point')
+                                    'rank': data.get('rank'),
+                                    'point': data.get('point')
                                 }
                     else:
                         st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
@@ -939,7 +948,7 @@ def main():
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
-                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'))
+                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'), is_event_block=event.get('is_event_block', False))
 
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
