@@ -708,7 +708,7 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
 
 
-    # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
+    # --- ▼▼▼ 修正版: イベント取得フロー ▼▼▼ ---
     event_status = st.radio(
         "イベントステータスを選択してください:",
         ("開催中", "終了", "終了(BU)"),
@@ -725,11 +725,18 @@ def main():
 
     else:
         today = date.today()
-        thirty_days_ago = today - timedelta(days=30)
+
+        # ✅ 「終了(BU)」のみ1か月前倒しで初期日付設定
+        if event_status == "終了(BU)":
+            default_start = today - timedelta(days=60)
+            default_end = today - timedelta(days=30)
+        else:
+            default_start = today - timedelta(days=30)
+            default_end = today
 
         selected_date_range = st.date_input(
             "イベント**終了日**（期間）をカレンダーで選択してください:",
-            (thirty_days_ago, today),
+            (default_start, default_end),
             min_value=date(2020, 1, 1),
             max_value=today,
             key="date_range_selector"
@@ -748,15 +755,21 @@ def main():
                 elif event_status == "終了(BU)":
                     with st.spinner(f'バックアップイベント ({start_date}〜{end_date}) を取得中...'):
                         events = get_backup_events(start_date, end_date)
-                        # 「終了(BU)」は終了日が新しいもの順（降順）で並べる
+                        # 「終了(BU)」は終了日が新しいもの順（降順）
                         events.sort(key=lambda x: x.get("ended_at", 0), reverse=True)
+
+                        # ✅ 「終了(BU)」から「終了」と重複するイベントを除外
+                        try:
+                            ended_events = get_finished_events(start_date, end_date)
+                            ended_ids = {e.get("event_id") for e in ended_events if e.get("event_id")}
+                            events = [e for e in events if e.get("event_id") not in ended_ids]
+                        except Exception as ex:
+                            st.warning(f"バックアップイベントの重複除外処理でエラーが発生しました: {ex}")
 
         else:
             st.warning("有効な終了日（期間）を選択してください。")
             st.stop()
-
-
-    # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
+    # --- ▲▲▲ 修正版ここまで ▲▲▲ ---
 
 
     if not events:
