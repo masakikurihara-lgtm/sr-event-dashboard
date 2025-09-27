@@ -910,8 +910,7 @@ def main():
                     final_ranking_map = get_event_ranking_with_room_id(
                         event_url_key,
                         event_id,
-                        max_pages=30,
-                        is_event_block=selected_event_data.get("is_event_block", False)
+                        max_pages=30
                     )
 
                     if final_ranking_map:
