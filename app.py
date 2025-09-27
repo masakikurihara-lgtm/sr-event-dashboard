@@ -949,7 +949,7 @@ def main():
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
-                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('is_event_block'))
+                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_id'))
 
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
