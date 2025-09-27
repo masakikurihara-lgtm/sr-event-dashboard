@@ -927,7 +927,7 @@ def main():
                         event_url_key,
                         event_id,
                         max_pages=30,
-                        is_event_block=selected_event_data.get("is_event_block", False)
+                        is_event_block=selected_event_data.get("is_event_block", True)
                     )
 
                     if final_ranking_map:
@@ -945,7 +945,7 @@ def main():
 
             data_to_display = []
 
-            is_block_event = selected_event_data.get("is_event_block", False)
+            is_block_event = selected_event_data.get("is_event_block", True)
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
