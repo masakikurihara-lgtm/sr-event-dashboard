@@ -58,7 +58,7 @@ def get_api_events(status, pages=10):
             response = requests.get(url, headers=HEADERS, timeout=5)
             response.raise_for_status()
             data = response.json()
-            
+
             page_events = []
             if isinstance(data, dict):
                 if 'events' in data:
@@ -182,7 +182,7 @@ def get_ongoing_events():
     """
     events = get_api_events(status=1)
     now_ts = datetime.datetime.now(JST).timestamp()
-    
+
     # 念のため、本当に開催中のものだけをフィルタリング
     ongoing_events = [e for e in events if e.get('ended_at', 0) > now_ts]
 
@@ -366,7 +366,6 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
 
     return room_map
 
-
 @st.cache_data(ttl=300)
 def get_event_participant_count(event_url_key, event_id, max_pages=30):
     """
@@ -505,24 +504,24 @@ def get_and_update_gift_log(room_id):
         response = requests.get(url, headers=HEADERS, timeout=5)
         response.raise_for_status()
         new_gift_log = response.json().get('gift_log', [])
-        
+
         if room_id not in st.session_state.gift_log_cache:
             st.session_state.gift_log_cache[room_id] = []
-        
+
         existing_log = st.session_state.gift_log_cache[room_id]
-        
+
         if new_gift_log:
             existing_log_set = {(log.get('gift_id'), log.get('created_at'), log.get('num')) for log in existing_log}
-            
+
             for log in new_gift_log:
                 log_key = (log.get('gift_id'), log.get('created_at'), log.get('num'))
                 if log_key not in existing_log_set:
                     existing_log.append(log)
-        
+
         st.session_state.gift_log_cache[room_id].sort(key=lambda x: x.get('created_at', 0), reverse=True)
-        
+
         return st.session_state.gift_log_cache[room_id]
-        
+
     except requests.exceptions.RequestException as e:
         st.warning(f"ルームID {room_id} のギフトログ取得中にエラーが発生しました。配信中か確認してください: {e}")
         return st.session_state.gift_log_cache.get(room_id, [])
@@ -670,7 +669,7 @@ def main():
     #    st.session_state.prev_battle_enemy_room = None        
 
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
-    
+
 
     # --- ▼▼▼ ここからが修正箇所（イベント取得のフローは既に上で整備済み） ▼▼▼ ---
     event_status = st.radio(
@@ -732,7 +731,7 @@ def main():
     selected_event_name = st.selectbox(
         "イベント名を選択してください:", 
         options=list(event_options.keys()), key="event_selector")
-    
+
     st.markdown(
         "<p style='font-size:12px; margin: -10px 0px 20px 0px; color:#a1a1a1;'>※ランキング型イベントが対象になります。ただし、ブロック型イベントはポイントのみで順位表示（総合ランキング表示）しています（ブロック分けされた表示とはなっていません）。<!--<br />※終了済みイベントのポイント表示は、イベント終了日の翌日12:00頃までは「集計中」となり、その後ポイントが表示され、24時間経過するとクリアされます（0表示になります）。<br />※終了済みイベントは、イベント終了日の約1ヶ月後を目処にイベント一覧の選択対象から削除されます。--></p>",
         unsafe_allow_html=True
@@ -816,7 +815,7 @@ def main():
             st.session_state.multiselect_default_value = selected_room_names_temp
         st.session_state.show_dashboard = True
         st.rerun()
-    
+
     if st.session_state.show_dashboard:
             if not st.session_state.selected_room_names:
                 st.warning("最低1つのルームを選択してください。")
@@ -891,7 +890,7 @@ def main():
                             }})();
                             </script>
                             """, height=80)
-                    
+
 
             current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
             st.write(f"最終更新日時 (日本時間): {current_time}")
@@ -899,30 +898,21 @@ def main():
             is_event_ended = datetime.datetime.now(JST) > ended_at_dt
             is_closed = selected_event_data.get('is_closed', True)
             is_aggregating = is_event_ended and not is_closed
-            
+
             final_ranking_data = {}
             if is_event_ended:
                 with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
                     event_url_key = selected_event_data.get('event_url_key')
                     event_id = selected_event_data.get('event_id')
-
-                    # ✅ 修正版
-                    final_ranking_map = get_event_ranking_with_room_id(
-                        event_url_key,
-                        event_id,
-                        max_pages=30
-                    )
-
+                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
                     if final_ranking_map:
                         for name, data in final_ranking_map.items():
                             if 'room_id' in data:
                                 final_ranking_data[data['room_id']] = {
-                                    'rank': data.get('rank'),
-                                    'point': data.get('point')
+                                    'rank': data.get('rank'), 'point': data.get('point')
                                 }
                     else:
                         st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
-
 
             onlives_rooms = get_onlives_rooms()
 
@@ -951,10 +941,10 @@ def main():
                         if room_name not in st.session_state.room_map_data:
                             st.error(f"選択されたルーム名 '{room_name}' が見つかりません。リストを更新してください。")
                             continue
-                        
+
                         room_id = st.session_state.room_map_data[room_name]['room_id']
                         rank, point, upper_gap, lower_gap = 'N/A', 'N/A', 'N/A', 'N/A'
-                        
+
                         is_live = int(room_id) in onlives_rooms
                         is_premium_live = False
                         if is_live:
@@ -982,7 +972,7 @@ def main():
                                 "配信開始時間": started_at_str
                             })
                             continue
-                        
+
                         if is_event_ended:
                             if room_id in final_ranking_data:
                                 rank = final_ranking_data[room_id].get('rank', 'N/A')
@@ -996,7 +986,7 @@ def main():
                             if not isinstance(room_info, dict):
                                 st.warning(f"ルームID {room_id} のデータが不正な形式です。スキップします。")
                                 continue
-                            
+
                             rank_info = None
                             if 'ranking' in room_info and isinstance(room_info['ranking'], dict):
                                 rank_info = room_info['ranking']
@@ -1013,7 +1003,7 @@ def main():
                                 point = rank_info.get('point', 'N/A')
                                 upper_gap = rank_info.get('upper_gap', 'N/A')
                                 lower_gap = rank_info.get('lower_gap', 'N/A')
-                                
+
                                 if is_block_event:
                                     rank = block_event_ranks.get(room_id, 'N/A')
                                 else:
@@ -1021,7 +1011,7 @@ def main():
                             else:
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
-                        
+
                         started_at_str = ""
                         if is_live:
                             started_at_ts = onlives_rooms.get(int(room_id), {}).get('started_at')
@@ -1093,7 +1083,7 @@ def main():
                 else:
                     # 集計前（通常表示）: 数値化してソート・差分算出（従来のロジック）
                     df['現在のポイント'] = pd.to_numeric(df['現在のポイント'], errors='coerce')
-                    
+
                     if is_event_ended or is_block_event: # ブロックイベントも順位でソート
                         df['has_valid_rank'] = df['現在の順位'] > 0
                         df = df.sort_values(by=['has_valid_rank', '現在の順位'], ascending=[False, True], na_position='last').reset_index(drop=True)
@@ -1107,11 +1097,11 @@ def main():
                     df_sorted_by_points = df.sort_values(by='現在のポイント', ascending=False, na_position='last').reset_index(drop=True)
                     df_sorted_by_points['上位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
                     df_sorted_by_points['下位とのポイント差'] = (df_sorted_by_points['現在のポイント'].shift(-1) - df_sorted_by_points['現在のポイント']).abs().fillna(0).astype(int)
-                    
+
                     df = pd.merge(df.drop(columns=['上位とのポイント差', '下位とのポイント差'], errors='ignore'), df_sorted_by_points[['ルーム名', '上位とのポイント差', '下位とのポイント差']], on='ルーム名', how='left')
 
                     df.insert(0, '配信中', live_status)
-                    
+
                     started_at_column = df['配信開始時間']
                     df = df.drop(columns=['配信開始時間'])
                     df.insert(1, '配信開始時間', started_at_column)
@@ -1251,7 +1241,7 @@ def main():
                 .highlight-300000 { background-color: #ff7f7f; }
                 </style>
             """
-            
+
             live_rooms_data = []
             if 'df' in locals() and not df.empty and st.session_state.room_map_data:
                 selected_live_room_ids = {
@@ -1261,7 +1251,7 @@ def main():
                 rooms_to_delete = [room_id for room_id in st.session_state.gift_log_cache if int(room_id) not in selected_live_room_ids]
                 for room_id in rooms_to_delete:
                     del st.session_state.gift_log_cache[room_id]
-                
+
                 for index, row in df.iterrows():
                     room_name = row['ルーム名']
                     if room_name in st.session_state.room_map_data:
@@ -1275,7 +1265,7 @@ def main():
                                 live_rooms_data.append({
                                     "room_name": room_name, "room_id": room_id, "rank": row['現在の順位']
                                 })
-            
+
             room_html_list = []
             if len(live_rooms_data) > 0:
                 for room_data in live_rooms_data:
@@ -1300,7 +1290,7 @@ def main():
                     if int(room_id) in onlives_rooms:
                         gift_log = get_and_update_gift_log(room_id)
                         gift_list_map = get_gift_list(room_id)
-                        
+
                         html_content = f"""
                         <div class="room-container">
                             <div class="ranking-label" style="background-color: {rank_color};">{rank}位</div>
@@ -1324,7 +1314,7 @@ def main():
                                     elif total_point >= 60000: highlight_class = "highlight-60000"
                                     elif total_point >= 30000: highlight_class = "highlight-30000"
                                     elif total_point >= 10000: highlight_class = "highlight-10000"
-                                
+
                                 gift_image = log.get('image', gift_info.get('image', ''))
                                 html_content += (
                                     f'<div class="gift-item {highlight_class}">'
@@ -1335,7 +1325,7 @@ def main():
                             html_content += '</div>'
                         else:
                             html_content += '<p style="text-align: center; padding: 12px 0;">ギフト履歴がありません。</p></div>'
-                        
+
                         html_content += '</div>'
                         room_html_list.append(html_content)
                 html_container_content = '<div class="container-wrapper">' + ''.join(room_html_list) + '</div>'
@@ -1406,6 +1396,7 @@ def main():
                         index=room_options_all.index(default_target_room) if default_target_room in room_options_all else 0,
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_target_room"
+                    )                
                     )
 
                 with col_b:
@@ -1495,7 +1486,7 @@ def main():
                         )
 
                     st.markdown(f"- 対象ルームの現在順位: **{target_rank if target_rank is not None else 'N/A'}位**")
-            
+
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
                     small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
                     rainbow_pt = 100 * 2.5
@@ -1604,7 +1595,7 @@ def main():
                 unsafe_allow_html=True
             )
             #st.markdown("### 📈 ポイントと順位の比較", unsafe_allow_html=True)
-            
+
             #if not is_aggregating and 'df' in locals() and not df.empty:
             if 'df' in locals() and not df.empty:
                 color_map = {row['ルーム名']: get_rank_color(row['現在の順位']) for index, row in df.iterrows()}
@@ -1645,11 +1636,11 @@ def main():
                 #st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
                 #st.info("ポイント集計中のためグラフは表示されません。")
                 pass
-                    
+
 
             # 自動更新（7秒ごと）
             st_autorefresh(interval=7000, limit=None, key="refresh")
-        
-    
+
+
 if __name__ == "__main__":
     main()
