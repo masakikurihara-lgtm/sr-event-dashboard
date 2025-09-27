@@ -441,36 +441,73 @@ def get_room_event_info(room_id):
         return None
 
 @st.cache_data(ttl=60)
-def get_block_event_overall_ranking(event_url_key, max_pages=30):
+def get_block_event_overall_ranking(event_url_key, event_id=None, max_pages=30):
     """
     ブロックイベント全体のランキング（順位情報のみ）を取得する。
-    返却マップは room_id を文字列にしたものをキーにする（呼び出し側はroom_idを文字列で扱うため）
+    /ranking?page=n で取得し、rank=0 のルームは room_list?event_id={event_id} で補完。
     """
     rank_map = {}
-    base_url = "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}"
+    ranking_url_template = f"https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={{page}}"
+
     try:
+        # --- まず通常の /ranking?page=n から取得 ---
         for page in range(1, max_pages + 1):
-            url = base_url.format(event_url_key=event_url_key, page=page)
+            url = ranking_url_template.format(page=page)
             response = requests.get(url, headers=HEADERS, timeout=10)
             if response.status_code == 404:
                 break
             response.raise_for_status()
             data = response.json()
-            ranking_list = data.get('ranking', [])
+            ranking_list = data.get("ranking") or data.get("list") or data.get("event_list") or data.get("data") or []
             if not ranking_list:
                 break
-            for rank_info in ranking_list:
-                room_id = rank_info.get('room_id')
-                rank = rank_info.get('rank')
-                if room_id is not None and rank is not None:
-                    # キーを文字列に統一して保存
-                    try:
-                        rank_map[str(room_id)] = int(rank)
-                    except:
-                        rank_map[str(room_id)] = rank
+
+            for room_info in ranking_list:
+                if not isinstance(room_info, dict):
+                    continue
+                rid = room_info.get("room_id") or room_info.get("id")
+                rnk = room_info.get("rank") or room_info.get("position")
+                if rid is None:
+                    continue
+                try:
+                    rank_map[str(rid)] = int(float(rnk)) if rnk is not None else 0
+                except Exception:
+                    rank_map[str(rid)] = 0
+
+        # --- rank=0 のルームを room_list から補完 ---
+        if event_id and any(v == 0 for v in rank_map.values()):
+            try:
+                roomlist_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}"
+                resp = requests.get(roomlist_url, headers=HEADERS, timeout=10)
+                if resp.status_code == 200:
+                    data2 = resp.json()
+                    room_list = data2.get("list", [])
+                    for info in room_list:
+                        rid = info.get("room_id")
+                        rnk = info.get("rank")
+                        if not rid or rnk is None:
+                            continue
+                        rid_str = str(rid)
+                        # ranking で 0 だったルームのみ補完
+                        if rid_str in rank_map and rank_map[rid_str] == 0:
+                            try:
+                                rank_map[rid_str] = int(float(rnk))
+                            except Exception:
+                                pass
+                        elif rid_str not in rank_map:
+                            # /ranking で取得できなかったルームも追加
+                            try:
+                                rank_map[rid_str] = int(float(rnk))
+                            except Exception:
+                                continue
+            except requests.exceptions.RequestException:
+                pass
+
     except requests.exceptions.RequestException as e:
         st.warning(f"ブロックイベントの全体ランキング取得中にエラーが発生しました: {e}")
+
     return rank_map
+
 
 @st.cache_data(ttl=30)
 def get_gift_list(room_id):
@@ -922,7 +959,10 @@ def main():
             block_event_ranks = {}
             if is_block_event and not is_event_ended:
                 with st.spinner('ブロックイベントの全体順位を取得中...'):
-                    block_event_ranks = get_block_event_overall_ranking(selected_event_data.get('event_url_key'))
+                    block_event_ranks = get_block_event_overall_ranking(
+                        selected_event_data.get('event_url_key'),
+                        event_id=selected_event_data.get('event_id')
+                    )
 
             if st.session_state.selected_room_names:
                 premium_live_rooms = [
