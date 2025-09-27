@@ -1529,6 +1529,7 @@ def main():
                     large_sg = [500, 1000, 3000, 10000, 20000, 100000]
                     small_sg = [1, 2, 3, 5, 8, 10, 50, 88, 100, 200]
                     rainbow_pt = 100 * 2.5
+                    rainbow10_pt = 100 * 10 * 1.20 * 2.5
                     big_rainbow_pt = 1250 * 1.20 * 2.5
                     rainbow_meteor_pt = 2500 * 1.20 * 2.5
 
@@ -1547,9 +1548,10 @@ def main():
                         "必要個数 (小数2桁)": [f"{needed/(sg*2.5):.2f}" if sg > 0 else "0.00" for sg in small_sg]
                     }
                     rainbow_table = {
-                        "ギフト種類": ["レインボースター 100pt", "大レインボースター 1250pt", "レインボースター流星群 2500pt"],
+                        "ギフト種類": ["レインボースター 100pt", "レインボースター 100pt × 10連", "大レインボースター 1250pt", "レインボースター流星群 2500pt"],
                         "必要個数 (小数2桁)": [
                             f"{needed/rainbow_pt:.2f}",
+                            f"{needed/rainbow10_pt:.2f}",
                             f"{needed/big_rainbow_pt:.2f}",
                             f"{needed/rainbow_meteor_pt:.2f}"
                         ]
