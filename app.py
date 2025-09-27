@@ -400,9 +400,8 @@ def get_event_participant_count(event_url_key, event_id, max_pages=30):
     total_count = 0
     try:
         base_url_candidates = [
-            f"https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={{page}}",
-            f"https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={{page}}"
-
+            f"https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={{page}}",
+            f"https://www.showroom-live.com/api/event/ranking?event_id={event_id}&page={{page}}"
         ]
         for base_url in base_url_candidates:
             total_count = 0
@@ -415,7 +414,7 @@ def get_event_participant_count(event_url_key, event_id, max_pages=30):
                 d = r.json()
                 # ranking や event_list など候補を探す
                 if isinstance(d, dict):
-                    arr = d.get("ranking") or d.get("event_list") or d.get("list") or d.get("data")
+                    arr = d.get("event_list") or d.get("ranking") or d.get("list") or d.get("data")
                 elif isinstance(d, list):
                     arr = d
                 else:
