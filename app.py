@@ -1396,7 +1396,6 @@ def main():
                         index=room_options_all.index(default_target_room) if default_target_room in room_options_all else 0,
                         format_func=lambda x: room_rank_map.get(x, x),
                         key="battle_target_room"
-                    )                
                     )
 
                 with col_b:
