@@ -708,86 +708,86 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
 
 
-# --- ▼▼▼ 修正版: イベント取得フロー（重複除外＋カレンダー初期値） ▼▼▼ ---
-event_status = st.radio(
-    "イベントステータスを選択してください:",
-    ("開催中", "終了", "終了(BU)"),
-    horizontal=True,
-    key="event_status_selector"
-)
-
-events = []
-if event_status == "開催中":
-    with st.spinner('開催中のイベントを取得中...'):
-        events = get_ongoing_events()
-        # 開催中イベントは終了日時が近い順（昇順）
-        events.sort(key=lambda x: x.get('ended_at', float('inf')))
-
-else:
-    today = date.today()
-
-    # 「終了(BU)」は直近1ヶ月ではなく、その前の1ヶ月（＝60日前〜30日前）を初期表示
-    if event_status == "終了(BU)":
-        default_start = today - timedelta(days=60)
-        default_end = today - timedelta(days=30)
-    else:
-        # 通常の「終了」は直近30日
-        default_start = today - timedelta(days=30)
-        default_end = today
-
-    # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
-    date_input_key = f"date_range_selector_{event_status}"
-
-    selected_date_range = st.date_input(
-        "イベント**終了日**（期間）をカレンダーで選択してください:",
-        (default_start, default_end),
-        min_value=date(2020, 1, 1),
-        max_value=today,
-        key=date_input_key
+    # --- ▼▼▼ 修正版: イベント取得フロー（重複除外＋カレンダー初期値） ▼▼▼ ---
+    event_status = st.radio(
+        "イベントステータスを選択してください:",
+        ("開催中", "終了", "終了(BU)"),
+        horizontal=True,
+        key="event_status_selector"
     )
 
-    if len(selected_date_range) == 2:
-        start_date, end_date = selected_date_range
-        if start_date > end_date:
-            st.error("エラー: 開始日は終了日以前を選択してください。")
-            st.stop()
-        else:
-            if event_status == "終了":
-                with st.spinner(f'終了イベント ({start_date}〜{end_date}) を取得中...'):
-                    events = get_finished_events(start_date, end_date)
+    events = []
+    if event_status == "開催中":
+        with st.spinner('開催中のイベントを取得中...'):
+            events = get_ongoing_events()
+            # 開催中イベントは終了日時が近い順（昇順）
+            events.sort(key=lambda x: x.get('ended_at', float('inf')))
 
-            elif event_status == "終了(BU)":
-                with st.spinner(f'バックアップイベント ({start_date}〜{end_date}) を取得中...'):
-                    events = get_backup_events(start_date, end_date)
-                    # 「終了(BU)」は終了日が新しいもの順（降順）
-                    events.sort(key=lambda x: x.get("ended_at", 0), reverse=True)
-
-                    # ----- 重複除外 -----
-                    # 「終了(BU)」側に存在するが「終了」（API 取得）のリストに含まれるイベントは除外する
-                    try:
-                        ended_events = get_finished_events(start_date, end_date)
-                        # 正規化して比較（normalize_event_id を使用）
-                        ended_ids = {
-                            normalize_event_id(e.get("event_id"))
-                            for e in ended_events
-                            if e.get("event_id") is not None
-                        }
-                        # filter：event_id を正規化して ended_ids に無ければ残す
-                        filtered_events = []
-                        for e in events:
-                            eid_norm = normalize_event_id(e.get("event_id"))
-                            if eid_norm is None:
-                                # IDが取れないレコードは残す（あるいは除外したければここで変える）
-                                filtered_events.append(e)
-                            elif eid_norm not in ended_ids:
-                                filtered_events.append(e)
-                        events = filtered_events
-                    except Exception as ex:
-                        st.warning(f"バックアップイベントの重複除外処理でエラーが発生しました: {ex}")
     else:
-        st.warning("有効な終了日（期間）を選択してください。")
-        st.stop()
-# --- ▲▲▲ 修正版ここまで ▲▲▲ ---
+        today = date.today()
+
+        # 「終了(BU)」は直近1ヶ月ではなく、その前の1ヶ月（＝60日前〜30日前）を初期表示
+        if event_status == "終了(BU)":
+            default_start = today - timedelta(days=60)
+            default_end = today - timedelta(days=30)
+        else:
+            # 通常の「終了」は直近30日
+            default_start = today - timedelta(days=30)
+            default_end = today
+
+        # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
+        date_input_key = f"date_range_selector_{event_status}"
+
+        selected_date_range = st.date_input(
+            "イベント**終了日**（期間）をカレンダーで選択してください:",
+            (default_start, default_end),
+            min_value=date(2020, 1, 1),
+            max_value=today,
+            key=date_input_key
+        )
+
+        if len(selected_date_range) == 2:
+            start_date, end_date = selected_date_range
+            if start_date > end_date:
+                st.error("エラー: 開始日は終了日以前を選択してください。")
+                st.stop()
+            else:
+                if event_status == "終了":
+                    with st.spinner(f'終了イベント ({start_date}〜{end_date}) を取得中...'):
+                        events = get_finished_events(start_date, end_date)
+
+                elif event_status == "終了(BU)":
+                    with st.spinner(f'バックアップイベント ({start_date}〜{end_date}) を取得中...'):
+                        events = get_backup_events(start_date, end_date)
+                        # 「終了(BU)」は終了日が新しいもの順（降順）
+                        events.sort(key=lambda x: x.get("ended_at", 0), reverse=True)
+
+                        # ----- 重複除外 -----
+                        # 「終了(BU)」側に存在するが「終了」（API 取得）のリストに含まれるイベントは除外する
+                        try:
+                            ended_events = get_finished_events(start_date, end_date)
+                            # 正規化して比較（normalize_event_id を使用）
+                            ended_ids = {
+                                normalize_event_id(e.get("event_id"))
+                                for e in ended_events
+                                if e.get("event_id") is not None
+                            }
+                            # filter：event_id を正規化して ended_ids に無ければ残す
+                            filtered_events = []
+                            for e in events:
+                                eid_norm = normalize_event_id(e.get("event_id"))
+                                if eid_norm is None:
+                                    # IDが取れないレコードは残す（あるいは除外したければここで変える）
+                                    filtered_events.append(e)
+                                elif eid_norm not in ended_ids:
+                                    filtered_events.append(e)
+                            events = filtered_events
+                        except Exception as ex:
+                            st.warning(f"バックアップイベントの重複除外処理でエラーが発生しました: {ex}")
+        else:
+            st.warning("有効な終了日（期間）を選択してください。")
+            st.stop()
+    # --- ▲▲▲ 修正版ここまで ▲▲▲ ---
 
 
     if not events:
