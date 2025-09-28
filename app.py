@@ -1294,7 +1294,7 @@ def main():
                 <style>
                 .container-wrapper { display: flex; flex-wrap: wrap; gap: 15px; }
                 .room-container {
-                    position: relative; width: 170px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
+                    position: relative; width: 169px; flex-shrink: 0; border: 1px solid #ddd; border-radius: 5px;
                     padding: 10px; height: 500px; display: flex; flex-direction: column; padding-top: 30px; margin-top: 16px;
                     margin-bottom: 16px;
                 }
