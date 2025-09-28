@@ -7,9 +7,10 @@ import datetime
 import plotly.express as px
 import pytz
 from streamlit_autorefresh import st_autorefresh
-from datetime import timedelta, date
+from datetime import datetime, timedelta, date
 import logging
 import re  # 追加：表示文字列から数値を抽出するため
+
 
 # Set page configuration
 st.set_page_config(
@@ -708,6 +709,11 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
 
 
+
+    # 日本時間で「今日の日付」を取得
+    JST = pytz.timezone("Asia/Tokyo")
+    today = datetime.now(JST).date()
+
     # --- ▼▼▼ 修正版: イベント取得フロー（重複除外＋カレンダー初期値） ▼▼▼ ---
     event_status = st.radio(
         "イベントステータスを選択してください:",
@@ -724,15 +730,14 @@ def main():
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
 
     else:
-        today = date.today()
-
-        # 「終了(BU)」は直近1ヶ月ではなく、その前の1ヶ月（＝60日前〜30日前）を初期表示
+        # ✅ JST基準の today をもとに30日幅を算出
         if event_status == "終了(BU)":
-            default_start = today - timedelta(days=60)
+            # 「終了(BU)」は通常より1か月前の30日間（＝59日前〜30日前）
+            default_start = today - timedelta(days=59)
             default_end = today - timedelta(days=30)
         else:
-            # 通常の「終了」は直近30日
-            default_start = today - timedelta(days=30)
+            # 「終了」は直近30日（＝29日前〜今日まで）
+            default_start = today - timedelta(days=29)
             default_end = today
 
         # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
@@ -763,21 +768,17 @@ def main():
                         events.sort(key=lambda x: x.get("ended_at", 0), reverse=True)
 
                         # ----- 重複除外 -----
-                        # 「終了(BU)」側に存在するが「終了」（API 取得）のリストに含まれるイベントは除外する
                         try:
                             ended_events = get_finished_events(start_date, end_date)
-                            # 正規化して比較（normalize_event_id を使用）
                             ended_ids = {
                                 normalize_event_id(e.get("event_id"))
                                 for e in ended_events
                                 if e.get("event_id") is not None
                             }
-                            # filter：event_id を正規化して ended_ids に無ければ残す
                             filtered_events = []
                             for e in events:
                                 eid_norm = normalize_event_id(e.get("event_id"))
                                 if eid_norm is None:
-                                    # IDが取れないレコードは残す（あるいは除外したければここで変える）
                                     filtered_events.append(e)
                                 elif eid_norm not in ended_ids:
                                     filtered_events.append(e)
@@ -788,6 +789,7 @@ def main():
             st.warning("有効な終了日（期間）を選択してください。")
             st.stop()
     # --- ▲▲▲ 修正版ここまで ▲▲▲ ---
+
 
 
     if not events:
