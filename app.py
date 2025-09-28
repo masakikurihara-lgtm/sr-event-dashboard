@@ -3,18 +3,17 @@ import requests
 import pandas as pd
 import io
 import time
-import datetime
 import plotly.express as px
-import pytz
 from streamlit_autorefresh import st_autorefresh
-from datetime import datetime, timedelta, date
 import logging
 import re  # 追加：表示文字列から数値を抽出するため
+import datetime
+import pytz
 
 
 # 日本時間で「今日の日付」を取得
 JST = pytz.timezone("Asia/Tokyo")
-today = datetime.now(JST).date()
+today = datetime.datetime.now(JST).date()
 
 
 # Set page configuration
