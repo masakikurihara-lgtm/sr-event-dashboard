@@ -734,7 +734,7 @@ def main():
         if event_status == "終了(BU)":
             # 「終了(BU)」は通常より1か月前の30日間（＝59日前〜30日前）
             default_start = today - datetime.timedelta(days=59)
-            default_end = today - timedelta(days=30)
+            default_end = today - datetime.timedelta(days=30)
         else:
             # 「終了」は直近30日（＝29日前〜今日まで）
             default_start = today - datetime.timedelta(days=29)
