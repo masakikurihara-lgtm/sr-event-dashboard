@@ -710,9 +710,9 @@ def main():
 
 
 
-    # 日本時間で「今日の日付」を取得
-    JST = pytz.timezone("Asia/Tokyo")
-    today = datetime.now(JST).date()
+# 日本時間で「今日の日付」を取得
+JST = pytz.timezone("Asia/Tokyo")
+today = datetime.now(JST).date()
 
     # --- ▼▼▼ 修正版: イベント取得フロー（重複除外＋カレンダー初期値） ▼▼▼ ---
     event_status = st.radio(
