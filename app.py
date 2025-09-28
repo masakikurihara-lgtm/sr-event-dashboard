@@ -12,6 +12,11 @@ import logging
 import re  # 追加：表示文字列から数値を抽出するため
 
 
+# 日本時間で「今日の日付」を取得
+JST = pytz.timezone("Asia/Tokyo")
+today = datetime.now(JST).date()
+
+
 # Set page configuration
 st.set_page_config(
     page_title="SHOWROOM Event Dashboard",
@@ -709,10 +714,6 @@ def main():
     st.markdown("<h2 style='font-size:2em;'>1. イベントを選択</h2>", unsafe_allow_html=True)
 
 
-
-# 日本時間で「今日の日付」を取得
-JST = pytz.timezone("Asia/Tokyo")
-today = datetime.now(JST).date()
 
     # --- ▼▼▼ 修正版: イベント取得フロー（重複除外＋カレンダー初期値） ▼▼▼ ---
     event_status = st.radio(
