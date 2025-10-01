@@ -244,14 +244,10 @@ RANKING_API_CANDIDATES = [
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
 ]
 
-@st.cache_data(ttl=300)
-def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
-    """
-    終了後の最終順位取得用関数を堅牢化
-    - まず room_list?event_id=xxxxx を試し、そこから取れなければ /{event_url_key}/ranking を試す
-    - 各APIレスポンスの構造差（'list', 'ranking', 'event_list' など）に対応
-    戻り値: { room_name: { 'room_id': ..., 'rank': ..., 'point': ... }, ... } または None
-    """
+# --- ▼▼▼ 差し替えここから ▼▼▼ ---
+
+def _fetch_event_ranking(event_url_key, event_id, max_pages=10):
+    """キャッシュを使わずにランキングデータを取得"""
     all_ranking_data = []
     for base_url in RANKING_API_CANDIDATES:
         try:
@@ -265,111 +261,71 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10):
                 data = response.json()
 
                 ranking_list = None
-                # room_list の場合は 'list'
                 if isinstance(data, dict):
-                    if 'list' in data and isinstance(data['list'], list):
-                        ranking_list = data['list']
-                    elif 'ranking' in data and isinstance(data['ranking'], list):
-                        ranking_list = data['ranking']
-                    elif 'event_list' in data and isinstance(data['event_list'], list):
-                        ranking_list = data['event_list']
-                    elif 'data' in data and isinstance(data['data'], list):
-                        ranking_list = data['data']
+                    for key in ['list', 'ranking', 'event_list', 'data']:
+                        if key in data and isinstance(data[key], list):
+                            ranking_list = data[key]
+                            break
                 elif isinstance(data, list):
                     ranking_list = data
 
                 if not ranking_list:
-                    # ページが空なら次のページは無いとみなしてループを抜ける
                     break
                 temp_ranking_data.extend(ranking_list)
-            # 取得したデータに room_id を含むものがあれば成功とみなす
-            if temp_ranking_data and any(isinstance(r, dict) and ('room_id' in r or 'id' in r) for r in temp_ranking_data):
+            if temp_ranking_data:
                 all_ranking_data = temp_ranking_data
                 break
         except requests.exceptions.RequestException:
-            # この候補は失敗。次の候補へ
             continue
-    if not all_ranking_data:
-        return None
 
     room_map = {}
     for room_info in all_ranking_data:
         if not isinstance(room_info, dict):
             continue
-        # room_id 抽出（文字列にして保存）
         room_id = room_info.get('room_id') or room_info.get('id')
-        if room_id is None and 'room' in room_info and isinstance(room_info['room'], dict):
+        if not room_id and 'room' in room_info:
             room_id = room_info['room'].get('room_id') or room_info['room'].get('id')
-
-        if room_id is None:
-            # どうしてもroom_idがない場合スキップ
+        if not room_id:
             continue
-        room_id_str = str(room_id)
 
-        # ルーム名の抽出（キー名はAPIでブレるため複数候補をチェック）
-        room_name = (
-            room_info.get('room_name') or room_info.get('name') or room_info.get('performer_name') 
-            or room_info.get('user_name') or room_info.get('room_title')
-        )
-        if not room_name:
-            # room_info のネストに存在する可能性をチェック
-            if 'room' in room_info and isinstance(room_info['room'], dict):
-                room_name = room_info['room'].get('room_name') or room_info['room'].get('name')
-        if not room_name:
-            # 名前が取れなければIDをキー名にして格納する（呼び出し側が探せるように）
-            room_name = f"room_{room_id_str}"
-
-        # ポイントの抽出（いくつかの候補フィールド）
-        point = None
-        for k in ('point', 'event_point', 'popularity_point', 'total_point'):
-            if k in room_info and room_info.get(k) is not None:
-                try:
-                    point = int(float(room_info.get(k)))
-                except Exception:
-                    try:
-                        point = int(re.sub(r'[^\d\-]', '', str(room_info.get(k)) or '0') or 0)
-                    except:
-                        point = 0
-                break
-        # event_entry 内に入っている場合
-        if point is None and 'event_entry' in room_info and isinstance(room_info['event_entry'], dict):
-            evp = room_info['event_entry'].get('event_point') or room_info['event_entry'].get('point')
-            try:
-                point = int(float(evp)) if evp is not None else 0
-            except:
-                point = 0
-        if point is None:
-            # fallback: 0
+        name = room_info.get('room_name') or room_info.get('name') or f"room_{room_id}"
+        point = room_info.get('point') or room_info.get('event_point') or 0
+        try:
+            point = int(float(point))
+        except Exception:
             point = 0
+        rank = room_info.get('rank') or None
+        try:
+            rank = int(rank)
+        except Exception:
+            rank = None
 
-        # 順位の抽出
-        rank = None
-        for k in ('rank', 'position'):
-            if k in room_info and room_info.get(k) is not None:
-                try:
-                    rank = int(float(room_info.get(k)))
-                except:
-                    try:
-                        rank = int(re.sub(r'[^\d\-]', '', str(room_info.get(k)) or '0') or 0)
-                    except:
-                        rank = None
-                break
-        # event_entry に rank 情報がある場合
-        if rank is None and 'event_entry' in room_info and isinstance(room_info['event_entry'], dict):
-            rnk = room_info['event_entry'].get('rank')
-            try:
-                rank = int(float(rnk)) if rnk is not None else None
-            except:
-                rank = None
-
-        # 最終的に room_map に登録
-        room_map[str(room_name)] = {
-            'room_id': room_id_str,
-            'rank': rank,
-            'point': point
+        room_map[str(name)] = {
+            "room_id": str(room_id),
+            "rank": rank,
+            "point": point
         }
-
     return room_map
+
+
+@st.cache_data(ttl=300)
+def _get_event_ranking_cached(event_url_key, event_id, max_pages=10):
+    """キャッシュ付きのランキング取得"""
+    return _fetch_event_ranking(event_url_key, event_id, max_pages)
+
+
+def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10, force_refresh=False):
+    """
+    SHOWROOMイベントランキングを取得
+    - 通常時（force_refresh=False）：キャッシュ利用（負荷軽減）
+    - 終了時（force_refresh=True）：キャッシュ無視して最新取得
+    """
+    if force_refresh:
+        return _fetch_event_ranking(event_url_key, event_id, max_pages)
+    return _get_event_ranking_cached(event_url_key, event_id, max_pages)
+
+# --- ▲▲▲ 差し替えここまで ▲▲▲ ---
+
 
 @st.cache_data(ttl=300)
 def get_event_participant_count(event_url_key, event_id, max_pages=30):
@@ -979,7 +935,7 @@ def main():
                 with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
                     event_url_key = selected_event_data.get('event_url_key')
                     event_id = selected_event_data.get('event_id')
-                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30)
+                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=True)
                     if final_ranking_map:
                         for name, data in final_ranking_map.items():
                             if 'room_id' in data:
