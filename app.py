@@ -711,9 +711,9 @@ def main():
             default_end = today
             selected_date_range = st.date_input(
                 "イベント**終了日**（期間）をカレンダーで選択してください:",
-                min_value=datetime.date(2023, 9, 1),
+                min_value=datetime.date(2025, 1, 1),
                 max_value=today,
-                value=(default_start, default_end),            
+                value=(default_start, default_end),
                 key=date_input_key
             )
         # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
