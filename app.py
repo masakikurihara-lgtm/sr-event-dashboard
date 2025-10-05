@@ -698,21 +698,34 @@ def main():
             # 「終了(BU)」は通常より1か月前の30日間（＝59日前〜30日前）
             default_start = today - datetime.timedelta(days=60)
             default_end = today - datetime.timedelta(days=30)
+            selected_date_range = st.date_input(
+                "イベント**終了日**（期間）をカレンダーで選択してください:",
+                min_value=datetime.date(2023, 9, 1),
+                max_value=today,
+                value=(default_start, default_end),            
+                key=date_input_key
+            )
         else:
             # 「終了」は直近30日（＝29日前〜今日まで）
             default_start = today - datetime.timedelta(days=30)
             default_end = today
-
+            selected_date_range = st.date_input(
+                "イベント**終了日**（期間）をカレンダーで選択してください:",
+                min_value=datetime.date(2023, 9, 1),
+                max_value=today,
+                value=(default_start, default_end),            
+                key=date_input_key
+            )
         # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
         #date_input_key = f"date_range_selector_{event_status}"
 
-        selected_date_range = st.date_input(
-            "イベント**終了日**（期間）をカレンダーで選択してください:",
-            min_value=datetime.date(2023, 9, 1),
-            max_value=today,
-            value=(default_start, default_end),            
-            key=date_input_key
-        )
+        #selected_date_range = st.date_input(
+        #    "イベント**終了日**（期間）をカレンダーで選択してください:",
+        #    min_value=datetime.date(2023, 9, 1),
+        #    max_value=today,
+        #    value=(default_start, default_end),            
+        #    key=date_input_key
+        #)
 
         if len(selected_date_range) == 2:
             start_date, end_date = selected_date_range
