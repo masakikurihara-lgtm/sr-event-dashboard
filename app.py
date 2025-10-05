@@ -706,7 +706,7 @@ def main():
 
         selected_date_range = st.date_input(
             "イベント**終了日**（期間）をカレンダーで選択してください:",
-            (default_start, default_end),
+            value=(default_start, default_end), # 修正点：引数名を明示的に指定
             min_value=datetime.date(2023, 9, 1),
             max_value=today,
             key=date_input_key
