@@ -691,6 +691,8 @@ def main():
             events.sort(key=lambda x: x.get('ended_at', float('inf')))
 
     else:
+        # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
+        date_input_key = f"date_range_selector_{event_status}"
         # ✅ JST基準の today をもとに30日幅を算出
         if event_status == "終了(BU)":
             # 「終了(BU)」は通常より1か月前の30日間（＝59日前〜30日前）
@@ -702,7 +704,7 @@ def main():
             default_end = today
 
         # key を event_status ごとにユニークにして、既存 session_state による固定化を防ぐ
-        date_input_key = f"date_range_selector_{event_status}"
+        #date_input_key = f"date_range_selector_{event_status}"
 
         selected_date_range = st.date_input(
             "イベント**終了日**（期間）をカレンダーで選択してください:",
