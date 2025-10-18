@@ -1582,65 +1582,48 @@ def main():
 
                     def df_to_html_table(df):
                         html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
-                        return html
+                        style = """
+                        <style>
+                        table.gift-table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            font-size: 0.9rem;
+                            line-height: 1.3;
+                            margin-top: 0;
+                        }
+                        table.gift-table th {
+                            background-color: #f1f3f4;
+                            color: #333;
+                            padding: 6px 8px;
+                            border-bottom: 1px solid #ccc;
+                            font-weight: 600;
+                        }
+                        table.gift-table td {
+                            padding: 5px 8px;
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        table.gift-table tbody tr:nth-child(even) {
+                            background-color: #fafafa;
+                        }
+                        </style>
+                        """
+                        return style + html
 
-                    large_html = f"<h4 style='font-size:1.2em;margin-top:0;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
-                    small_html = f"<h4 style='font-size:1.2em;margin-top:0;'>有償SG（500G未満）<span style='font-size:14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
-                    rainbow_html = f"<h4 style='font-size:1.2em;margin-top:0;'>レインボースター系<span style='font-size:14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
+                    large_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G以上）</h4>{df_to_html_table(pd.DataFrame(large_table))}"
+                    small_html = f"<h4 style='font-size:1.2em; margin-top:0;'>有償SG（500G未満）<span style='font-size: 14px;'>※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(small_table))}"
+                    rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
                     container_html = f"""
-                    <style>
-                    table.gift-table {{
-                        border-collapse: collapse;
-                        width: 100%;
-                        font-size: 0.9rem;
-                        line-height: 1.3;
-                    }}
-                    table.gift-table th {{
-                        background-color: #f1f3f4;
-                        color: #333;
-                        padding: 6px 8px;
-                        border-bottom: 1px solid #ccc;
-                        font-weight: 600;
-                    }}
-                    table.gift-table td {{
-                        padding: 5px 8px;
-                        border-bottom: 1px solid #e0e0e0;
-                    }}
-                    table.gift-table tbody tr:nth-child(even) {{
-                        background-color: #fafafa;
-                    }}
-                    @media screen and (max-width: 767px) {{
-                      .gift-container {{
-                        display: flex;
-                        flex-direction: column !important;
-                        gap: 16px !important;
-                      }}
-                      .gift-container > div {{
-                        width: 100% !important;
-                        overflow-x: auto !important;
-                      }}
-                      table.gift-table th, table.gift-table td {{
-                        font-size: 0.85rem !important;
-                        padding: 4px 6px !important;
-                      }}
-                      h4 {{
-                        font-size: 1rem !important;
-                        margin: 6px 0 4px 0 !important;
-                      }}
-                    }}
-                    </style>
-                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px; background-color:#fdfdfd; margin-top:6px;'>
-                      <div class="gift-container" style='display:flex; justify-content:space-between; gap:16px;'>
-                        <div>{large_html}</div>
-                        <div>{small_html}</div>
-                        <div>{rainbow_html}</div>
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
+                      <div style='display:flex; justify-content:space-between; gap:16px;'>
+                        <div style='flex:1;'>{large_html}</div>
+                        <div style='flex:1;'>{small_html}</div>
+                        <div style='flex:1;'>{rainbow_html}</div>
                       </div>
                     </div>
                     """
 
                     st.markdown(container_html, unsafe_allow_html=True)
-
                 else:
                     st.info("ターゲットルームを選択してください。")
             # --- ここまで戦闘モード修正版 ---
