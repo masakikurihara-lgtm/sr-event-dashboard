@@ -887,7 +887,7 @@ def main():
                                 white-space: normal !important;
                                 word-break: break-word !important;
                                 overflow: visible !important;
-                                height: 120px !important;
+                                height: auto !important;
                                 line-height: 1.5 !important;
                                 display: block !important;
                               }}
