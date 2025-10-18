@@ -45,6 +45,7 @@ st.markdown("""
       line-height: 1.5 !important;
       font-size: 1rem !important;
       overflow: visible !important;
+      height: auto;
   }
 
   /* --- ▼必要なギフト例3表：縦並び・中央揃え --- */
