@@ -890,6 +890,7 @@ def main():
                                 height: auto !important;
                                 line-height: 1.5 !important;
                                 display: block !important;
+                                font-size: 0.8rem !important;
                               }}
                             }}
                             </style>                            
