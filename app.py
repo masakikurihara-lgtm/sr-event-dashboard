@@ -34,6 +34,49 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
+st.markdown("""
+<style>
+/* ===== モバイル・タブレット対応 ===== */
+@media screen and (max-width: 767px) {
+  /* イベント期間表示欄を縦並びにして収まりを良くする */
+  [data-testid="column"] > div > div {
+    flex-direction: column !important;
+  }
+  div[style*='イベント期間'] {
+    font-size: 1rem !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  /* テーブル類を横スクロール可能に */
+  .gift-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* ▼必要なギフト例：表が3つ横並び→縦並びに変更 */
+  div[style*='display:flex'][style*='gap:16px'] {
+    flex-direction: column !important;
+  }
+
+  /* テーブル内文字サイズを少し小さくして崩れ防止 */
+  table.gift-table th, table.gift-table td {
+    font-size: 0.85rem !important;
+    padding: 4px 6px !important;
+  }
+
+  /* h4タイトル間の余白調整 */
+  h4 {
+    margin-bottom: 6px !important;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+
 # ▼▼▼ ここから修正・追加した関数群 ▼▼▼
 
 def normalize_event_id(val):
