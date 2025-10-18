@@ -43,7 +43,7 @@ st.markdown("""
      ========================== */
   .event-period-text {
       height: auto !important;
-      min-height: 100px !important; /* ✅ スマホ時のみ高さ確保 */
+      min-height: 120px !important; /* ✅ スマホ時のみ高さ確保 */
       display: flex;
       flex-direction: column;
       justify-content: center;
