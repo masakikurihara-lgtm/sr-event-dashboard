@@ -1762,77 +1762,80 @@ def main():
             st_autorefresh(interval=7000, limit=None, key="refresh")
 
 
-# ✅ スマホ用レイアウト補正（Streamlit標準構造に依存しない汎用指定）
+# ✅ スマホ専用レイアウト修正（既存非破壊）
 st.markdown("""
 <style>
 @media screen and (max-width: 767px) {
 
-  /* ------------------------------
-     🎯 イベント期間の見切れ対策
-     ------------------------------ */
-  div[style*="イベント期間"] {
-      height: auto !important;
-      min-height: 100px !important;
+  /* -----------------------------------
+     🎯 イベント期間（テキスト見切れ防止）
+     ----------------------------------- */
+  div[style*='イベント期間'] {
       white-space: normal !important;
       word-break: break-word !important;
-      line-height: 1.5 !important;
       overflow: visible !important;
-      padding-bottom: 8px !important;
-  }
-
-  div[style*="残り時間"] {
       height: auto !important;
+      min-height: 90px !important;
+      line-height: 1.5 !important;
+      display: flex !important;
+      align-items: center !important;
+  }
+
+  div[style*='残り時間'] {
       white-space: normal !important;
+      height: auto !important;
       line-height: 1.5 !important;
       overflow: visible !important;
   }
 
-  /* ------------------------------
-     📊 必要なギフト例 3段縦並び・中央寄せ
-     ------------------------------ */
-  div[style*="display:flex"][style*="gap:16px"] {
+  /* -----------------------------------
+     📊 必要なギフト例：縦3段・中央寄せ
+     ----------------------------------- */
+  div[style*='display:flex'][style*='gap:16px'] {
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
+      gap: 12px !important;
       width: 100% !important;
       margin: 0 auto !important;
   }
 
-  div[style*="display:flex"][style*="gap:16px"] > div {
+  div[style*='display:flex'][style*='gap:16px'] > div {
       width: 100% !important;
       max-width: 100% !important;
+      margin: 0 auto !important;
       text-align: center !important;
       box-sizing: border-box !important;
-      margin: 0 auto 12px auto !important;
   }
 
-  /* 表を100%幅で中央寄せ・スクロール可能 */
+  /* 表の中央寄せ・横スクロール可能化 */
   table.gift-table {
       width: 100% !important;
-      display: block !important;
-      overflow-x: auto !important;
       margin: 0 auto !important;
       border-collapse: collapse !important;
+      display: block !important;
+      overflow-x: auto !important;
   }
 
-  table.gift-table th, table.gift-table td {
+  table.gift-table th,
+  table.gift-table td {
       font-size: 0.85rem !important;
-      text-align: center !important;
       padding: 6px 8px !important;
+      text-align: center !important;
       word-break: break-word !important;
   }
 
-  /* 見出し（有償SGなど）の余白補正 */
+  /* 見出し（有償SGなど） */
   h4 {
       font-size: 1rem !important;
-      margin-top: 10px !important;
-      margin-bottom: 4px !important;
       text-align: center !important;
+      margin: 8px auto 4px auto !important;
   }
 
-  /* コンテナ余白 */
-  div[style*="border:2px solid #ccc"] {
+  /* コンテナ余白調整 */
+  div[style*='border:2px solid #ccc'] {
       padding: 10px !important;
+      margin-top: 8px !important;
   }
 }
 </style>
