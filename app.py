@@ -936,6 +936,56 @@ def main():
                             """, height=80)
                         with col2:
                             st.components.v1.html(f"""
+                            <style>
+                              .event-period-text {{
+                                font-weight: bold;
+                                font-size: 1.5rem;
+                                color: #333333;
+                                line-height: 1.2;
+                                padding-bottom: 15px;
+                              }}
+                              .event-period-text2 {{
+                                font-weight: bold;
+                                font-size: 1.1rem;
+                                color: #333333;
+                                line-height: 1.2;
+                              }}
+                            @media screen and (max-width: 767px) {{
+                              .event-period-text {{
+                                white-space: normal !important;
+                                word-break: break-word !important;
+                                overflow: visible !important;
+                                height: auto !important;
+                                display: block !important;
+                                font-weight: bold;
+                                font-size: 1.2rem !important;
+                                color: #333333;
+                                line-height: 1.2;
+                                padding-bottom: 15px;
+                              }}
+                              .event-period-text2 {{
+                                white-space: normal !important;
+                                word-break: break-word !important;
+                                overflow: visible !important;
+                                height: auto !important;
+                                display: block !important;
+                                font-weight: bold;
+                                font-size: 0.8rem !important;
+                                color: #333333;
+                                line-height: 1.2;
+                              }}
+                              .event-period-text3 {{
+                                white-space: normal !important;
+                                word-break: break-word !important;
+                                overflow: visible !important;
+                                height: auto !important;
+                                display: block !important;
+                                font-weight: bold;
+                                font-size: 0.8rem !important;
+                                line-height: 1.2;
+                              }}
+                            }}
+                            </style>
                             <div class="event-period-text">残り時間</div>
                             <div class="event-period-text3">
                                 <span id="sr_countdown_timer_in_col" style="color: #4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
