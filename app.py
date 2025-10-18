@@ -883,7 +883,7 @@ def main():
                             st.components.v1.html(f"""
                             <style>
                             @media screen and (max-width: 767px) {{
-                              .event-period {{
+                              .event-period-text {{
                                 white-space: normal !important;
                                 word-break: break-word !important;
                                 overflow: visible !important;
