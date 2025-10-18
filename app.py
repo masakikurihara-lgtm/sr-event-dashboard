@@ -35,69 +35,6 @@ if "authenticated" not in st.session_state:  #認証用
 
 
 
-# ================================
-# 📱 スマホ対応グローバルCSS
-# ================================
-st.markdown("""
-<style>
-@media screen and (max-width: 767px) {
-
-  /* -------------------------------
-     ① イベント期間（スマホ表示）
-     ------------------------------- */
-  .stHorizontalBlock {
-    flex-direction: column !important;
-  }
-
-  div[style*="font-weight: bold"][style*="イベント期間"],
-  div[style*="font-weight: bold"][style*="残り時間"] {
-    font-size: 1rem !important;
-    line-height: 1.4 !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    height: auto !important;
-    overflow: visible !important;
-    display: block !important;
-  }
-
-  #sr_countdown_timer_in_col {
-    display: inline-block;
-    white-space: nowrap;
-    font-size: 1rem !important;
-  }
-
-  /* -------------------------------
-     ② ▼必要なギフト例 表コンテナ
-     ------------------------------- */
-  div[style*="display:flex"][style*="gap:16px"] {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  /* 各表を個別に横スクロール可能にする */
-  div[style*="display:flex"][style*="gap:16px"] > div {
-    overflow-x: auto !important;
-    width: 100% !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* テーブル自体の文字を調整 */
-  .gift-table th, .gift-table td {
-    font-size: 0.85rem !important;
-    padding: 4px 6px !important;
-  }
-
-  h4 {
-    font-size: 1rem !important;
-    margin: 6px 0 4px 0 !important;
-  }
-
-  div[style*="border:2px solid #ccc"] {
-    padding: 10px !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 
