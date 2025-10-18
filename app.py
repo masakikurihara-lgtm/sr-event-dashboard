@@ -948,9 +948,20 @@ def main():
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             st.components.v1.html(f"""
-                            <div class="event-period-text">
-                                <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                                <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
+                            <style>
+                            @media screen and (max-width: 767px) {{
+                              .event-period {{
+                                white-space: normal !important;
+                                word-break: break-word !important;
+                                overflow: visible !important;
+                                height: auto !important;
+                                line-height: 1.5 !important;
+                                display: block !important;
+                              }}
+                            }}
+                            </style>
+                            <div class="event-period" style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">
+                              {event_period_str}
                             </div>
                             """, height=80)
                         with col2:
@@ -1681,13 +1692,43 @@ def main():
                     rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
                     container_html = f"""
-                        <div class='gift-container' style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
-                          <div class='gift-flex' style='display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;'>
-                            <div style='flex:1; min-width:280px;'>{large_html}</div>
-                            <div style='flex:1; min-width:280px;'>{small_html}</div>
-                            <div style='flex:1; min-width:280px;'>{rainbow_html}</div>
-                          </div>
-                        </div>
+                    <style>
+                    @media screen and (max-width: 767px) {{
+                      .gift-container {{
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                        width: 100% !important;
+                        gap: 12px !important;
+                      }}
+                      .gift-container > div {{
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 auto !important;
+                        text-align: center !important;
+                      }}
+                      table.gift-table {{
+                        width: 100% !important;
+                        display: block !important;
+                        overflow-x: auto !important;
+                        border-collapse: collapse !important;
+                      }}
+                      table.gift-table th, table.gift-table td {{
+                        text-align: center !important;
+                        font-size: 0.9rem !important;
+                        padding: 6px 8px !important;
+                        word-break: break-word !important;
+                      }}
+                    }}
+                    </style>
+
+                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
+                      <div class='gift-container' style='display:flex; justify-content:space-between; gap:16px;'>
+                        <div style='flex:1;'>{large_html}</div>
+                        <div style='flex:1;'>{small_html}</div>
+                        <div style='flex:1;'>{rainbow_html}</div>
+                      </div>
+                    </div>
                     """
 
                     st.markdown(container_html, unsafe_allow_html=True)
