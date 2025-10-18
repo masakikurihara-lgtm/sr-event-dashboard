@@ -896,7 +896,7 @@ def main():
                             </style>                            
                             <div class="event-period-text">
                                 <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                                <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
+                                <div>{event_period_str}</div>
                             </div>
                             """, height=80)
                         with col2:
