@@ -37,8 +37,6 @@ if "authenticated" not in st.session_state:  #認証用
 
 
 
-
-
 # ▼▼▼ ここから修正・追加した関数群 ▼▼▼
 
 def normalize_event_id(val):
@@ -1607,7 +1605,6 @@ def main():
                         table.gift-table tbody tr:nth-child(even) {
                             background-color: #fafafa;
                         }
-
                         </style>
                         """
                         return style + html
