@@ -928,7 +928,7 @@ def main():
                               <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
                               <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.4;">{event_period_str}</div>
                             </div>
-                            """, height=120)
+                            """, height=80)
                         with col2:
                             st.components.v1.html(f"""
                             <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
