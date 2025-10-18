@@ -34,6 +34,62 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
+# ==============================================
+# 📱 スマホレイアウト微調整CSS（既存非破壊）
+# ==============================================
+st.markdown("""
+<style>
+@media screen and (max-width: 767px) {
+
+  /* --- イベント期間の改行問題を解消 --- */
+  div:has(> div[style*='イベント期間']),
+  div:has(> div[style*='残り時間']) {
+      height: auto !important;
+      overflow: visible !important;
+  }
+  div[style*='イベント期間'] {
+      white-space: normal !important;
+      word-break: break-word !important;
+      line-height: 1.4 !important;
+      height: auto !important;
+      font-size: 1rem !important;
+  }
+
+  /* --- 残り時間タイマーの文字詰まり防止 --- */
+  #sr_countdown_timer_in_col {
+      font-size: 1rem !important;
+      white-space: nowrap !important;
+      display: inline-block !important;
+  }
+
+  /* --- ▼必要なギフト例（3表）を縦並びにする --- */
+  div[style*='display:flex'][style*='justify-content:space-between'][style*='gap:16px'] {
+      flex-direction: column !important;
+      gap: 12px !important;
+      align-items: stretch !important;
+  }
+
+  /* --- 各テーブルを枠内スクロール可能に --- */
+  .gift-table {
+      display: block !important;
+      overflow-x: auto !important;
+      width: 100% !important;
+  }
+
+  /* --- 表タイトルと余白の最適化 --- */
+  h4 {
+      font-size: 1rem !important;
+      margin-top: 8px !important;
+      margin-bottom: 4px !important;
+  }
+
+  /* --- ギフト表全体の枠内パディング微調整 --- */
+  div[style*='border:2px solid #ccc'] {
+      padding: 10px !important;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 
