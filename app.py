@@ -883,13 +883,10 @@ def main():
                             st.components.v1.html(f"""
                             <style>
                               .event-period-text {{
-                                white-space: normal !important;
-                                word-break: break-word !important;
-                                overflow: visible !important;
-                                height: auto !important;
-                                line-height: 1.5 !important;
-                                display: block !important;
-                                font-size: 1.2rem !important;
+                                font-weight: bold;
+                                font-size: 1.1rem !important;
+                                color: #333333;
+                                line-height: 1.2;
                               }}
                             @media screen and (max-width: 767px) {{
                               .event-period-text {{
@@ -897,9 +894,11 @@ def main():
                                 word-break: break-word !important;
                                 overflow: visible !important;
                                 height: auto !important;
-                                line-height: 1.5 !important;
                                 display: block !important;
+                                font-weight: bold;
                                 font-size: 0.8rem !important;
+                                color: #333333;
+                                line-height: 1.2;
                               }}
                             }}
                             </style>                            
