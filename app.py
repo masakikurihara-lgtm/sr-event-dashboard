@@ -1663,6 +1663,33 @@ def main():
                         html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
                         style = """
                         <style>
+                        @media screen and (max-width: 767px) {{
+                          .gift-container {{
+                            display: flex !important;
+                            flex-direction: column !important;
+                            align-items: stretch !important;
+                            width: 100% !important;
+                            gap: 12px !important;
+                          }}
+                          .gift-container > div {{
+                            width: 100% !important;
+                            max-width: 100% !important;
+                            margin: 0 auto !important;
+                            text-align: center !important;
+                          }}
+                          table.gift-table {{
+                            width: 100% !important;
+                            display: block !important;
+                            overflow-x: auto !important;
+                            border-collapse: collapse !important;
+                          }}
+                          table.gift-table th, table.gift-table td {{
+                            text-align: center !important;
+                            font-size: 0.9rem !important;
+                            padding: 6px 8px !important;
+                            word-break: break-word !important;
+                          }}
+                        }}                        
                         table.gift-table {
                             border-collapse: collapse;
                             width: 100%;
