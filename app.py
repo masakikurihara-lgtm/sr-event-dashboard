@@ -884,7 +884,7 @@ def main():
                             <style>
                               .event-period-text {{
                                 font-weight: bold;
-                                font-size: 1.5rem;
+                                font-size: 1.4rem;
                                 color: #333333;
                                 line-height: 1.2;
                                 padding-bottom: 15px;
@@ -915,7 +915,7 @@ def main():
                                 height: auto !important;
                                 display: block !important;
                                 font-weight: bold;
-                                font-size: 0.8rem !important;
+                                font-size: 1.0rem !important;
                                 color: #333333;
                                 line-height: 1.2;
                               }}
@@ -929,7 +929,7 @@ def main():
                             <style>
                               .event-period-text {{
                                 font-weight: bold;
-                                font-size: 1.5rem;
+                                font-size: 1.4rem;
                                 color: #333333;
                                 line-height: 1.2;
                                 padding-bottom: 15px;
@@ -959,7 +959,7 @@ def main():
                                 height: auto !important;
                                 display: block !important;
                                 font-weight: bold;
-                                font-size: 0.8rem !important;
+                                font-size: 1.0rem !important;
                                 line-height: 1.2;
                               }}
                             }}
