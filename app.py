@@ -899,7 +899,7 @@ def main():
                                 </style>
                                 <div class="event-block" style="font-weight:bold; font-size:1.5rem; color:#333333; line-height:1.3; padding-bottom:10px;">イベント期間</div>
                                 <div class="event-block" style="font-weight:bold; font-size:1.1rem; color:#333333; line-height:1.4;">{event_period_str}</div>
-                                """, height=100)
+                                """, height=80)
                             with col2:
                                 st.components.v1.html(f"""
                                 <style>
@@ -964,7 +964,7 @@ def main():
                                     else window.addEventListener('load', retry);
                                 }})();
                                 </script>
-                                """, height=100)
+                                """, height=80)
 
 
 
