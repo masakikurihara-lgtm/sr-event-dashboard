@@ -1675,7 +1675,7 @@ def main():
                             width: 100% !important;
                             max-width: 100% !important;
                             margin: 0 auto !important;
-                            text-align: center !important;
+                            text-align: left !important;
                           }}
                           table.gift-table {{
                             width: 100% !important;
