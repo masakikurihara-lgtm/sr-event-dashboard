@@ -38,39 +38,45 @@ st.markdown("""
 <style>
 @media screen and (max-width: 767px) {
 
-  /* --- イベント期間の見切れ防止（PCの高さに影響しない） --- */
+  /* ==========================
+     📱 イベント期間 見切れ防止
+     ========================== */
+  .event-period-text {
+      height: auto !important;
+      min-height: 100px !important; /* ✅ スマホ時のみ高さ確保 */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+  }
   .event-period-text div:nth-child(2) {
       white-space: normal !important;
       word-break: break-word !important;
       line-height: 1.5 !important;
       font-size: 1rem !important;
       overflow: visible !important;
-      height: 120px !important ;
+      text-align: left !important;
   }
 
-  /* --- ▼必要なギフト例3表：縦並び・中央揃え --- */
+  /* ==========================
+     📱 必要なギフト例 テーブル調整
+     ========================== */
   .gift-flex {
       flex-direction: column !important;
-      align-items: center !important;  /* ✅ 中央揃え */
+      align-items: center !important;
       gap: 16px !important;
   }
 
-  /* --- 各ブロックを枠いっぱいに広げる --- */
   .gift-flex > div {
       flex: none !important;
       width: 100% !important;
-      min-width: unset !important;
+      min-width: 100% !important; /* ✅ 中途半端な幅を防止 */
       box-sizing: border-box !important;
   }
 
-  /* --- テーブルを横スクロール可能に（必要時のみ） --- */
-  .gift-table {
-      display: block !important;
-      width: 100% !important;
-      overflow-x: auto !important;
+  .gift-container {
+      padding: 10px !important;
   }
 
-  /* --- 表タイトルなどのフォント・余白調整 --- */
   .gift-container h4 {
       font-size: 1rem !important;
       margin-top: 8px !important;
@@ -78,8 +84,17 @@ st.markdown("""
       text-align: center !important;
   }
 
-  .gift-container {
-      padding: 10px !important;
+  .gift-table {
+      display: block !important;
+      width: 100% !important;
+      overflow-x: auto !important;
+  }
+
+  .gift-table th,
+  .gift-table td {
+      font-size: 0.85rem !important;
+      padding: 4px 6px !important;
+      text-align: center !important;
   }
 }
 </style>
@@ -933,9 +948,9 @@ def main():
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             st.components.v1.html(f"""
-                            <div class='event-period-text'>
-                              <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                              <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.4;">{event_period_str}</div>
+                            <div class="event-period-text">
+                                <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
+                                <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
                             </div>
                             """, height=80)
                         with col2:
