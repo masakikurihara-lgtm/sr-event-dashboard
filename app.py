@@ -43,7 +43,7 @@ st.markdown("""
      ========================== */
   .event-period-text {
       height: auto !important;
-      min-height: 120px !important; /* ✅ スマホ時のみ高さ確保 */
+      min-height: 100px !important; /* ✅ スマホ時のみ高さ確保 */
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -952,7 +952,7 @@ def main():
                                 <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
                                 <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
                             </div>
-                            """, height=80)
+                            """, height=None)
                         with col2:
                             st.components.v1.html(f"""
                             <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
@@ -1762,72 +1762,79 @@ def main():
             st_autorefresh(interval=7000, limit=None, key="refresh")
 
 
+# ✅ スマホ用レイアウト補正（Streamlit標準構造に依存しない汎用指定）
 st.markdown("""
 <style>
-
-/* -------------------------------------------------
-   📱 スマホ向けレイアウト調整（全体に強制適用）
-   ------------------------------------------------- */
 @media screen and (max-width: 767px) {
 
-  /* =======================
-     イベント期間（見切れ防止）
-     ======================= */
-  div[data-testid="stHorizontalBlock"] div[style*="イベント期間"] {
-      white-space: normal !important;
-      word-break: break-word !important;
-      overflow: visible !important;
-      line-height: 1.5 !important;
+  /* ------------------------------
+     🎯 イベント期間の見切れ対策
+     ------------------------------ */
+  div[style*="イベント期間"] {
       height: auto !important;
       min-height: 100px !important;
-      font-size: 1rem !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      line-height: 1.5 !important;
+      overflow: visible !important;
+      padding-bottom: 8px !important;
   }
 
-  div[data-testid="stHorizontalBlock"] div[style*="残り時間"] {
+  div[style*="残り時間"] {
+      height: auto !important;
       white-space: normal !important;
       line-height: 1.5 !important;
-      height: auto !important;
-      font-size: 1rem !important;
+      overflow: visible !important;
   }
 
-  /* =======================
-     必要なギフト数（縦3段化＆中央寄せ）
-     ======================= */
+  /* ------------------------------
+     📊 必要なギフト例 3段縦並び・中央寄せ
+     ------------------------------ */
   div[style*="display:flex"][style*="gap:16px"] {
       flex-direction: column !important;
       align-items: center !important;
+      justify-content: center !important;
       width: 100% !important;
+      margin: 0 auto !important;
   }
 
   div[style*="display:flex"][style*="gap:16px"] > div {
-      flex: none !important;
       width: 100% !important;
-      min-width: 100% !important;
-      box-sizing: border-box !important;
+      max-width: 100% !important;
       text-align: center !important;
+      box-sizing: border-box !important;
+      margin: 0 auto 12px auto !important;
   }
 
-  /* 各ギフトテーブルをきれいに */
+  /* 表を100%幅で中央寄せ・スクロール可能 */
   table.gift-table {
       width: 100% !important;
       display: block !important;
       overflow-x: auto !important;
       margin: 0 auto !important;
+      border-collapse: collapse !important;
   }
 
-  table.gift-table th,
-  table.gift-table td {
-      font-size: 0.9rem !important;
+  table.gift-table th, table.gift-table td {
+      font-size: 0.85rem !important;
+      text-align: center !important;
       padding: 6px 8px !important;
+      word-break: break-word !important;
+  }
+
+  /* 見出し（有償SGなど）の余白補正 */
+  h4 {
+      font-size: 1rem !important;
+      margin-top: 10px !important;
+      margin-bottom: 4px !important;
       text-align: center !important;
   }
 
-  /* コンテナ内の余白を調整 */
+  /* コンテナ余白 */
   div[style*="border:2px solid #ccc"] {
-      padding: 12px !important;
+      padding: 10px !important;
   }
 }
-
 </style>
 """, unsafe_allow_html=True)
 
