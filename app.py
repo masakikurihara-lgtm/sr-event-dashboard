@@ -34,71 +34,6 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
-st.markdown("""
-<style>
-
-/* ==============================================
-   📱 スマホ・タブレット対応（幅767px以下）
-   ============================================== */
-@media screen and (max-width: 767px) {
-
-  /* ✅ イベント期間／残り時間 を縦に並べる */
-  .stHorizontalBlock {
-    flex-direction: column !important;
-  }
-
-  /* イベント期間テキストが埋もれないように調整 */
-  div[style*='イベント期間'] {
-    font-size: 1rem !important;
-    line-height: 1.5 !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  /* カウントダウンの文字も見切れないように調整 */
-  #sr_countdown_timer_in_col {
-    display: inline-block;
-    white-space: nowrap;
-    font-size: 1rem !important;
-  }
-
-  /* ✅ ▼必要なギフト例を縦並びにする */
-  div[style*='display:flex'][style*='gap:16px'] {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  /* ✅ 各表を枠内で横スクロール可能にする */
-  .gift-table {
-    display: block !important;
-    overflow-x: auto !important;
-    width: 100% !important;
-  }
-
-  table.gift-table th, table.gift-table td {
-    font-size: 0.85rem !important;
-    padding: 4px 6px !important;
-  }
-
-  /* 表タイトル（有償SGなど）の余白調整 */
-  h4 {
-    font-size: 1rem !important;
-    margin-top: 8px !important;
-    margin-bottom: 4px !important;
-  }
-
-  /* コンテナ内の余白を確保 */
-  div[style*='border:2px solid #ccc'] {
-    padding: 10px !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-
 
 # ▼▼▼ ここから修正・追加した関数群 ▼▼▼
 
@@ -1643,6 +1578,70 @@ def main():
                         unsafe_allow_html=True
                     )
 
+
+                    st.markdown("""
+                    <style>
+
+                    /* ==============================================
+                       📱 スマホ・タブレット対応（幅767px以下）
+                       ============================================== */
+                    @media screen and (max-width: 767px) {
+
+                      /* ✅ イベント期間／残り時間 を縦に並べる */
+                      .stHorizontalBlock {
+                        flex-direction: column !important;
+                      }
+
+                      /* イベント期間テキストが埋もれないように調整 */
+                      div[style*='イベント期間'] {
+                        font-size: 1rem !important;
+                        line-height: 1.5 !important;
+                        white-space: normal !important;
+                        word-break: break-word !important;
+                        height: auto !important;
+                        overflow: visible !important;
+                      }
+
+                      /* カウントダウンの文字も見切れないように調整 */
+                      #sr_countdown_timer_in_col {
+                        display: inline-block;
+                        white-space: nowrap;
+                        font-size: 1rem !important;
+                      }
+
+                      /* ✅ ▼必要なギフト例を縦並びにする */
+                      div[style*='display:flex'][style*='gap:16px'] {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                      }
+
+                      /* ✅ 各表を枠内で横スクロール可能にする */
+                      .gift-table {
+                        display: block !important;
+                        overflow-x: auto !important;
+                        width: 100% !important;
+                      }
+
+                      table.gift-table th, table.gift-table td {
+                        font-size: 0.85rem !important;
+                        padding: 4px 6px !important;
+                      }
+
+                      /* 表タイトル（有償SGなど）の余白調整 */
+                      h4 {
+                        font-size: 1rem !important;
+                        margin-top: 8px !important;
+                        margin-bottom: 4px !important;
+                      }
+
+                      /* コンテナ内の余白を確保 */
+                      div[style*='border:2px solid #ccc'] {
+                        padding: 10px !important;
+                      }
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
                     def df_to_html_table(df):
                         html = df.to_html(index=False, justify="center", border=0, classes="gift-table")
                         style = """
@@ -1668,65 +1667,6 @@ def main():
                         table.gift-table tbody tr:nth-child(even) {
                             background-color: #fafafa;
                         }
-
-                        /* ==============================================
-                           📱 スマホ・タブレット対応（幅767px以下）
-                           ============================================== */
-                        @media screen and (max-width: 767px) {
-
-                          /* ✅ イベント期間／残り時間 を縦に並べる */
-                          .stHorizontalBlock {
-                            flex-direction: column !important;
-                          }
-
-                          /* イベント期間テキストが埋もれないように調整 */
-                          div[style*='イベント期間'] {
-                            font-size: 1rem !important;
-                            line-height: 1.5 !important;
-                            white-space: normal !important;
-                            word-break: break-word !important;
-                            height: auto !important;
-                            overflow: visible !important;
-                          }
-
-                          /* カウントダウンの文字も見切れないように調整 */
-                          #sr_countdown_timer_in_col {
-                            display: inline-block;
-                            white-space: nowrap;
-                            font-size: 1rem !important;
-                          }
-
-                          /* ✅ ▼必要なギフト例を縦並びにする */
-                          div[style*='display:flex'][style*='gap:16px'] {
-                            flex-direction: column !important;
-                            align-items: stretch !important;
-                          }
-
-                          /* ✅ 各表を枠内で横スクロール可能にする */
-                          .gift-table {
-                            display: block !important;
-                            overflow-x: auto !important;
-                            width: 100% !important;
-                          }
-
-                          table.gift-table th, table.gift-table td {
-                            font-size: 0.85rem !important;
-                            padding: 4px 6px !important;
-                          }
-
-                          /* 表タイトル（有償SGなど）の余白調整 */
-                          h4 {
-                            font-size: 1rem !important;
-                            margin-top: 8px !important;
-                            margin-bottom: 4px !important;
-                          }
-
-                          /* コンテナ内の余白を確保 */
-                          div[style*='border:2px solid #ccc'] {
-                            padding: 10px !important;
-                          }
-                        }
-                        
                         </style>
                         """
                         return style + html
