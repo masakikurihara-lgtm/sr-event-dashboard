@@ -882,6 +882,15 @@ def main():
                         with col1:
                             st.components.v1.html(f"""
                             <style>
+                              .event-period-text {{
+                                white-space: normal !important;
+                                word-break: break-word !important;
+                                overflow: visible !important;
+                                height: auto !important;
+                                line-height: 1.5 !important;
+                                display: block !important;
+                                font-size: 1.2rem !important;
+                              }}
                             @media screen and (max-width: 767px) {{
                               .event-period-text {{
                                 white-space: normal !important;
