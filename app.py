@@ -1684,7 +1684,7 @@ def main():
                             border-collapse: collapse !important;
                           }}
                           table.gift-table th, table.gift-table td {{
-                            text-align: center !important;
+                            text-align: left !important;
                             font-size: 0.9rem !important;
                             padding: 6px 8px !important;
                             word-break: break-word !important;
