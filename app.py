@@ -34,69 +34,6 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
-# ================================
-# 📱 スマホ対応グローバルCSS
-# ================================
-st.markdown("""
-<style>
-@media screen and (max-width: 767px) {
-
-  /* -------------------------------
-     ① イベント期間（スマホ表示）
-     ------------------------------- */
-  .stHorizontalBlock {
-    flex-direction: column !important;
-  }
-
-  div[style*="font-weight: bold"][style*="イベント期間"],
-  div[style*="font-weight: bold"][style*="残り時間"] {
-    font-size: 1rem !important;
-    line-height: 1.4 !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    height: auto !important;
-    overflow: visible !important;
-    display: block !important;
-  }
-
-  #sr_countdown_timer_in_col {
-    display: inline-block;
-    white-space: nowrap;
-    font-size: 1rem !important;
-  }
-
-  /* -------------------------------
-     ② ▼必要なギフト例 表コンテナ
-     ------------------------------- */
-  div[style*="display:flex"][style*="gap:16px"] {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  /* 各表を個別に横スクロール可能にする */
-  div[style*="display:flex"][style*="gap:16px"] > div {
-    overflow-x: auto !important;
-    width: 100% !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* テーブル自体の文字を調整 */
-  .gift-table th, .gift-table td {
-    font-size: 0.85rem !important;
-    padding: 4px 6px !important;
-  }
-
-  h4 {
-    font-size: 1rem !important;
-    margin: 6px 0 4px 0 !important;
-  }
-
-  div[style*="border:2px solid #ccc"] {
-    padding: 10px !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 
@@ -943,65 +880,92 @@ def main():
             #    st.rerun()  # ← experimental_rerunではなくrerun
 
             with st.container(border=True):
-                        col1, col2 = st.columns([1, 1])
-                        with col1:
-                            st.components.v1.html(f"""
-                            <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                            <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
-                            """, height=80)
-                        with col2:
-                            st.components.v1.html(f"""
-                            <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
-                            <div style="font-weight: bold; font-size: 1.1rem; line-height: 1.2;">
-                                <span id="sr_countdown_timer_in_col" style="color: #4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
-                            </div>
-                            </div>
-                            <script>
-                            (function() {{
-                                function start() {{
-                                    const timer = document.getElementById('sr_countdown_timer_in_col');
-                                    if (!timer) return false;
-                                    const END = parseInt(timer.dataset.end, 10);
-                                    if (isNaN(END)) return false;
-                                    if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
-
-                                    function pad(n) {{ return String(n).padStart(2,'0'); }}
-                                    function formatMs(ms) {{
-                                        if (ms < 0) ms = 0;
-                                        let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
-                                        s %= 86400;
-                                        let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
-                                        if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
-                                        return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                        with st.container(border=True):
+                            col1, col2 = st.columns([1, 1])
+                            with col1:
+                                st.components.v1.html(f"""
+                                <style>
+                                @media screen and (max-width: 767px) {{
+                                    .event-block {{
+                                        font-size: 1rem !important;
+                                        line-height: 1.5 !important;
+                                        white-space: normal !important;
+                                        word-break: break-word !important;
+                                        height: auto !important;
+                                        overflow: visible !important;
+                                        text-align: left !important;
                                     }}
-                                    function update() {{
-                                        const diff = END - Date.now();
-                                        if (diff <= 0) {{
-                                            timer.textContent = 'イベント終了';
-                                            timer.style.color = '#808080';
-                                            clearInterval(window._sr_countdown_interval_in_col);
-                                            return;
-                                        }}
-                                        timer.textContent = formatMs(diff);
-                                        const totalSeconds = Math.floor(diff / 1000);
-                                        if (totalSeconds <= 3600) timer.style.color = '#ff4b4b';
-                                        else if (totalSeconds <= 10800) timer.style.color = '#ffa500';
-                                        else timer.style.color = '#4CAF50';
-                                    }}
-                                    update();
-                                    window._sr_countdown_interval_in_col = setInterval(update, 1000);
-                                    return true;
                                 }}
-                                let retries = 0;
-                                const retry = () => {{
-                                    if (window._sr_countdown_interval_in_col || retries++ > 10) return;
-                                    if (!start()) setTimeout(retry, 300);
-                                }};
-                                if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
-                                else window.addEventListener('load', retry);
-                            }})();
-                            </script>
-                            """, height=80)
+                                </style>
+                                <div class="event-block" style="font-weight:bold; font-size:1.5rem; color:#333333; line-height:1.3; padding-bottom:10px;">イベント期間</div>
+                                <div class="event-block" style="font-weight:bold; font-size:1.1rem; color:#333333; line-height:1.4;">{event_period_str}</div>
+                                """, height=100)
+                            with col2:
+                                st.components.v1.html(f"""
+                                <style>
+                                @media screen and (max-width: 767px) {{
+                                    .remain-block {{
+                                        font-size: 1rem !important;
+                                        line-height: 1.5 !important;
+                                        text-align: left !important;
+                                    }}
+                                    #sr_countdown_timer_in_col {{
+                                        font-size: 1rem !important;
+                                        white-space: nowrap !important;
+                                        display: inline-block !important;
+                                    }}
+                                }}
+                                </style>
+                                <div class="remain-block" style="font-weight:bold; font-size:1.5rem; color:#333333; line-height:1.3; padding-bottom:10px;">残り時間</div>
+                                <div class="remain-block" style="font-weight:bold; font-size:1.1rem; line-height:1.3;">
+                                    <span id="sr_countdown_timer_in_col" style="color:#4CAF50;" data-end="{int(ended_at_dt.timestamp() * 1000)}">計算中...</span>
+                                </div>
+                                <script>
+                                (function() {{
+                                    function start() {{
+                                        const timer = document.getElementById('sr_countdown_timer_in_col');
+                                        if (!timer) return false;
+                                        const END = parseInt(timer.dataset.end, 10);
+                                        if (isNaN(END)) return false;
+                                        if (window._sr_countdown_interval_in_col) clearInterval(window._sr_countdown_interval_in_col);
+                                        function pad(n) {{ return String(n).padStart(2,'0'); }}
+                                        function formatMs(ms) {{
+                                            if (ms < 0) ms = 0;
+                                            let s = Math.floor(ms / 1000), days = Math.floor(s / 86400);
+                                            s %= 86400;
+                                            let hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+                                            if (days > 0) return `${{days}}d ${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                                            return `${{pad(hh)}}:${{pad(mm)}}:${{pad(ss)}}`;
+                                        }}
+                                        function update() {{
+                                            const diff = END - Date.now();
+                                            if (diff <= 0) {{
+                                                timer.textContent = 'イベント終了';
+                                                timer.style.color = '#808080';
+                                                clearInterval(window._sr_countdown_interval_in_col);
+                                                return;
+                                            }}
+                                            timer.textContent = formatMs(diff);
+                                            const totalSeconds = Math.floor(diff / 1000);
+                                            if (totalSeconds <= 3600) timer.style.color = '#ff4b4b';
+                                            else if (totalSeconds <= 10800) timer.style.color = '#ffa500';
+                                            else timer.style.color = '#4CAF50';
+                                        }}
+                                        update();
+                                        window._sr_countdown_interval_in_col = setInterval(update, 1000);
+                                        return true;
+                                    }}
+                                    let retries = 0;
+                                    const retry = () => {{
+                                        if (window._sr_countdown_interval_in_col || retries++ > 10) return;
+                                        if (!start()) setTimeout(retry, 300);
+                                    }};
+                                    if (document.readyState === 'complete' || document.readyState === 'interactive') retry();
+                                    else window.addEventListener('load', retry);
+                                }})();
+                                </script>
+                                """, height=100)
+
 
 
             current_time = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
