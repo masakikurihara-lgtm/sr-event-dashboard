@@ -34,57 +34,42 @@ if "authenticated" not in st.session_state:  #認証用
     st.session_state.authenticated = False  #認証用
 
 
-# ==============================================
-# 📱 スマホレイアウト微調整CSS（既存非破壊）
-# ==============================================
 st.markdown("""
 <style>
+/* ===========================================
+   📱 スマホ・タブレット向け レイアウト調整
+   =========================================== */
 @media screen and (max-width: 767px) {
 
-  /* --- イベント期間の改行問題を解消 --- */
-  div:has(> div[style*='イベント期間']),
-  div:has(> div[style*='残り時間']) {
-      height: auto !important;
-      overflow: visible !important;
-  }
-  div[style*='イベント期間'] {
+  /* --- イベント期間の文字見切れ防止 --- */
+  .event-period-text div:nth-child(2) {
       white-space: normal !important;
       word-break: break-word !important;
-      line-height: 1.4 !important;
-      height: auto !important;
+      line-height: 1.5 !important;
       font-size: 1rem !important;
   }
 
-  /* --- 残り時間タイマーの文字詰まり防止 --- */
-  #sr_countdown_timer_in_col {
-      font-size: 1rem !important;
-      white-space: nowrap !important;
-      display: inline-block !important;
-  }
-
-  /* --- ▼必要なギフト例（3表）を縦並びにする --- */
-  div[style*='display:flex'][style*='justify-content:space-between'][style*='gap:16px'] {
+  /* --- ▼必要なギフト例3表：縦並び化 --- */
+  .gift-flex {
       flex-direction: column !important;
       gap: 12px !important;
-      align-items: stretch !important;
   }
 
-  /* --- 各テーブルを枠内スクロール可能に --- */
+  /* --- 各テーブルを枠内に収める --- */
   .gift-table {
       display: block !important;
-      overflow-x: auto !important;
       width: 100% !important;
+      overflow-x: auto !important;
   }
 
-  /* --- 表タイトルと余白の最適化 --- */
-  h4 {
+  /* --- 各表タイトルや余白 --- */
+  .gift-container h4 {
       font-size: 1rem !important;
-      margin-top: 8px !important;
+      margin-top: 6px !important;
       margin-bottom: 4px !important;
   }
 
-  /* --- ギフト表全体の枠内パディング微調整 --- */
-  div[style*='border:2px solid #ccc'] {
+  .gift-container {
       padding: 10px !important;
   }
 }
@@ -939,9 +924,11 @@ def main():
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             st.components.v1.html(f"""
-                            <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
-                            <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.2;">{event_period_str}</div>
-                            """, height=80)
+                            <div class='event-period-text'>
+                              <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">イベント期間</div>
+                              <div style="font-weight: bold; font-size: 1.1rem; color: #333333; line-height: 1.4;">{event_period_str}</div>
+                            </div>
+                            """, height=120)
                         with col2:
                             st.components.v1.html(f"""
                             <div style="font-weight: bold; font-size: 1.5rem; color: #333333; line-height: 1.2; padding-bottom: 15px;">残り時間</div>
@@ -1670,13 +1657,13 @@ def main():
                     rainbow_html = f"<h4 style='font-size:1.2em; margin-top:0;'>レインボースター系<span style='font-size: 14px;'>  ※連打考慮外</span></h4>{df_to_html_table(pd.DataFrame(rainbow_table))}"
 
                     container_html = f"""
-                    <div style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
-                      <div style='display:flex; justify-content:space-between; gap:16px;'>
-                        <div style='flex:1;'>{large_html}</div>
-                        <div style='flex:1;'>{small_html}</div>
-                        <div style='flex:1;'>{rainbow_html}</div>
-                      </div>
-                    </div>
+                        <div class='gift-container' style='border:2px solid #ccc; border-radius:12px; padding:12px 16px 16px 16px; background-color:#fdfdfd; margin-top:4px;'>
+                          <div class='gift-flex' style='display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;'>
+                            <div style='flex:1; min-width:280px;'>{large_html}</div>
+                            <div style='flex:1; min-width:280px;'>{small_html}</div>
+                            <div style='flex:1; min-width:280px;'>{rainbow_html}</div>
+                          </div>
+                        </div>
                     """
 
                     st.markdown(container_html, unsafe_allow_html=True)
