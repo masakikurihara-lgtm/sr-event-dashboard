@@ -36,37 +36,45 @@ if "authenticated" not in st.session_state:  #認証用
 
 st.markdown("""
 <style>
-/* ===========================================
-   📱 スマホ・タブレット向け レイアウト調整
-   =========================================== */
 @media screen and (max-width: 767px) {
 
-  /* --- イベント期間の文字見切れ防止 --- */
+  /* --- イベント期間の見切れ防止（PCの高さに影響しない） --- */
   .event-period-text div:nth-child(2) {
       white-space: normal !important;
       word-break: break-word !important;
       line-height: 1.5 !important;
       font-size: 1rem !important;
+      overflow: visible !important;
   }
 
-  /* --- ▼必要なギフト例3表：縦並び化 --- */
+  /* --- ▼必要なギフト例3表：縦並び・中央揃え --- */
   .gift-flex {
       flex-direction: column !important;
-      gap: 12px !important;
+      align-items: center !important;  /* ✅ 中央揃え */
+      gap: 16px !important;
   }
 
-  /* --- 各テーブルを枠内に収める --- */
+  /* --- 各ブロックを枠いっぱいに広げる --- */
+  .gift-flex > div {
+      flex: none !important;
+      width: 100% !important;
+      min-width: unset !important;
+      box-sizing: border-box !important;
+  }
+
+  /* --- テーブルを横スクロール可能に（必要時のみ） --- */
   .gift-table {
       display: block !important;
       width: 100% !important;
       overflow-x: auto !important;
   }
 
-  /* --- 各表タイトルや余白 --- */
+  /* --- 表タイトルなどのフォント・余白調整 --- */
   .gift-container h4 {
       font-size: 1rem !important;
-      margin-top: 6px !important;
-      margin-bottom: 4px !important;
+      margin-top: 8px !important;
+      margin-bottom: 6px !important;
+      text-align: center !important;
   }
 
   .gift-container {
