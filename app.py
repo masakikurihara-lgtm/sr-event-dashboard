@@ -841,9 +841,19 @@ def main():
             "上位10ルームまでを選択（**※チェックされている場合はこちらが優先されます**）", 
             key="select_top_10_checkbox")
         room_map = st.session_state.room_map_data
-        sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
+        is_block_event = selected_event_data.get("is_event_block", False)
+
+        # ✅ ブロック型イベントはポイント順、通常イベントは順位順
+        if is_block_event:
+            sorted_rooms = sorted(room_map.items(), key=lambda item: item[1].get('point', 0), reverse=True)
+        else:
+            sorted_rooms = sorted(room_map.items(), key=lambda item: (item[1].get('rank') or float('inf')))
+
         room_options = [room[0] for room in sorted_rooms]
+
+        # ✅ ブロック型イベントはポイント上位10、通常は順位上位10
         top_10_rooms = room_options[:10]
+
         selected_room_names_temp = st.multiselect(
             "比較したいルームを選択 (複数選択可):", options=room_options,
             default=st.session_state.multiselect_default_value,
@@ -1133,9 +1143,11 @@ def main():
                                 lower_gap = rank_info.get('lower_gap', 'N/A')
 
                                 if is_block_event:
-                                    rank = block_event_ranks.get(room_id, 'N/A')
+                                    # ブロックイベントは後でポイント順位を再計算するため、ここでは一旦 None
+                                    rank = None
                                 else:
                                     rank = rank_info.get('rank', 'N/A')
+
                             else:
                                 st.warning(f"ルーム名 '{room_name}' のランキング情報が不完全です。スキップします。")
                                 continue
@@ -1157,8 +1169,20 @@ def main():
                         st.error(f"データ処理中に予期せぬエラーが発生しました（ルーム名: {room_name}）。エラー: {e}")
                         continue
 
+            # ✅ ブロックイベントの場合、ポイントで順位を再付与（ブロック分け無視の総合順位）
+            if is_block_event and data_to_display:
+                sorted_by_point = sorted(
+                    data_to_display,
+                    key=lambda x: extract_int_from_mixed(x.get('現在のポイント', 0)),
+                    reverse=True
+                )
+                for idx, item in enumerate(sorted_by_point, start=1):
+                    item['現在の順位'] = idx
+                data_to_display = sorted_by_point  # 順序をポイント順に統一
+
             if data_to_display:
                 df = pd.DataFrame(data_to_display)
+
 
                 # --- 新：数値列の準備（ポイントの数値列を保持して計算に使用） ---
                 # 元のポイント列は混在するため数値抽出を行う
