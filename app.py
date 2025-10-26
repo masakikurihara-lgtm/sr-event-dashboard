@@ -607,13 +607,17 @@ def extract_int_from_mixed(val):
             return None
 
 def main():
-    st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='font-size:28px; text-align:left; color:#1f2937;'>🎤 SHOWROOM Event Dashboard</h1>",
+        unsafe_allow_html=True
+    )    
+    #st.markdown("<h1 style='font-size:2.5em;'>🎤 SHOWROOM Event Dashboard</h1>", unsafe_allow_html=True)
     st.write("イベント順位やポイント、ポイント差、スペシャルギフトの履歴、必要ギフト数などが、リアルタイムで可視化できるツールです。")
 
 
     # ▼▼ 認証ステップ ▼▼
     if not st.session_state.authenticated:
-        st.markdown("### 🔑 認証コードを入力してください")
+        st.markdown("##### 🔑 認証コードを入力してください")
         input_room_id = st.text_input(
             "認証コードを入力してください:",
             placeholder="",
