@@ -1062,21 +1062,21 @@ def main():
                             event_url_key, event_id, max_pages=30, force_refresh=True
                         )
                         st.session_state.manual_refresh_trigger = False
-                #else:
-                #    with st.spinner('イベント終了後の最終ランキングデータを読み込み中...'):
-                #        event_url_key = selected_event_data.get('event_url_key')
-                #        event_id = selected_event_data.get('event_id')
-                #        final_ranking_map = get_event_ranking_with_room_id(
-                #            event_url_key, event_id, max_pages=30, force_refresh=False
-                #        )
-                        if final_ranking_map:
-                            for name, data in final_ranking_map.items():
-                                if 'room_id' in data:
-                                    final_ranking_data[data['room_id']] = {
-                                        'rank': data.get('rank'), 'point': data.get('point')
-                                    }
-                        else:
-                            st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
+                else:
+                    with st.spinner('イベント終了後の最終ランキングデータを読み込み中...'):
+                        event_url_key = selected_event_data.get('event_url_key')
+                        event_id = selected_event_data.get('event_id')
+                        final_ranking_map = get_event_ranking_with_room_id(
+                            event_url_key, event_id, max_pages=30, force_refresh=False
+                        )
+                    if final_ranking_map:
+                        for name, data in final_ranking_map.items():
+                            if 'room_id' in data:
+                                final_ranking_data[data['room_id']] = {
+                                    'rank': data.get('rank'), 'point': data.get('point')
+                                }
+                    else:
+                        st.warning("イベント終了後の最終ランキングデータを取得できませんでした。")
 
             onlives_rooms = get_onlives_rooms()
 
