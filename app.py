@@ -307,6 +307,18 @@ def _fetch_event_ranking(event_url_key, event_id, max_pages=10):
             "rank": rank,
             "point": point
         }
+    # ▼▼▼ ここを追加（上位30件に制限） ▼▼▼
+    if room_map:
+        # rankがある場合はrank順、なければpoint順で上位30件
+        sorted_rooms = sorted(
+            room_map.items(),
+            key=lambda x: (
+                x[1].get("rank") if x[1].get("rank") else float("inf"),
+                -x[1].get("point", 0)
+            )
+        )
+        room_map = dict(sorted_rooms[:30])
+    # ▲▲▲ 追加ここまで ▲▲▲
     return room_map
 
 
