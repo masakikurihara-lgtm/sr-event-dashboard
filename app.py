@@ -241,7 +241,8 @@ def get_finished_events(start_date, end_date):
 
 # ※ 取得API候補の順序を、要望どおり room_list -> ranking の順に変更
 RANKING_API_CANDIDATES = [
-    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
+#    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
+    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&p={page}",
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
 ]
 
@@ -309,7 +310,7 @@ def _fetch_event_ranking(event_url_key, event_id, max_pages=10):
     return room_map
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=120)
 def _get_event_ranking_cached(event_url_key, event_id, max_pages=10):
     """キャッシュ付きのランキング取得"""
     return _fetch_event_ranking(event_url_key, event_id, max_pages)
@@ -328,7 +329,7 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10, force_
 # --- ▲▲▲ 差し替えここまで ▲▲▲ ---
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=120)
 def get_event_participant_count(event_url_key, event_id, max_pages=30):
     """
     イベント参加ルーム数を取得する（優先順）
@@ -439,7 +440,7 @@ def get_block_event_overall_ranking(event_url_key, event_id=None, max_pages=30):
         # --- rank=0 のルームを room_list から補完 ---
         if event_id and any(v == 0 for v in rank_map.values()):
             try:
-                roomlist_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}"
+                roomlist_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}&p={page}"
                 resp = requests.get(roomlist_url, headers=HEADERS, timeout=10)
                 if resp.status_code == 200:
                     data2 = resp.json()
