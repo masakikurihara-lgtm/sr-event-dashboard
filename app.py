@@ -1044,6 +1044,7 @@ def main():
                     event_url_key = selected_event_data.get('event_url_key')
                     event_id = selected_event_data.get('event_id')
 #                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=True)
+                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=True)
                     final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=False)
                     if final_ranking_map:
                         for name, data in final_ranking_map.items():
