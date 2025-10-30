@@ -241,7 +241,8 @@ def get_finished_events(start_date, end_date):
 
 # ※ 取得API候補の順序を、要望どおり room_list -> ranking の順に変更
 RANKING_API_CANDIDATES = [
-    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
+#    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&page={page}",
+    "https://www.showroom-live.com/api/event/room_list?event_id={event_id}&p={page}",
     "https://www.showroom-live.com/api/event/{event_url_key}/ranking?page={page}",
 ]
 
@@ -331,34 +332,56 @@ def get_event_ranking_with_room_id(event_url_key, event_id, max_pages=10, force_
 @st.cache_data(ttl=300)
 def get_event_participant_count(event_url_key, event_id, max_pages=30):
     """
-    イベント参加ルーム数を取得する（優先順）
+    イベント参加ルーム数を取得する（修正版）
     1) room_list?event_id=... の total_entries を優先
-    2) list があれば len(list)
-    3) フォールバックで ranking API をページめくりして合計件数を算出
-    戻り値: int (参加ルーム数) または None (取得失敗)
+    2) total_entries がなければ &p=page によるページングで全件カウント
+    3) 取得失敗時は ranking API にフォールバック
     """
-    # 1) room_list に問い合わせて total_entries を見る
     try:
+        # --- 1ページ目を取得 ---
         url_room_list = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}"
         resp = requests.get(url_room_list, headers=HEADERS, timeout=8)
         if resp.status_code == 200:
             data = resp.json()
             if isinstance(data, dict):
-                # server が用意した total_entries があればそれを優先
+                # total_entries があればそれを優先
                 te = data.get("total_entries")
                 if te is not None:
                     try:
                         return int(te)
                     except:
                         pass
-                # なければ list の長さを返す（1ページ分）
+
+                # list があればまず1ページ分カウント
                 if isinstance(data.get("list"), list):
-                    return len(data.get("list"))
+                    total = len(data.get("list"))
+
+                    # --- 2ページ目以降を &p= で取得 ---
+                    for page in range(2, max_pages + 1):
+                        page_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}&p={page}"
+                        r = requests.get(page_url, headers=HEADERS, timeout=8)
+                        if r.status_code == 404:
+                            break
+                        r.raise_for_status()
+                        d = r.json()
+
+                        # dict or list に対応
+                        if isinstance(d, dict):
+                            lst = d.get("list", [])
+                        elif isinstance(d, list):
+                            lst = d
+                        else:
+                            lst = []
+
+                        if not lst:
+                            break
+                        total += len(lst)
+                    return int(total)
     except requests.exceptions.RequestException:
-        # room_list が使えない場合はフォールバックへ
+        # room_list が使えない場合は次のフォールバックへ
         pass
 
-    # 2) フォールバック: ranking API をページめくりして合計を算出
+    # --- 3) フォールバック: ranking API による件数カウント ---
     total_count = 0
     try:
         base_url_candidates = [
@@ -374,7 +397,8 @@ def get_event_participant_count(event_url_key, event_id, max_pages=30):
                     break
                 r.raise_for_status()
                 d = r.json()
-                # ranking や event_list など候補を探す
+
+                # ranking, event_list, list, data に対応
                 if isinstance(d, dict):
                     arr = d.get("ranking") or d.get("event_list") or d.get("list") or d.get("data")
                 elif isinstance(d, list):
@@ -385,12 +409,14 @@ def get_event_participant_count(event_url_key, event_id, max_pages=30):
                 if not arr:
                     break
                 total_count += len(arr)
+
             if total_count > 0:
                 return int(total_count)
     except requests.exceptions.RequestException:
         pass
 
     return None
+
 
 def get_room_event_info(room_id):
     url = f"https://www.showroom-live.com/api/room/event_and_support?room_id={room_id}"
@@ -439,7 +465,7 @@ def get_block_event_overall_ranking(event_url_key, event_id=None, max_pages=30):
         # --- rank=0 のルームを room_list から補完 ---
         if event_id and any(v == 0 for v in rank_map.values()):
             try:
-                roomlist_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}"
+                roomlist_url = f"https://www.showroom-live.com/api/event/room_list?event_id={event_id}&p=1"
                 resp = requests.get(roomlist_url, headers=HEADERS, timeout=10)
                 if resp.status_code == 200:
                     data2 = resp.json()
@@ -1039,11 +1065,36 @@ def main():
             is_aggregating = is_event_ended and not is_closed
 
             final_ranking_data = {}
+            #if is_event_ended:
+            #    with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
+            #        event_url_key = selected_event_data.get('event_url_key')
+            #        event_id = selected_event_data.get('event_id')
+            #        final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=True)
             if is_event_ended:
-                with st.spinner('イベント終了後の最終ランキングデータを取得中...'):
-                    event_url_key = selected_event_data.get('event_url_key')
-                    event_id = selected_event_data.get('event_id')
-                    final_ranking_map = get_event_ranking_with_room_id(event_url_key, event_id, max_pages=30, force_refresh=True)
+                # --- 修正版：終了・終了(BU) の場合は「更新」ボタンで制御 ---
+                refresh_key = f"refresh_{selected_event_id}"
+                if 'manual_refresh_trigger' not in st.session_state:
+                    st.session_state.manual_refresh_trigger = False
+
+                if st.button("🔄 更新（最終ランキング再取得）", key=refresh_key):
+                    st.session_state.manual_refresh_trigger = True
+                    st.rerun()
+
+                if st.session_state.manual_refresh_trigger:
+                    with st.spinner('イベント終了後の最終ランキングデータを再取得中...'):
+                        event_url_key = selected_event_data.get('event_url_key')
+                        event_id = selected_event_data.get('event_id')
+                        final_ranking_map = get_event_ranking_with_room_id(
+                            event_url_key, event_id, max_pages=30, force_refresh=True
+                        )
+                        st.session_state.manual_refresh_trigger = False
+                else:
+                    with st.spinner('イベント終了後の最終ランキングデータを読み込み中...'):
+                        event_url_key = selected_event_data.get('event_url_key')
+                        event_id = selected_event_data.get('event_id')
+                        final_ranking_map = get_event_ranking_with_room_id(
+                            event_url_key, event_id, max_pages=30, force_refresh=False
+                        )
                     if final_ranking_map:
                         for name, data in final_ranking_map.items():
                             if 'room_id' in data:
